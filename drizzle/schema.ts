@@ -314,3 +314,55 @@ export const notizen = mysqlTable("notizen", {
 
 export type Notiz = typeof notizen.$inferSelect;
 export type InsertNotiz = typeof notizen.$inferInsert;
+
+/**
+ * Aktivitätsprotokoll - Wer hat wann was gemacht
+ */
+export const aktivitaetsprotokoll = mysqlTable("aktivitaetsprotokoll", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id),
+  userId: int("userId").references(() => users.id).notNull(),
+  aktion: mysqlEnum("aktion", [
+    "buchung_erstellt",
+    "buchung_bearbeitet", 
+    "buchung_geloescht",
+    "buchung_exportiert",
+    "stammdaten_erstellt",
+    "stammdaten_bearbeitet",
+    "stammdaten_geloescht",
+    "unternehmen_erstellt",
+    "unternehmen_bearbeitet",
+    "benutzer_hinzugefuegt",
+    "benutzer_entfernt",
+    "rolle_geaendert",
+    "login",
+    "logout"
+  ]).notNull(),
+  entitaetTyp: varchar("entitaetTyp", { length: 50 }),
+  entitaetId: int("entitaetId"),
+  entitaetName: varchar("entitaetName", { length: 255 }),
+  details: text("details"),
+  ipAdresse: varchar("ipAdresse", { length: 45 }),
+  userAgent: varchar("userAgent", { length: 500 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Aktivitaetsprotokoll = typeof aktivitaetsprotokoll.$inferSelect;
+export type InsertAktivitaetsprotokoll = typeof aktivitaetsprotokoll.$inferInsert;
+
+/**
+ * Erweiterte Benutzerrollen mit detaillierten Berechtigungen
+ */
+export const berechtigungen = mysqlTable("berechtigungen", {
+  id: int("id").autoincrement().primaryKey(),
+  rollenName: mysqlEnum("rollenName", ["admin", "buchhalter", "viewer"]).notNull(),
+  bereich: varchar("bereich", { length: 50 }).notNull(),
+  lesen: boolean("lesen").default(true).notNull(),
+  erstellen: boolean("erstellen").default(false).notNull(),
+  bearbeiten: boolean("bearbeiten").default(false).notNull(),
+  loeschen: boolean("loeschen").default(false).notNull(),
+  exportieren: boolean("exportieren").default(false).notNull(),
+});
+
+export type Berechtigung = typeof berechtigungen.$inferSelect;
+export type InsertBerechtigung = typeof berechtigungen.$inferInsert;

@@ -429,6 +429,12 @@ export default function Home() {
                   Benachrichtigungen
                 </Button>
               </Link>
+              <Link href="/benutzerverwaltung">
+                <Button variant="outline">
+                  <Users className="w-4 h-4 mr-2" />
+                  Benutzer
+                </Button>
+              </Link>
             </div>
           </div>
 

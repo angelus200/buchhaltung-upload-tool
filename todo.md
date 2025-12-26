@@ -12,3 +12,10 @@
 - [x] Home.tsx TypeScript-Fehler beheben (useAuth Import)
 - [ ] Login-Problem beheben - Anwendung ohne Authentifizierung nutzbar machen
 - [x] Benutzerdefinierte Benachrichtigungen implementieren
+- [ ] Supabase als externe Datenbank konfigurieren
+- [ ] Datenbank-Schema für PostgreSQL anpassen
+- [ ] Supabase-Verbindung testen
+- [ ] Tabellen in Supabase erstellen
+- [x] Rollen und Berechtigungen implementieren (Administrator, Buchhalter, Nur-Lesen)
+- [x] Benutzer-Unternehmen-Zuordnung implementieren
+- [x] Aktivitätsprotokoll implementieren

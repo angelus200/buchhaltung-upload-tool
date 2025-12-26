@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Unternehmen from "./pages/Unternehmen";
 import Benachrichtigungen from "./pages/Benachrichtigungen";
+import Benutzerverwaltung from "./pages/Benutzerverwaltung";
 import Uebersicht from "./pages/Uebersicht";
 import Notizen from "./pages/Notizen";
 import Stammdaten from "./pages/Stammdaten";
@@ -20,6 +21,7 @@ function Router() {
       <Route path={"/stammdaten"} component={Stammdaten} />
       <Route path={"/unternehmen"} component={Unternehmen} />
       <Route path={"/benachrichtigungen"} component={Benachrichtigungen} />
+      <Route path={"/benutzerverwaltung"} component={Benutzerverwaltung} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
