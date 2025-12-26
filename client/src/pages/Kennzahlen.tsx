@@ -37,7 +37,20 @@ import {
   Wallet,
   Receipt,
   Calculator,
+  Download,
+  FileDown,
+  Loader2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 // Farben für Charts
 const COLORS = ["#0d9488", "#0891b2", "#6366f1", "#8b5cf6", "#ec4899", "#f97316", "#eab308", "#22c55e"];
@@ -240,6 +253,85 @@ export default function Kennzahlen() {
 
   const JAHRE = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
+  // PDF Export Mutations
+  const exportBwaMutation = trpc.pdfExport.bwa.useMutation({
+    onSuccess: (data) => {
+      // Download als HTML (wird vom Browser als PDF gedruckt)
+      const blob = new Blob([data.html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `BWA_${data.unternehmenName}_${selectedJahr}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("BWA wurde exportiert", {
+        description: "Öffnen Sie die Datei und drucken Sie sie als PDF.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Export fehlgeschlagen", { description: error.message });
+    },
+  });
+
+  const exportKennzahlenMutation = trpc.pdfExport.kennzahlen.useMutation({
+    onSuccess: (data) => {
+      const blob = new Blob([data.html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Kennzahlen_${data.unternehmenName}_${selectedJahr}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Kennzahlen wurden exportiert");
+    },
+    onError: (error) => {
+      toast.error("Export fehlgeschlagen", { description: error.message });
+    },
+  });
+
+  const exportSuSaMutation = trpc.pdfExport.summenSaldenliste.useMutation({
+    onSuccess: (data) => {
+      const blob = new Blob([data.html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `SuSa_${data.unternehmenName}_${selectedJahr}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Summen- und Saldenliste wurde exportiert");
+    },
+    onError: (error) => {
+      toast.error("Export fehlgeschlagen", { description: error.message });
+    },
+  });
+
+  const handleExportBwa = () => {
+    if (!selectedUnternehmen) return;
+    exportBwaMutation.mutate({
+      unternehmenId: selectedUnternehmen,
+      jahr: selectedJahr,
+      monat: selectedMonat,
+    });
+  };
+
+  const handleExportKennzahlen = () => {
+    if (!selectedUnternehmen) return;
+    exportKennzahlenMutation.mutate({
+      unternehmenId: selectedUnternehmen,
+      jahr: selectedJahr,
+      monat: selectedMonat,
+    });
+  };
+
+  const handleExportSuSa = () => {
+    if (!selectedUnternehmen) return;
+    exportSuSaMutation.mutate({
+      unternehmenId: selectedUnternehmen,
+      jahr: selectedJahr,
+      monat: selectedMonat,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <AppHeader title="Kennzahlen & Auswertungen" subtitle="Finanzübersicht und Gewinn-/Verlustrechnung" />
@@ -296,6 +388,42 @@ export default function Kennzahlen() {
               ))}
             </SelectContent>
           </Select>
+
+          <div className="ml-auto flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <FileDown className="w-4 h-4" />
+                  Berichte exportieren
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>PDF-Berichte</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleExportBwa()}
+                  disabled={!selectedUnternehmen}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  BWA (Betriebswirtschaftliche Auswertung)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExportKennzahlen()}
+                  disabled={!selectedUnternehmen}
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Kennzahlen-Übersicht
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExportSuSa()}
+                  disabled={!selectedUnternehmen}
+                >
+                  <Calculator className="w-4 h-4 mr-2" />
+                  Summen- und Saldenliste
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {!selectedUnternehmen ? (

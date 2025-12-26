@@ -6,6 +6,8 @@ import { unternehmenRouter, buchungenRouter, stammdatenRouter, notizenRouter } f
 import { benutzerRouter, protokollRouter, berechtigungenRouter } from "./benutzerverwaltung";
 import { einladungenRouter } from "./einladungen";
 import { dashboardRouter } from "./dashboard";
+import { ocrRouter } from "./ocr";
+import { pdfExportRouter } from "./pdfExport";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -37,6 +39,10 @@ export const appRouter = router({
 
   // Dashboard Kennzahlen
   dashboard: dashboardRouter,
+
+  // OCR und PDF-Export
+  ocr: ocrRouter,
+  pdfExport: pdfExportRouter,
 });
 
 export type AppRouter = typeof appRouter;

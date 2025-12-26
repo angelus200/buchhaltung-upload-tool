@@ -44,3 +44,9 @@
 - [x] API-Endpunkte für Kennzahlen-Berechnung
 - [x] Diagramme für Einnahmen/Ausgaben über Zeit
 - [x] Gewinn- und Verlustrechnung visualisieren
+- [x] OCR-Integration für automatische Belegerkennung
+- [x] Belegdaten automatisch extrahieren (Datum, Betrag, Steuersatz, Lieferant)
+- [x] OCR-Ergebnisse in Buchungsformular übernehmen
+- [x] PDF-Export für BWA (Betriebswirtschaftliche Auswertung)
+- [x] PDF-Export für Kennzahlen-Übersicht
+- [x] PDF-Export für Summen- und Saldenliste

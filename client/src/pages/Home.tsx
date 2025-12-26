@@ -29,11 +29,15 @@ import {
   ArrowRightLeft,
   Bell,
   LayoutDashboard,
-  Shield
+  Shield,
+  Loader2,
+  Sparkles,
+  Wand2
 } from "lucide-react";
 import { Link } from "wouter";
 import AppHeader from "@/components/AppHeader";
 import BelegVorschau from "@/components/BelegVorschau";
+import { trpc } from "@/lib/trpc";
 
 interface Buchung {
   id: string;
