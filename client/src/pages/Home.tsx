@@ -32,6 +32,7 @@ import {
   Shield
 } from "lucide-react";
 import { Link } from "wouter";
+import AppHeader from "@/components/AppHeader";
 
 interface Buchung {
   id: string;
@@ -320,33 +321,25 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <FileSpreadsheet className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-foreground">Buchhaltung Upload Tool</h1>
-                <p className="text-sm text-muted-foreground">Belege erfassen und DATEV-Export erstellen</p>
-              </div>
+      {/* Header mit Firmenauswahl */}
+      <AppHeader />
+      
+      {/* Statistik-Leiste */}
+      <div className="border-b border-border bg-card">
+        <div className="container py-3">
+          <div className="flex items-center justify-end gap-6">
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Vollständige Buchungen</p>
+              <p className="text-lg font-semibold tabular-nums">{completeBuchungenCount} / {buchungen.length}</p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Vollständige Buchungen</p>
-                <p className="text-lg font-semibold tabular-nums">{completeBuchungenCount} / {buchungen.length}</p>
-              </div>
-              <Separator orientation="vertical" className="h-10" />
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Gesamtbetrag (brutto)</p>
-                <p className="text-lg font-semibold tabular-nums font-mono">{formatCurrency(totalBrutto.toFixed(2))} €</p>
-              </div>
+            <Separator orientation="vertical" className="h-8" />
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Gesamtbetrag (brutto)</p>
+              <p className="text-lg font-semibold tabular-nums font-mono">{formatCurrency(totalBrutto.toFixed(2))} €</p>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="container py-8">
         {/* Upload Zone */}
@@ -401,54 +394,7 @@ export default function Home() {
                 <Download className="w-4 h-4 mr-2" />
                 DATEV Export
               </Button>
-              <Link href="/uebersicht">
-                <Button variant="outline">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Übersicht
-                </Button>
-              </Link>
-              <Link href="/notizen">
-                <Button variant="outline">
-                  <StickyNote className="w-4 h-4 mr-2" />
-                  Notizen
-                </Button>
-              </Link>
-              <Link href="/stammdaten">
-                <Button variant="outline">
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  Stammdaten
-                </Button>
-              </Link>
-              <Link href="/unternehmen">
-                <Button variant="outline">
-                  <Building2 className="w-4 h-4 mr-2" />
-                  Unternehmen
-                </Button>
-              </Link>
-              <Link href="/benachrichtigungen">
-                <Button variant="outline">
-                  <Bell className="w-4 h-4 mr-2" />
-                  Benachrichtigungen
-                </Button>
-              </Link>
-              <Link href="/benutzerverwaltung">
-                <Button variant="outline">
-                  <Users className="w-4 h-4 mr-2" />
-                  Benutzer
-                </Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button variant="outline">
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Dashboard
-                </Button>
-              </Link>
-              <Link href="/admin">
-                <Button variant="outline" className="bg-red-50 hover:bg-red-100 border-red-200">
-                  <Shield className="w-4 h-4 mr-2 text-red-600" />
-                  Admin
-                </Button>
-              </Link>
+
             </div>
           </div>
 

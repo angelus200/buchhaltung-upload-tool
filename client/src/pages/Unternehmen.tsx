@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,10 @@ import {
   Mail,
   Globe,
   Hash,
-  Calendar
+  Calendar,
+  Palette,
+  ImageIcon,
+  X
 } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -45,6 +48,8 @@ interface UnternehmenFormData {
   wirtschaftsjahrBeginn: number;
   beraternummer: string;
   mandantennummer: string;
+  farbe: string;
+  logoUrl: string;
 }
 
 const RECHTSFORMEN = [
@@ -76,6 +81,20 @@ const MONATE = [
   { value: 12, label: "Dezember" },
 ];
 
+// Vordefinierte Firmenfarben
+const FIRMENFARBEN = [
+  { value: "#0d9488", name: "Teal", class: "bg-teal-600" },
+  { value: "#2563eb", name: "Blau", class: "bg-blue-600" },
+  { value: "#7c3aed", name: "Violett", class: "bg-violet-600" },
+  { value: "#db2777", name: "Pink", class: "bg-pink-600" },
+  { value: "#ea580c", name: "Orange", class: "bg-orange-600" },
+  { value: "#16a34a", name: "Grün", class: "bg-green-600" },
+  { value: "#dc2626", name: "Rot", class: "bg-red-600" },
+  { value: "#ca8a04", name: "Gelb", class: "bg-yellow-600" },
+  { value: "#475569", name: "Grau", class: "bg-slate-600" },
+  { value: "#0891b2", name: "Cyan", class: "bg-cyan-600" },
+];
+
 function createEmptyFormData(): UnternehmenFormData {
   return {
     name: "",
@@ -94,6 +113,8 @@ function createEmptyFormData(): UnternehmenFormData {
     wirtschaftsjahrBeginn: 1,
     beraternummer: "",
     mandantennummer: "",
+    farbe: "#0d9488",
+    logoUrl: "",
   };
 }
 
@@ -101,6 +122,8 @@ export default function Unternehmen() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState<UnternehmenFormData>(createEmptyFormData());
   const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // LocalStorage für ausgewähltes Unternehmen
   useEffect(() => {
@@ -117,6 +140,7 @@ export default function Unternehmen() {
       toast.success("Unternehmen erfolgreich angelegt");
       setDialogOpen(false);
       setFormData(createEmptyFormData());
+      setLogoPreview("");
       refetch();
     },
     onError: (error: { message: string }) => {
@@ -129,13 +153,62 @@ export default function Unternehmen() {
       toast.error("Bitte geben Sie einen Firmennamen ein");
       return;
     }
-    createMutation.mutate(formData);
+    createMutation.mutate({
+      ...formData,
+      logoUrl: logoPreview || undefined,
+    });
   };
 
   const handleSelectUnternehmen = (id: number) => {
     setSelectedUnternehmen(id);
     localStorage.setItem("selectedUnternehmenId", id.toString());
-    toast.success("Unternehmen ausgewählt");
+    
+    // Speichere auch die Firmenfarbe für den Header
+    const selected = unternehmenList?.find((item: any) => item.unternehmen.id === id);
+    if (selected?.unternehmen.farbe) {
+      localStorage.setItem("selectedUnternehmenFarbe", selected.unternehmen.farbe);
+    }
+    if (selected?.unternehmen.name) {
+      localStorage.setItem("selectedUnternehmenName", selected.unternehmen.name);
+    }
+    if (selected?.unternehmen.logoUrl) {
+      localStorage.setItem("selectedUnternehmenLogo", selected.unternehmen.logoUrl);
+    } else {
+      localStorage.removeItem("selectedUnternehmenLogo");
+    }
+    
+    toast.success(`${selected?.unternehmen.name} ausgewählt`);
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Das Logo darf maximal 2 MB groß sein");
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setLogoPreview(base64);
+        setFormData({ ...formData, logoUrl: base64 });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeLogo = () => {
+    setLogoPreview("");
+    setFormData({ ...formData, logoUrl: "" });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Hilfsfunktion um Farbe als Style zu verwenden
+  const getFirmaStyle = (farbe: string | null) => {
+    return farbe ? { backgroundColor: farbe } : { backgroundColor: "#0d9488" };
   };
 
   return (
@@ -202,6 +275,96 @@ export default function Unternehmen() {
               </DialogHeader>
               
               <div className="grid gap-6 py-4">
+                {/* Visuelle Identität */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-teal-600" />
+                    Visuelle Identität
+                  </h3>
+                  
+                  {/* Logo Upload */}
+                  <div>
+                    <Label>Firmenlogo</Label>
+                    <div className="mt-2 flex items-center gap-4">
+                      {logoPreview ? (
+                        <div className="relative">
+                          <img 
+                            src={logoPreview} 
+                            alt="Logo Vorschau" 
+                            className="w-16 h-16 object-contain rounded-lg border border-slate-200"
+                          />
+                          <button
+                            onClick={removeLogo}
+                            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div 
+                          className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-teal-500 hover:bg-teal-50 transition-colors"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <ImageIcon className="w-6 h-6 text-slate-400" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Logo hochladen
+                        </Button>
+                        <p className="text-xs text-slate-500 mt-1">PNG, JPG oder SVG, max. 2 MB</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Farbauswahl */}
+                  <div>
+                    <Label>Firmenfarbe</Label>
+                    <p className="text-xs text-slate-500 mb-2">Diese Farbe wird zur visuellen Unterscheidung verwendet</p>
+                    <div className="flex flex-wrap gap-2">
+                      {FIRMENFARBEN.map((farbe) => (
+                        <button
+                          key={farbe.value}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, farbe: farbe.value })}
+                          className={`w-8 h-8 rounded-lg transition-all ${
+                            formData.farbe === farbe.value 
+                              ? "ring-2 ring-offset-2 ring-slate-900 scale-110" 
+                              : "hover:scale-105"
+                          }`}
+                          style={{ backgroundColor: farbe.value }}
+                          title={farbe.name}
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Label htmlFor="customColor" className="text-xs">Eigene Farbe:</Label>
+                      <Input
+                        id="customColor"
+                        type="color"
+                        value={formData.farbe}
+                        onChange={(e) => setFormData({ ...formData, farbe: e.target.value })}
+                        className="w-12 h-8 p-1 cursor-pointer"
+                      />
+                      <span className="text-xs text-slate-500 font-mono">{formData.farbe}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
                 {/* Grunddaten */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
@@ -432,32 +595,45 @@ export default function Unternehmen() {
         {/* Unternehmensliste */}
         <div className="grid gap-4">
           {unternehmenList && unternehmenList.length > 0 ? (
-            unternehmenList.map((item: { unternehmen: { id: number; name: string; rechtsform: string | null; steuernummer: string | null; ustIdNr: string | null; plz: string | null; ort: string | null; kontenrahmen: string; mandantennummer: string | null }; rolle: string }) => (
+            unternehmenList.map((item: any) => (
               <Card 
                 key={item.unternehmen.id} 
                 className={`cursor-pointer transition-all hover:shadow-md ${
                   selectedUnternehmen === item.unternehmen.id 
-                    ? "ring-2 ring-teal-500 bg-teal-50/50" 
+                    ? "ring-2 ring-offset-2" 
                     : ""
                 }`}
+                style={selectedUnternehmen === item.unternehmen.id ? { 
+                  borderColor: item.unternehmen.farbe || "#0d9488",
+                  boxShadow: `0 0 0 2px ${item.unternehmen.farbe || "#0d9488"}20`
+                } : {}}
                 onClick={() => handleSelectUnternehmen(item.unternehmen.id)}
               >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                        selectedUnternehmen === item.unternehmen.id 
-                          ? "bg-teal-600" 
-                          : "bg-slate-100"
-                      }`}>
-                        <Building2 className={`w-6 h-6 ${
-                          selectedUnternehmen === item.unternehmen.id 
-                            ? "text-white" 
-                            : "text-slate-600"
-                        }`} />
-                      </div>
+                      {/* Logo oder Farbiges Icon */}
+                      {item.unternehmen.logoUrl ? (
+                        <img 
+                          src={item.unternehmen.logoUrl} 
+                          alt={item.unternehmen.name}
+                          className="w-12 h-12 object-contain rounded-lg border border-slate-200"
+                        />
+                      ) : (
+                        <div 
+                          className="w-12 h-12 rounded-lg flex items-center justify-center"
+                          style={getFirmaStyle(item.unternehmen.farbe)}
+                        >
+                          <Building2 className="w-6 h-6 text-white" />
+                        </div>
+                      )}
                       <div>
                         <div className="flex items-center gap-2">
+                          {/* Farbiger Punkt als Indikator */}
+                          <div 
+                            className="w-3 h-3 rounded-full"
+                            style={getFirmaStyle(item.unternehmen.farbe)}
+                          />
                           <h3 className="font-semibold text-slate-900">{item.unternehmen.name}</h3>
                           {item.unternehmen.rechtsform && (
                             <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
@@ -465,7 +641,10 @@ export default function Unternehmen() {
                             </span>
                           )}
                           {selectedUnternehmen === item.unternehmen.id && (
-                            <span className="text-xs px-2 py-0.5 bg-teal-100 text-teal-700 rounded flex items-center gap-1">
+                            <span 
+                              className="text-xs px-2 py-0.5 rounded flex items-center gap-1 text-white"
+                              style={getFirmaStyle(item.unternehmen.farbe)}
+                            >
                               <Check className="w-3 h-3" />
                               Aktiv
                             </span>
@@ -537,17 +716,17 @@ export default function Unternehmen() {
           <CardContent className="p-6">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
-                <FileSpreadsheet className="w-5 h-5 text-teal-600" />
+                <Palette className="w-5 h-5 text-teal-600" />
               </div>
               <div>
-                <h3 className="font-medium text-slate-900 mb-1">Kontenrahmen SKR 03 vs. SKR 04</h3>
+                <h3 className="font-medium text-slate-900 mb-1">Visuelle Unterscheidung</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  <strong>SKR 03</strong> (Prozessgliederungsprinzip) ist der am häufigsten verwendete Kontenrahmen 
-                  für kleine und mittlere Unternehmen. Die Konten sind nach betrieblichen Prozessen gegliedert.
+                  Jedes Unternehmen kann mit einer eigenen <strong>Farbe</strong> und einem <strong>Logo</strong> versehen werden. 
+                  Diese werden im gesamten System verwendet, um schnell zu erkennen, mit welcher Firma Sie gerade arbeiten.
                 </p>
                 <p className="text-sm text-slate-600 leading-relaxed mt-2">
-                  <strong>SKR 04</strong> (Abschlussgliederungsprinzip) orientiert sich an der Bilanz- und GuV-Struktur 
-                  und wird häufiger von größeren Unternehmen verwendet.
+                  Die Firmenfarbe erscheint im Header, bei Buchungen und in Berichten. 
+                  Das Logo wird neben dem Firmennamen angezeigt.
                 </p>
               </div>
             </div>

@@ -23,3 +23,7 @@
 - [x] Admin-Board für Rechteverwaltung erstellen
 - [x] Navigation und Routing für Dashboard/Admin-Board anpassen
 - [x] Login-Seite für Mitarbeiter-Registrierung erstellen
+- [x] Farbcodierung pro Firma implementieren
+- [x] Logo-Upload pro Unternehmen implementieren
+- [x] Firmenname prominent im Header anzeigen
+- [x] Datenbank-Schema für Farbe und Logo erweitern

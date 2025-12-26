@@ -85,6 +85,8 @@ export const unternehmenRouter = router({
         wirtschaftsjahrBeginn: z.number().min(1).max(12).default(1),
         beraternummer: z.string().optional(),
         mandantennummer: z.string().optional(),
+        farbe: z.string().optional(),
+        logoUrl: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

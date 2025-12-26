@@ -46,6 +46,9 @@ export const unternehmen = mysqlTable("unternehmen", {
   wirtschaftsjahrBeginn: int("wirtschaftsjahrBeginn").default(1).notNull(),
   beraternummer: varchar("beraternummer", { length: 20 }),
   mandantennummer: varchar("mandantennummer", { length: 20 }),
+  // Visuelle Unterscheidungsmerkmale
+  farbe: varchar("farbe", { length: 20 }).default("#0d9488"), // Teal als Standard
+  logoUrl: varchar("logoUrl", { length: 500 }),
   aktiv: boolean("aktiv").default(true).notNull(),
   createdBy: int("createdBy").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
