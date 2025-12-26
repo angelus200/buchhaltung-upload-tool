@@ -40,3 +40,7 @@
 - [x] Korrekte Verknüpfungen zwischen allen Bereichen
 - [ ] Nutzerverwaltung im Admin-Board sichtbar machen
 - [x] Fehlermeldungen beim Anlegen eines Unternehmens beheben (Manus-DB verwendet)
+- [x] Dashboard mit Kennzahlen erstellen (Einnahmen, Ausgaben, Gewinn/Verlust)
+- [x] API-Endpunkte für Kennzahlen-Berechnung
+- [x] Diagramme für Einnahmen/Ausgaben über Zeit
+- [x] Gewinn- und Verlustrechnung visualisieren

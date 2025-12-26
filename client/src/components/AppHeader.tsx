@@ -11,7 +11,8 @@ import {
   Users, 
   LayoutDashboard, 
   Shield,
-  ChevronDown
+  ChevronDown,
+  TrendingUp
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -196,6 +197,17 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               >
                 <BarChart3 className="w-3.5 h-3.5" />
                 Übersicht
+              </Button>
+            </Link>
+            <Link href="/kennzahlen">
+              <Button 
+                variant={isActive("/kennzahlen") ? "default" : "ghost"} 
+                size="sm" 
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/kennzahlen") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                Kennzahlen
               </Button>
             </Link>
             <Link href="/stammdaten">

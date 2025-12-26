@@ -15,6 +15,7 @@ import Benutzerverwaltung from "./pages/Benutzerverwaltung";
 import Uebersicht from "./pages/Uebersicht";
 import Notizen from "./pages/Notizen";
 import Stammdaten from "./pages/Stammdaten";
+import Kennzahlen from "./pages/Kennzahlen";
 
 function Router() {
   return (
@@ -31,6 +32,7 @@ function Router() {
       {/* Buchhaltungs-Funktionen */}
       <Route path={"/"} component={Home} />
       <Route path={"/uebersicht"} component={Uebersicht} />
+      <Route path={"/kennzahlen"} component={Kennzahlen} />
       <Route path={"/notizen"} component={Notizen} />
       <Route path={"/stammdaten"} component={Stammdaten} />
       <Route path={"/unternehmen"} component={Unternehmen} />
