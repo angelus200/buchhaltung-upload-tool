@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,17 +22,23 @@ import {
   FileSpreadsheet,
   ChevronRight,
   BarChart3,
-  StickyNote
+  StickyNote,
+  Briefcase,
+  Users,
+  ArrowRightLeft
 } from "lucide-react";
 import { Link } from "wouter";
 
 interface Buchung {
   id: string;
+  buchungsart: "aufwand" | "ertrag" | "anlage" | "sonstig";
   belegdatum: string;
   belegnummer: string;
-  kreditor: string;
-  kreditorKonto: string;
-  aufwandskonto: string;
+  geschaeftspartner: string;
+  geschaeftspartnerTyp: "kreditor" | "debitor" | "gesellschafter" | "sonstig";
+  geschaeftspartnerKonto: string;
+  sachkonto: string;
+  kostenstelle: string;
   nettobetrag: string;
   steuersatz: string;
   bruttobetrag: string;
@@ -41,6 +47,7 @@ interface Buchung {
   status: "pending" | "complete" | "error";
 }
 
+// Erweiterter Kontenrahmen SKR03
 const KONTENRAHMEN_SKR03 = {
   aufwand: [
     { konto: "4120", bezeichnung: "Miete" },
@@ -51,17 +58,68 @@ const KONTENRAHMEN_SKR03 = {
     { konto: "4500", bezeichnung: "Fahrzeugkosten" },
     { konto: "4600", bezeichnung: "Werbekosten" },
     { konto: "4650", bezeichnung: "Bewirtungskosten" },
+    { konto: "4830", bezeichnung: "Abschreibungen Sachanlagen" },
     { konto: "4900", bezeichnung: "Sonstige Aufwendungen" },
     { konto: "4930", bezeichnung: "Bürobedarf" },
     { konto: "4940", bezeichnung: "Zeitschriften, Bücher" },
     { konto: "4950", bezeichnung: "Rechts- und Beratungskosten" },
   ],
+  ertrag: [
+    { konto: "8400", bezeichnung: "Erlöse 19% USt" },
+    { konto: "8300", bezeichnung: "Erlöse 7% USt" },
+    { konto: "8100", bezeichnung: "Steuerfreie Erlöse" },
+    { konto: "8200", bezeichnung: "Erlöse Ausland" },
+    { konto: "8900", bezeichnung: "Sonstige Erträge" },
+    { konto: "2650", bezeichnung: "Zinserträge" },
+    { konto: "2700", bezeichnung: "Erträge aus Beteiligungen" },
+  ],
+  anlage: [
+    { konto: "0200", bezeichnung: "Grundstücke" },
+    { konto: "0210", bezeichnung: "Gebäude" },
+    { konto: "0400", bezeichnung: "Maschinen" },
+    { konto: "0420", bezeichnung: "Fahrzeuge" },
+    { konto: "0480", bezeichnung: "Betriebs- und Geschäftsausstattung" },
+    { konto: "0500", bezeichnung: "Anlagen im Bau" },
+    { konto: "0600", bezeichnung: "Beteiligungen" },
+    { konto: "0650", bezeichnung: "Wertpapiere des Anlagevermögens" },
+  ],
+  finanz: [
+    { konto: "1200", bezeichnung: "Bank" },
+    { konto: "1210", bezeichnung: "Sparkonto" },
+    { konto: "1000", bezeichnung: "Kasse" },
+    { konto: "1300", bezeichnung: "Wechsel" },
+    { konto: "1400", bezeichnung: "Forderungen aus L+L" },
+    { konto: "1600", bezeichnung: "Verbindlichkeiten aus L+L" },
+  ],
+  eigenkapital: [
+    { konto: "0800", bezeichnung: "Gezeichnetes Kapital" },
+    { konto: "0840", bezeichnung: "Kapitalrücklage" },
+    { konto: "0860", bezeichnung: "Gewinnrücklagen" },
+    { konto: "0880", bezeichnung: "Gewinnvortrag" },
+    { konto: "0890", bezeichnung: "Verlustvortrag" },
+    { konto: "2000", bezeichnung: "Privatentnahmen" },
+    { konto: "2100", bezeichnung: "Privateinlagen" },
+  ],
   steuer: [
-    { satz: "19", bezeichnung: "19% Vorsteuer" },
-    { satz: "7", bezeichnung: "7% Vorsteuer" },
+    { satz: "19", bezeichnung: "19% USt/VSt" },
+    { satz: "7", bezeichnung: "7% USt/VSt" },
     { satz: "0", bezeichnung: "Steuerfrei" },
   ]
 };
+
+const BUCHUNGSARTEN = [
+  { value: "aufwand", label: "Aufwandsbuchung", icon: Building2, color: "text-red-600" },
+  { value: "ertrag", label: "Ertragsbuchung", icon: Euro, color: "text-green-600" },
+  { value: "anlage", label: "Anlagenbuchung", icon: FileText, color: "text-blue-600" },
+  { value: "sonstig", label: "Sonstige Buchung", icon: ArrowRightLeft, color: "text-gray-600" },
+];
+
+const GESCHAEFTSPARTNER_TYPEN = [
+  { value: "kreditor", label: "Kreditor (Lieferant)", kontobereich: "70000" },
+  { value: "debitor", label: "Debitor (Kunde)", kontobereich: "10000" },
+  { value: "gesellschafter", label: "Gesellschafter", kontobereich: "08000" },
+  { value: "sonstig", label: "Sonstige", kontobereich: "00000" },
+];
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -89,19 +147,16 @@ function generateDATEVExport(buchungen: Buchung[]): string {
   const startDate = `${year}${String(month).padStart(2, "0")}01`;
   const endDate = `${year}${String(month).padStart(2, "0")}${new Date(year, month, 0).getDate()}`;
   
-  // Header
   const header = `"EXTF";700;21;"Buchungsstapel";13;${timestamp};;"MA";"";"";1001;10001;${year}0101;4;${startDate};${endDate};"Buchungsstapel";"MA";1;0;0;"EUR";;"";;;"03";;;"";""`;
+  const columns = `Umsatz;Soll/Haben-Kz;WKZ Umsatz;Kurs;Basis-Umsatz;WKZ Basis-Umsatz;Konto;Gegenkonto (ohne BU-Schluessel);BU-Schluessel;Belegdatum;Belegfeld 1;Belegfeld 2;Skonto;Buchungstext;Postensperre;Diverse Adressnummer;Geschaeftspartnerbank;Sachverhalt;Zinssperre;Beleglink;KOST1`;
   
-  // Column headers
-  const columns = `Umsatz;Soll/Haben-Kz;WKZ Umsatz;Kurs;Basis-Umsatz;WKZ Basis-Umsatz;Konto;Gegenkonto (ohne BU-Schluessel);BU-Schluessel;Belegdatum;Belegfeld 1;Belegfeld 2;Skonto;Buchungstext;Postensperre;Diverse Adressnummer;Geschaeftspartnerbank;Sachverhalt;Zinssperre;Beleglink`;
-  
-  // Data rows
   const rows = buchungen
     .filter(b => b.status === "complete")
     .map(b => {
       const brutto = b.bruttobetrag.replace(",", ".");
       const datum = b.belegdatum.split("-").slice(1).reverse().join("").slice(0, 4);
-      return `${brutto};"S";"EUR";;;;"${b.aufwandskonto}";"${b.kreditorKonto}";"";"${datum}";"${b.belegnummer}";"";;${b.buchungstext};0;;;;;""`;
+      const sollHaben = b.buchungsart === "ertrag" ? "H" : "S";
+      return `${brutto};"${sollHaben}";"EUR";;;;"${b.sachkonto}";"${b.geschaeftspartnerKonto}";"";"${datum}";"${b.belegnummer}";"";;${b.buchungstext};0;;;;;"";"${b.kostenstelle}"`;
     });
   
   return [header, columns, ...rows].join("\n");
@@ -113,11 +168,14 @@ export default function Home() {
 
   const createEmptyBuchung = useCallback((): Buchung => ({
     id: generateId(),
+    buchungsart: "aufwand",
     belegdatum: new Date().toISOString().split("T")[0],
-    belegnummer: "",
-    kreditor: "",
-    kreditorKonto: "70000",
-    aufwandskonto: "",
+    belegnummer: `RE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`,
+    geschaeftspartner: "",
+    geschaeftspartnerTyp: "kreditor",
+    geschaeftspartnerKonto: "70000",
+    sachkonto: "",
+    kostenstelle: "",
     nettobetrag: "",
     steuersatz: "19",
     bruttobetrag: "",
@@ -188,6 +246,14 @@ export default function Home() {
       
       const updated = { ...b, [field]: value };
       
+      // Auto-update Kontobereich bei Geschäftspartner-Typ-Änderung
+      if (field === "geschaeftspartnerTyp") {
+        const typ = GESCHAEFTSPARTNER_TYPEN.find(t => t.value === value);
+        if (typ) {
+          updated.geschaeftspartnerKonto = typ.kontobereich;
+        }
+      }
+      
       // Auto-calculate brutto when netto or steuersatz changes
       if (field === "nettobetrag" || field === "steuersatz") {
         const netto = field === "nettobetrag" ? value as string : b.nettobetrag;
@@ -199,8 +265,8 @@ export default function Home() {
       const isComplete = 
         updated.belegdatum && 
         updated.belegnummer && 
-        updated.kreditor && 
-        updated.aufwandskonto && 
+        updated.geschaeftspartner && 
+        updated.sachkonto && 
         updated.bruttobetrag;
       
       updated.status = isComplete ? "complete" : "pending";
@@ -235,6 +301,16 @@ export default function Home() {
   const totalBrutto = buchungen
     .filter(b => b.status === "complete")
     .reduce((sum, b) => sum + parseFloat(b.bruttobetrag.replace(",", ".") || "0"), 0);
+
+  // Konten basierend auf Buchungsart
+  const getKontenForBuchungsart = (art: string) => {
+    switch (art) {
+      case "aufwand": return KONTENRAHMEN_SKR03.aufwand;
+      case "ertrag": return KONTENRAHMEN_SKR03.ertrag;
+      case "anlage": return KONTENRAHMEN_SKR03.anlage;
+      default: return [...KONTENRAHMEN_SKR03.finanz, ...KONTENRAHMEN_SKR03.eigenkapital];
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -280,22 +356,19 @@ export default function Home() {
           </CardHeader>
           <CardContent>
             <div
-              className={`drop-zone ${dragActive ? "drop-zone-active" : ""} flex flex-col items-center justify-center gap-4 cursor-pointer`}
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer
+                ${dragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
-              onClick={() => document.getElementById("file-input")?.click()}
+              onClick={() => document.getElementById("fileInput")?.click()}
             >
-              <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center">
-                <Upload className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <div className="text-center">
-                <p className="font-medium text-foreground">Belege hier ablegen</p>
-                <p className="text-sm text-muted-foreground">oder klicken zum Auswählen</p>
-              </div>
+              <Upload className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
+              <p className="font-medium">Belege hier ablegen</p>
+              <p className="text-sm text-muted-foreground">oder klicken zum Auswählen</p>
               <input
-                id="file-input"
+                id="fileInput"
                 type="file"
                 multiple
                 accept=".pdf,.jpg,.jpeg,.png"
@@ -306,11 +379,11 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* Buchungen Liste */}
+        {/* Buchungen */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Buchungen ({buchungen.length})</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" onClick={addEmptyBuchung}>
                 <Plus className="w-4 h-4 mr-2" />
                 Manuelle Buchung
@@ -334,6 +407,12 @@ export default function Home() {
                   Notizen
                 </Button>
               </Link>
+              <Link href="/stammdaten">
+                <Button variant="outline">
+                  <Briefcase className="w-4 h-4 mr-2" />
+                  Stammdaten
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -347,216 +426,222 @@ export default function Home() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {buchungen.map((buchung, index) => (
-                <BuchungCard
-                  key={buchung.id}
-                  buchung={buchung}
-                  index={index + 1}
-                  onUpdate={updateBuchung}
-                  onRemove={removeBuchung}
-                />
+              {buchungen.map((buchung) => (
+                <Card key={buchung.id} className={`transition-all ${buchung.status === "complete" ? "border-green-200 bg-green-50/30" : ""}`}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-4">
+                      {/* Status Icon */}
+                      <div className="pt-2">
+                        {buchung.status === "complete" ? (
+                          <CheckCircle2 className="w-6 h-6 text-green-600" />
+                        ) : (
+                          <AlertCircle className="w-6 h-6 text-amber-500" />
+                        )}
+                      </div>
+
+                      {/* Form Fields */}
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Buchungsart */}
+                        <div className="space-y-2">
+                          <Label>Buchungsart</Label>
+                          <Select 
+                            value={buchung.buchungsart} 
+                            onValueChange={(v) => updateBuchung(buchung.id, "buchungsart", v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {BUCHUNGSARTEN.map((art) => (
+                                <SelectItem key={art.value} value={art.value}>
+                                  {art.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Belegdatum */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`datum-${buchung.id}`}>Belegdatum</Label>
+                          <Input
+                            id={`datum-${buchung.id}`}
+                            type="date"
+                            value={buchung.belegdatum}
+                            onChange={(e) => updateBuchung(buchung.id, "belegdatum", e.target.value)}
+                          />
+                        </div>
+
+                        {/* Belegnummer */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`belegnr-${buchung.id}`}>Belegnummer</Label>
+                          <Input
+                            id={`belegnr-${buchung.id}`}
+                            placeholder="RE-2025-001"
+                            value={buchung.belegnummer}
+                            onChange={(e) => updateBuchung(buchung.id, "belegnummer", e.target.value)}
+                          />
+                        </div>
+
+                        {/* Geschäftspartner Typ */}
+                        <div className="space-y-2">
+                          <Label>Partner-Typ</Label>
+                          <Select 
+                            value={buchung.geschaeftspartnerTyp} 
+                            onValueChange={(v) => updateBuchung(buchung.id, "geschaeftspartnerTyp", v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {GESCHAEFTSPARTNER_TYPEN.map((typ) => (
+                                <SelectItem key={typ.value} value={typ.value}>
+                                  {typ.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Geschäftspartner Name */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`partner-${buchung.id}`}>Geschäftspartner</Label>
+                          <Input
+                            id={`partner-${buchung.id}`}
+                            placeholder="Firmenname"
+                            value={buchung.geschaeftspartner}
+                            onChange={(e) => updateBuchung(buchung.id, "geschaeftspartner", e.target.value)}
+                          />
+                        </div>
+
+                        {/* Geschäftspartner Konto */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`partnerkonto-${buchung.id}`}>Personenkonto</Label>
+                          <Input
+                            id={`partnerkonto-${buchung.id}`}
+                            placeholder="70000"
+                            value={buchung.geschaeftspartnerKonto}
+                            onChange={(e) => updateBuchung(buchung.id, "geschaeftspartnerKonto", e.target.value)}
+                            className="font-mono"
+                          />
+                        </div>
+
+                        {/* Sachkonto */}
+                        <div className="space-y-2">
+                          <Label>Sachkonto</Label>
+                          <Select 
+                            value={buchung.sachkonto} 
+                            onValueChange={(v) => updateBuchung(buchung.id, "sachkonto", v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Konto wählen" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getKontenForBuchungsart(buchung.buchungsart).map((k) => (
+                                <SelectItem key={k.konto} value={k.konto}>
+                                  {k.konto} - {k.bezeichnung}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Kostenstelle */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`kst-${buchung.id}`}>Kostenstelle</Label>
+                          <Input
+                            id={`kst-${buchung.id}`}
+                            placeholder="Optional"
+                            value={buchung.kostenstelle}
+                            onChange={(e) => updateBuchung(buchung.id, "kostenstelle", e.target.value)}
+                            className="font-mono"
+                          />
+                        </div>
+
+                        {/* Nettobetrag */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`netto-${buchung.id}`}>Nettobetrag</Label>
+                          <Input
+                            id={`netto-${buchung.id}`}
+                            placeholder="0,00"
+                            value={buchung.nettobetrag}
+                            onChange={(e) => updateBuchung(buchung.id, "nettobetrag", e.target.value)}
+                            className="font-mono"
+                          />
+                        </div>
+
+                        {/* Steuersatz */}
+                        <div className="space-y-2">
+                          <Label>Steuersatz</Label>
+                          <Select 
+                            value={buchung.steuersatz} 
+                            onValueChange={(v) => updateBuchung(buchung.id, "steuersatz", v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {KONTENRAHMEN_SKR03.steuer.map((s) => (
+                                <SelectItem key={s.satz} value={s.satz}>
+                                  {s.bezeichnung}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Bruttobetrag */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`brutto-${buchung.id}`}>Bruttobetrag</Label>
+                          <Input
+                            id={`brutto-${buchung.id}`}
+                            placeholder="0,00"
+                            value={buchung.bruttobetrag}
+                            onChange={(e) => updateBuchung(buchung.id, "bruttobetrag", e.target.value)}
+                            className="font-mono bg-muted/50"
+                            readOnly
+                          />
+                        </div>
+
+                        {/* Buchungstext */}
+                        <div className="space-y-2 md:col-span-2 lg:col-span-4">
+                          <Label htmlFor={`text-${buchung.id}`}>Buchungstext</Label>
+                          <Textarea
+                            id={`text-${buchung.id}`}
+                            placeholder="Beschreibung der Buchung..."
+                            value={buchung.buchungstext}
+                            onChange={(e) => updateBuchung(buchung.id, "buchungstext", e.target.value)}
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Delete Button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => removeBuchung(buchung.id)}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </Button>
+                    </div>
+
+                    {/* Beleg Info */}
+                    {buchung.belegDatei && (
+                      <div className="mt-4 pt-4 border-t flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="w-4 h-4" />
+                        <span>{buchung.belegDatei.name}</span>
+                        <span className="text-xs">({(buchung.belegDatei.size / 1024).toFixed(1)} KB)</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
         </div>
       </main>
     </div>
-  );
-}
-
-interface BuchungCardProps {
-  buchung: Buchung;
-  index: number;
-  onUpdate: (id: string, field: keyof Buchung, value: string | File | null) => void;
-  onRemove: (id: string) => void;
-}
-
-function BuchungCard({ buchung, index, onUpdate, onRemove }: BuchungCardProps) {
-  const [expanded, setExpanded] = useState(true);
-
-  return (
-    <Card className={`transition-all duration-200 ${buchung.status === "complete" ? "border-l-4 border-l-accent" : ""}`}>
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setExpanded(!expanded)}
-              className="p-1 hover:bg-secondary rounded"
-            >
-              <ChevronRight className={`w-5 h-5 transition-transform ${expanded ? "rotate-90" : ""}`} />
-            </button>
-            <div className="flex items-center gap-2">
-              {buchung.status === "complete" ? (
-                <CheckCircle2 className="w-5 h-5 text-accent" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-yellow-500" />
-              )}
-              <span className="font-semibold">Buchung #{index}</span>
-            </div>
-            {buchung.belegDatei && (
-              <span className="text-sm text-muted-foreground flex items-center gap-1">
-                <FileText className="w-4 h-4" />
-                {buchung.belegDatei.name}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            {buchung.bruttobetrag && (
-              <span className="font-mono font-semibold tabular-nums">
-                {formatCurrency(buchung.bruttobetrag)} €
-              </span>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onRemove(buchung.id)}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      
-      {expanded && (
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Belegdatum */}
-            <div className="space-y-2">
-              <Label htmlFor={`datum-${buchung.id}`} className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                Belegdatum
-              </Label>
-              <Input
-                id={`datum-${buchung.id}`}
-                type="date"
-                value={buchung.belegdatum}
-                onChange={(e) => onUpdate(buchung.id, "belegdatum", e.target.value)}
-              />
-            </div>
-
-            {/* Belegnummer */}
-            <div className="space-y-2">
-              <Label htmlFor={`belegnr-${buchung.id}`} className="flex items-center gap-1.5">
-                <Hash className="w-4 h-4 text-muted-foreground" />
-                Belegnummer
-              </Label>
-              <Input
-                id={`belegnr-${buchung.id}`}
-                placeholder="RE-2025-001"
-                value={buchung.belegnummer}
-                onChange={(e) => onUpdate(buchung.id, "belegnummer", e.target.value)}
-              />
-            </div>
-
-            {/* Kreditor */}
-            <div className="space-y-2">
-              <Label htmlFor={`kreditor-${buchung.id}`} className="flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-muted-foreground" />
-                Kreditor (Lieferant)
-              </Label>
-              <Input
-                id={`kreditor-${buchung.id}`}
-                placeholder="Firmenname"
-                value={buchung.kreditor}
-                onChange={(e) => onUpdate(buchung.id, "kreditor", e.target.value)}
-              />
-            </div>
-
-            {/* Kreditorenkonto */}
-            <div className="space-y-2">
-              <Label htmlFor={`kredkonto-${buchung.id}`}>Kreditorenkonto</Label>
-              <Input
-                id={`kredkonto-${buchung.id}`}
-                placeholder="70000"
-                value={buchung.kreditorKonto}
-                onChange={(e) => onUpdate(buchung.id, "kreditorKonto", e.target.value)}
-                className="font-mono"
-              />
-            </div>
-
-            {/* Aufwandskonto */}
-            <div className="space-y-2">
-              <Label>Aufwandskonto (SKR 03)</Label>
-              <Select
-                value={buchung.aufwandskonto}
-                onValueChange={(value) => onUpdate(buchung.id, "aufwandskonto", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Konto wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {KONTENRAHMEN_SKR03.aufwand.map((k) => (
-                    <SelectItem key={k.konto} value={k.konto}>
-                      <span className="font-mono">{k.konto}</span> - {k.bezeichnung}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Nettobetrag */}
-            <div className="space-y-2">
-              <Label htmlFor={`netto-${buchung.id}`} className="flex items-center gap-1.5">
-                <Euro className="w-4 h-4 text-muted-foreground" />
-                Nettobetrag
-              </Label>
-              <Input
-                id={`netto-${buchung.id}`}
-                placeholder="0,00"
-                value={buchung.nettobetrag}
-                onChange={(e) => onUpdate(buchung.id, "nettobetrag", e.target.value)}
-                className="amount-input"
-              />
-            </div>
-
-            {/* Steuersatz */}
-            <div className="space-y-2">
-              <Label>Steuersatz</Label>
-              <Select
-                value={buchung.steuersatz}
-                onValueChange={(value) => onUpdate(buchung.id, "steuersatz", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {KONTENRAHMEN_SKR03.steuer.map((s) => (
-                    <SelectItem key={s.satz} value={s.satz}>
-                      {s.bezeichnung}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Bruttobetrag */}
-            <div className="space-y-2">
-              <Label htmlFor={`brutto-${buchung.id}`}>Bruttobetrag</Label>
-              <Input
-                id={`brutto-${buchung.id}`}
-                placeholder="0,00"
-                value={buchung.bruttobetrag}
-                onChange={(e) => onUpdate(buchung.id, "bruttobetrag", e.target.value)}
-                className="amount-input bg-secondary"
-                readOnly
-              />
-            </div>
-
-            {/* Buchungstext */}
-            <div className="space-y-2 md:col-span-2 lg:col-span-4">
-              <Label htmlFor={`text-${buchung.id}`}>Buchungstext</Label>
-              <Textarea
-                id={`text-${buchung.id}`}
-                placeholder="Beschreibung der Buchung..."
-                value={buchung.buchungstext}
-                onChange={(e) => onUpdate(buchung.id, "buchungstext", e.target.value)}
-                rows={2}
-              />
-            </div>
-          </div>
-        </CardContent>
-      )}
-    </Card>
   );
 }
