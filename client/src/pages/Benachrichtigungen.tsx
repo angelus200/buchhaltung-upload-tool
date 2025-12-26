@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import AppHeader from "@/components/AppHeader";
 import { 
   Bell, 
   Plus, 
@@ -199,49 +200,9 @@ export default function Benachrichtigungen() {
   const ungeleseneAnzahl = benachrichtigungen.filter(b => !b.gelesen).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg relative">
-                <Bell className="w-5 h-5 text-white" />
-                {ungeleseneAnzahl > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {ungeleseneAnzahl}
-                  </span>
-                )}
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Benachrichtigungen</h1>
-                <p className="text-sm text-slate-500">Erinnerungen und Hinweise verwalten</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Link href="/">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Upload className="w-4 h-4" />
-                  Buchungen
-                </Button>
-              </Link>
-              <Link href="/uebersicht">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  Übersicht
-                </Button>
-              </Link>
-              <Link href="/unternehmen">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Building2 className="w-4 h-4" />
-                  Unternehmen
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background">
+      {/* Einheitlicher Header */}
+      <AppHeader title="Benachrichtigungen" subtitle="Erinnerungen und Hinweise verwalten" />
 
       <main className="container py-8">
         {/* Tab-Navigation */}

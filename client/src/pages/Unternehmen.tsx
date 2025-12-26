@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import AppHeader from "@/components/AppHeader";
 import { 
   Building2, 
   Plus, 
@@ -212,44 +213,9 @@ export default function Unternehmen() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-600 to-teal-700 flex items-center justify-center shadow-lg">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Unternehmensverwaltung</h1>
-                <p className="text-sm text-slate-500">Mandanten und Firmen verwalten</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Link href="/">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Upload className="w-4 h-4" />
-                  Buchungen
-                </Button>
-              </Link>
-              <Link href="/uebersicht">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  Übersicht
-                </Button>
-              </Link>
-              <Link href="/stammdaten">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Briefcase className="w-4 h-4" />
-                  Stammdaten
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background">
+      {/* Einheitlicher Header */}
+      <AppHeader title="Unternehmensverwaltung" subtitle="Mandanten und Firmen verwalten" />
 
       <main className="container py-8">
         {/* Aktionen */}

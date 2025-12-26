@@ -244,12 +244,12 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                 <Bell className="w-3.5 h-3.5" />
               </Button>
             </Link>
-            <Link href="/benutzer">
+            <Link href="/benutzerverwaltung">
               <Button 
-                variant={isActive("/benutzer") ? "default" : "ghost"} 
+                variant={isActive("/benutzerverwaltung") ? "default" : "ghost"} 
                 size="sm" 
                 className="gap-1.5 h-8 text-xs"
-                style={isActive("/benutzer") ? { backgroundColor: firmenFarbe } : {}}
+                style={isActive("/benutzerverwaltung") ? { backgroundColor: firmenFarbe } : {}}
               >
                 <Users className="w-3.5 h-3.5" />
               </Button>

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import AppHeader from "@/components/AppHeader";
 import { 
   Shield, 
   Users, 
@@ -383,63 +384,9 @@ export default function AdminBoard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-10">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white">
-                  <ChevronLeft className="w-4 h-4 mr-1" />
-                  Dashboard
-                </Button>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-white">Admin Board</h1>
-                  <p className="text-sm text-slate-400">Benutzer & Berechtigungen verwalten</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Unternehmensauswahl */}
-              {unternehmenListe.length > 0 && (
-                <Select
-                  value={selectedUnternehmen?.toString() || ""}
-                  onValueChange={(value) => setSelectedUnternehmen(parseInt(value))}
-                >
-                  <SelectTrigger className="w-64 bg-slate-700 border-slate-600 text-white">
-                    <SelectValue placeholder="Unternehmen wählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {unternehmenListe.map((u) => (
-                      <SelectItem key={u.id} value={u.id.toString()}>
-                        {u.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              {/* Benutzer-Info */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-slate-700 rounded-lg">
-                <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-sm font-medium text-white">{user.name || user.email}</span>
-              </div>
-              <Button variant="ghost" size="icon" onClick={logout} className="text-slate-300 hover:text-white">
-                <LogOut className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background">
+      {/* Einheitlicher Header */}
+      <AppHeader title="Admin Board" subtitle="Benutzer & Berechtigungen verwalten" />
 
       <main className="container py-8">
         {!selectedUnternehmen || unternehmenListe.length === 0 ? (

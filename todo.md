@@ -34,4 +34,7 @@
 - [x] Einladungs-UI im Admin-Board erstellen
 - [x] Einladungsannahme-Seite erstellen
 - [ ] E-Mail-Versand für Einladungen implementieren
-- [ ] OAuth-Callback-Fehler beheben ("OAuth callback failed")
+- [x] OAuth-Callback-Fehler beheben ("OAuth callback failed")
+- [x] Einheitliche Navigationskomponente erstellen
+- [x] Navigation in alle Seiten integrieren
+- [x] Korrekte Verknüpfungen zwischen allen Bereichen

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import AppHeader from "@/components/AppHeader";
 import { 
   Users, 
   UserPlus, 
@@ -248,52 +249,29 @@ export default function Benutzerverwaltung() {
   const istAdmin = meineRolle === "admin";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-10">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm">
-                  <ChevronLeft className="w-4 h-4 mr-1" />
-                  Zurück
-                </Button>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-teal-600 to-teal-700 rounded-lg flex items-center justify-center">
-                  <Users className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-slate-900">Benutzerverwaltung</h1>
-                  <p className="text-sm text-slate-500">Benutzer, Rollen und Aktivitätsprotokoll</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Unternehmensauswahl */}
-            <div className="flex items-center gap-4">
-              <Select
-                value={selectedUnternehmen?.toString() || ""}
-                onValueChange={(value) => setSelectedUnternehmen(parseInt(value))}
-              >
-                <SelectTrigger className="w-64">
-                  <SelectValue placeholder="Unternehmen wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {unternehmenListe.map((u) => (
-                    <SelectItem key={u.id} value={u.id.toString()}>
-                      {u.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background">
+      {/* Einheitlicher Header */}
+      <AppHeader title="Benutzerverwaltung" subtitle="Benutzer, Rollen und Aktivitätsprotokoll" />
 
       <main className="container py-8">
+        {/* Unternehmensauswahl */}
+        <div className="flex justify-end mb-6">
+          <Select
+            value={selectedUnternehmen?.toString() || ""}
+            onValueChange={(value) => setSelectedUnternehmen(parseInt(value))}
+          >
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Unternehmen wählen" />
+            </SelectTrigger>
+            <SelectContent>
+              {unternehmenListe.map((u) => (
+                <SelectItem key={u.id} value={u.id.toString()}>
+                  {u.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         {!selectedUnternehmen ? (
           <Card className="p-12 text-center">
             <Building2 className="w-12 h-12 mx-auto text-slate-300 mb-4" />

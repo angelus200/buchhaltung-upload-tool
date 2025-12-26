@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import AppHeader from "@/components/AppHeader";
 import { 
   ArrowLeft, 
   FileSpreadsheet,
@@ -181,103 +182,85 @@ export default function Notizen() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                  <FileSpreadsheet className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-foreground">Notizen & Informationen</h1>
-                  <p className="text-sm text-muted-foreground">Verträge, Kreditor-Infos und Anmerkungen</p>
-                </div>
+      {/* Einheitlicher Header */}
+      <AppHeader title="Notizen & Informationen" subtitle="Verträge, Kreditor-Infos und Anmerkungen" />
+
+      {/* Neue Notiz Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editNotiz ? "Notiz bearbeiten" : "Neue Notiz erstellen"}</DialogTitle>
+            <DialogDescription>
+              Hinterlegen Sie hier wichtige Informationen für die Buchhaltung.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="titel">Titel</Label>
+                <Input
+                  id="titel"
+                  placeholder="z.B. Mietvertrag Büro"
+                  value={formTitel}
+                  onChange={(e) => setFormTitel(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Kategorie</Label>
+                <Select value={formKategorie} onValueChange={setFormKategorie}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KATEGORIEN.map((k) => (
+                      <SelectItem key={k.value} value={k.value}>
+                        {k.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={openNewDialog}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Neue Notiz
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
-                <DialogHeader>
-                  <DialogTitle>{editNotiz ? "Notiz bearbeiten" : "Neue Notiz erstellen"}</DialogTitle>
-                  <DialogDescription>
-                    Hinterlegen Sie hier wichtige Informationen für die Buchhaltung.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="titel">Titel</Label>
-                      <Input
-                        id="titel"
-                        placeholder="z.B. Mietvertrag Büro"
-                        value={formTitel}
-                        onChange={(e) => setFormTitel(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Kategorie</Label>
-                      <Select value={formKategorie} onValueChange={setFormKategorie}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {KATEGORIEN.map((k) => (
-                            <SelectItem key={k.value} value={k.value}>
-                              {k.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="kreditor">Kreditor-Bezug (optional)</Label>
-                    <Input
-                      id="kreditor"
-                      placeholder="z.B. Immobilien AG"
-                      value={formKreditorBezug}
-                      onChange={(e) => setFormKreditorBezug(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="inhalt">Inhalt</Label>
-                    <Textarea
-                      id="inhalt"
-                      placeholder="Detaillierte Informationen, Vertragsbedingungen, Anmerkungen..."
-                      value={formInhalt}
-                      onChange={(e) => setFormInhalt(e.target.value)}
-                      rows={8}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                    Abbrechen
-                  </Button>
-                  <Button onClick={handleSave}>
-                    <Save className="w-4 h-4 mr-2" />
-                    Speichern
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <div className="space-y-2">
+              <Label htmlFor="kreditor">Kreditor-Bezug (optional)</Label>
+              <Input
+                id="kreditor"
+                placeholder="z.B. Immobilien AG"
+                value={formKreditorBezug}
+                onChange={(e) => setFormKreditorBezug(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inhalt">Inhalt</Label>
+              <Textarea
+                id="inhalt"
+                placeholder="Detaillierte Informationen, Vertragsbedingungen, Anmerkungen..."
+                value={formInhalt}
+                onChange={(e) => setFormInhalt(e.target.value)}
+                rows={8}
+              />
+            </div>
           </div>
-        </div>
-      </header>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleSave}>
+              <Save className="w-4 h-4 mr-2" />
+              Speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <main className="container py-8">
+        {/* Neue Notiz Button */}
+        <div className="flex justify-end mb-6">
+          <Button onClick={openNewDialog}>
+            <Plus className="w-4 h-4 mr-2" />
+            Neue Notiz
+          </Button>
+        </div>
         {/* Filter und Suche */}
         <Card className="mb-6">
           <CardContent className="pt-6">

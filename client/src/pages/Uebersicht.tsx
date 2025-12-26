@@ -12,6 +12,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Link } from "wouter";
+import AppHeader from "@/components/AppHeader";
 import { 
   ArrowLeft, 
   Download, 
@@ -131,49 +132,29 @@ export default function Uebersicht() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                  <FileSpreadsheet className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-foreground">Monatsübersicht</h1>
-                  <p className="text-sm text-muted-foreground">Buchungen und Auswertungen</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONATE.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button>
-                <Download className="w-4 h-4 mr-2" />
-                Bericht exportieren
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Einheitlicher Header */}
+      <AppHeader title="Monatsübersicht" subtitle="Buchungen und Auswertungen" />
 
       <main className="container py-8">
+        {/* Monatsauswahl und Export */}
+        <div className="flex items-center justify-between mb-6">
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MONATE.map((m) => (
+                <SelectItem key={m.value} value={m.value}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button>
+            <Download className="w-4 h-4 mr-2" />
+            Bericht exportieren
+          </Button>
+        </div>
         {/* Statistik-Karten */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>

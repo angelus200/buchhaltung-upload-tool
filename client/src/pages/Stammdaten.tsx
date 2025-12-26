@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import AppHeader from "@/components/AppHeader";
 import { 
   ArrowLeft, 
   Plus,
@@ -339,35 +340,17 @@ export default function Stammdaten() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                  <Briefcase className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-foreground">Stammdaten</h1>
-                  <p className="text-sm text-muted-foreground">Kreditoren, Debitoren, Anlagen & mehr</p>
-                </div>
-              </div>
-            </div>
-            <Button onClick={openNewDialog}>
-              <Plus className="w-4 h-4 mr-2" />
-              {activeTypConfig.labelSingular} anlegen
-            </Button>
-          </div>
-        </div>
-      </header>
+      {/* Einheitlicher Header */}
+      <AppHeader title="Stammdaten" subtitle="Kreditoren, Debitoren, Anlagen & mehr" />
 
       <main className="container py-6">
+        {/* Neuer Eintrag Button */}
+        <div className="flex justify-end mb-4">
+          <Button onClick={openNewDialog}>
+            <Plus className="w-4 h-4 mr-2" />
+            {activeTypConfig.labelSingular} anlegen
+          </Button>
+        </div>
         {/* Tabs für Stammdaten-Typen */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="overflow-x-auto">

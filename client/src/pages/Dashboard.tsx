@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import AppHeader from "@/components/AppHeader";
 import { 
   FileText, 
   Upload,
@@ -24,7 +25,8 @@ import {
   TrendingUp,
   Euro,
   Calendar,
-  ChevronRight
+  ChevronRight,
+  Shield
 } from "lucide-react";
 
 interface Unternehmen {
@@ -84,64 +86,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-10">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-teal-600 to-teal-700 rounded-lg flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
-                  <p className="text-sm text-slate-500">Willkommen zurück, {user.name || user.email}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Unternehmensauswahl */}
-              {unternehmenListe.length > 0 && (
-                <Select
-                  value={selectedUnternehmen?.toString() || ""}
-                  onValueChange={(value) => setSelectedUnternehmen(parseInt(value))}
-                >
-                  <SelectTrigger className="w-64">
-                    <SelectValue placeholder="Unternehmen wählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {unternehmenListe.map((u) => (
-                      <SelectItem key={u.id} value={u.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4" />
-                          {u.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              {/* Benutzer-Menü */}
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon">
-                  <Bell className="w-5 h-5" />
-                </Button>
-                <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg">
-                  <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-sm font-medium">{user.name || user.email}</span>
-                </div>
-                <Button variant="ghost" size="icon" onClick={logout}>
-                  <LogOut className="w-5 h-5" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Einheitlicher Header */}
+      <AppHeader title="Dashboard" subtitle={`Willkommen zurück, ${user.name || user.email}`} />
 
       <main className="container py-8">
         {unternehmenListe.length === 0 ? (
@@ -150,11 +96,23 @@ export default function Dashboard() {
             <Building2 className="w-16 h-16 mx-auto text-slate-300 mb-4" />
             <h2 className="text-2xl font-semibold text-slate-700 mb-2">Kein Unternehmen zugeordnet</h2>
             <p className="text-slate-500 mb-6 max-w-md mx-auto">
-              Sie wurden noch keinem Unternehmen zugeordnet. Bitte wenden Sie sich an Ihren Administrator, 
-              um Zugriff auf ein Unternehmen zu erhalten.
+              Sie wurden noch keinem Unternehmen zugeordnet. Als Administrator können Sie im Admin-Board 
+              ein neues Unternehmen erstellen. Andernfalls wenden Sie sich an Ihren Administrator.
             </p>
             <div className="flex items-center justify-center gap-4">
-              <Button variant="outline" onClick={logout}>
+              <Link href="/admin">
+                <Button className="bg-teal-600 hover:bg-teal-700">
+                  <Shield className="w-4 h-4 mr-2" />
+                  Zum Admin-Board
+                </Button>
+              </Link>
+              <Link href="/unternehmen">
+                <Button variant="outline">
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Unternehmen verwalten
+                </Button>
+              </Link>
+              <Button variant="ghost" onClick={logout}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Abmelden
               </Button>
