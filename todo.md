@@ -34,3 +34,4 @@
 - [x] Einladungs-UI im Admin-Board erstellen
 - [x] Einladungsannahme-Seite erstellen
 - [ ] E-Mail-Versand für Einladungen implementieren
+- [ ] OAuth-Callback-Fehler beheben ("OAuth callback failed")
