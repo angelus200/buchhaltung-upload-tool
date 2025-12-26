@@ -38,3 +38,5 @@
 - [x] Einheitliche Navigationskomponente erstellen
 - [x] Navigation in alle Seiten integrieren
 - [x] Korrekte Verknüpfungen zwischen allen Bereichen
+- [ ] Nutzerverwaltung im Admin-Board sichtbar machen
+- [ ] Fehlermeldungen beim Anlegen eines Unternehmens beheben
