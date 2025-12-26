@@ -29,3 +29,8 @@
 - [x] Datenbank-Schema für Farbe und Logo erweitern
 - [x] Beleg-Vorschau-Komponente erstellen (PDF, JPG, PNG)
 - [x] Vorschau neben dem Buchungsformular integrieren
+- [x] Datenbank-Schema für Einladungen erstellen
+- [x] API-Endpunkte für Einladungen implementieren
+- [x] Einladungs-UI im Admin-Board erstellen
+- [x] Einladungsannahme-Seite erstellen
+- [ ] E-Mail-Versand für Einladungen implementieren

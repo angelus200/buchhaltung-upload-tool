@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import AdminBoard from "./pages/AdminBoard";
 import Unternehmen from "./pages/Unternehmen";
 import Benachrichtigungen from "./pages/Benachrichtigungen";
+import Einladung from "./pages/Einladung";
 import Benutzerverwaltung from "./pages/Benutzerverwaltung";
 import Uebersicht from "./pages/Uebersicht";
 import Notizen from "./pages/Notizen";
@@ -34,6 +35,7 @@ function Router() {
       <Route path={"/stammdaten"} component={Stammdaten} />
       <Route path={"/unternehmen"} component={Unternehmen} />
       <Route path={"/benachrichtigungen"} component={Benachrichtigungen} />
+      <Route path={"/einladung/:token"} component={Einladung} />
       <Route path={"/benutzerverwaltung"} component={Benutzerverwaltung} />
       
       {/* Fallback */}

@@ -369,3 +369,35 @@ export const berechtigungen = mysqlTable("berechtigungen", {
 
 export type Berechtigung = typeof berechtigungen.$inferSelect;
 export type InsertBerechtigung = typeof berechtigungen.$inferInsert;
+
+/**
+ * Einladungen - E-Mail-Einladungen für neue Mitarbeiter
+ */
+export const einladungen = mysqlTable("einladungen", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Einladungscode (UUID) für den Einladungslink */
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  /** E-Mail-Adresse des eingeladenen Mitarbeiters */
+  email: varchar("email", { length: 320 }).notNull(),
+  /** Unternehmen, zu dem der Mitarbeiter eingeladen wird */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Vorgesehene Rolle für den neuen Mitarbeiter */
+  rolle: mysqlEnum("rolle", ["admin", "buchhalter", "viewer"]).default("buchhalter").notNull(),
+  /** Benutzer, der die Einladung erstellt hat */
+  eingeladenVon: int("eingeladenVon").references(() => users.id).notNull(),
+  /** Status der Einladung */
+  status: mysqlEnum("status", ["pending", "accepted", "expired", "cancelled"]).default("pending").notNull(),
+  /** Ablaufdatum der Einladung (Standard: 7 Tage) */
+  expiresAt: timestamp("expiresAt").notNull(),
+  /** Zeitpunkt der Annahme */
+  acceptedAt: timestamp("acceptedAt"),
+  /** Benutzer-ID nach Annahme */
+  acceptedBy: int("acceptedBy").references(() => users.id),
+  /** Optionale Nachricht an den Eingeladenen */
+  nachricht: text("nachricht"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Einladung = typeof einladungen.$inferSelect;
+export type InsertEinladung = typeof einladungen.$inferInsert;

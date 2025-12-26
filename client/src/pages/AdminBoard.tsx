@@ -34,7 +34,13 @@ import {
   Unlock,
   BarChart3,
   Plus,
-  Search
+  Search,
+  Send,
+  Link2,
+  Copy,
+  RefreshCw,
+  XCircle,
+  Loader2
 } from "lucide-react";
 
 // Rollen-Konfiguration
@@ -114,6 +120,11 @@ export default function AdminBoard() {
   const [selectedBenutzer, setSelectedBenutzer] = useState<Benutzer | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [istAdmin, setIstAdmin] = useState(false);
+  const [einladungDialogOpen, setEinladungDialogOpen] = useState(false);
+  const [einladungEmail, setEinladungEmail] = useState("");
+  const [einladungRolle, setEinladungRolle] = useState<"admin" | "buchhalter" | "viewer">("buchhalter");
+  const [einladungNachricht, setEinladungNachricht] = useState("");
+  const [generierterLink, setGenerierterLink] = useState<string | null>(null);
 
   // TRPC Queries
   const unternehmenQuery = trpc.unternehmen.list.useQuery(undefined, {
@@ -133,6 +144,11 @@ export default function AdminBoard() {
   const meineBerechtigungenQuery = trpc.benutzer.meineBerechtigungen.useQuery(
     { unternehmenId: selectedUnternehmen! },
     { enabled: !!selectedUnternehmen && isAuthenticated }
+  );
+
+  const einladungenQuery = trpc.einladungen.listByUnternehmen.useQuery(
+    { unternehmenId: selectedUnternehmen! },
+    { enabled: !!selectedUnternehmen && isAuthenticated && istAdmin }
   );
 
   // TRPC Mutations
@@ -166,6 +182,47 @@ export default function AdminBoard() {
       toast.success("Benutzer erfolgreich entfernt");
       benutzerQuery.refetch();
       protokollQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Einladungen Mutations
+  const createEinladungMutation = trpc.einladungen.create.useMutation({
+    onSuccess: (data) => {
+      const baseUrl = window.location.origin;
+      setGenerierterLink(`${baseUrl}${data.inviteUrl}`);
+      toast.success("Einladung erstellt!", {
+        description: `Einladung an ${data.email} wurde erstellt.`,
+      });
+      einladungenQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error("Fehler beim Erstellen der Einladung", {
+        description: error.message,
+      });
+    },
+  });
+
+  const cancelEinladungMutation = trpc.einladungen.cancel.useMutation({
+    onSuccess: () => {
+      toast.success("Einladung storniert");
+      einladungenQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const resendEinladungMutation = trpc.einladungen.resend.useMutation({
+    onSuccess: (data) => {
+      const baseUrl = window.location.origin;
+      navigator.clipboard.writeText(`${baseUrl}${data.inviteUrl}`);
+      toast.success("Einladung erneuert!", {
+        description: "Der neue Link wurde in die Zwischenablage kopiert.",
+      });
+      einladungenQuery.refetch();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -239,6 +296,31 @@ export default function AdminBoard() {
         unternehmenId: selectedUnternehmen,
       });
     }
+  };
+
+  const handleCreateEinladung = () => {
+    if (!selectedUnternehmen || !einladungEmail) return;
+    createEinladungMutation.mutate({
+      unternehmenId: selectedUnternehmen,
+      email: einladungEmail,
+      rolle: einladungRolle,
+      nachricht: einladungNachricht || undefined,
+    });
+  };
+
+  const handleCopyLink = () => {
+    if (generierterLink) {
+      navigator.clipboard.writeText(generierterLink);
+      toast.success("Link kopiert!");
+    }
+  };
+
+  const resetEinladungDialog = () => {
+    setEinladungEmail("");
+    setEinladungRolle("buchhalter");
+    setEinladungNachricht("");
+    setGenerierterLink(null);
+    setEinladungDialogOpen(false);
   };
 
   const getRolleBadge = (rolle: string) => {
@@ -454,13 +536,116 @@ export default function AdminBoard() {
                       Fügen Sie Benutzer hinzu und verwalten Sie deren Berechtigungen
                     </CardDescription>
                   </div>
-                  <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-teal-600 hover:bg-teal-700">
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        Benutzer hinzufügen
-                      </Button>
-                    </DialogTrigger>
+                  <div className="flex gap-2">
+                    <Dialog open={einladungDialogOpen} onOpenChange={(open) => { if (!open) resetEinladungDialog(); else setEinladungDialogOpen(true); }}>
+                      <DialogTrigger asChild>
+                        <Button className="bg-purple-600 hover:bg-purple-700">
+                          <Send className="w-4 h-4 mr-2" />
+                          Per E-Mail einladen
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Mitarbeiter einladen</DialogTitle>
+                          <DialogDescription>
+                            Senden Sie eine Einladung per E-Mail. Der Mitarbeiter kann sich dann registrieren und dem Unternehmen beitreten.
+                          </DialogDescription>
+                        </DialogHeader>
+                        {!generierterLink ? (
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">E-Mail-Adresse *</label>
+                              <Input
+                                type="email"
+                                placeholder="mitarbeiter@beispiel.de"
+                                value={einladungEmail}
+                                onChange={(e) => setEinladungEmail(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Rolle</label>
+                              <Select
+                                value={einladungRolle}
+                                onValueChange={(value: "admin" | "buchhalter" | "viewer") => setEinladungRolle(value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {ROLLEN.map((rolle) => (
+                                    <SelectItem key={rolle.id} value={rolle.id}>
+                                      {rolle.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Persönliche Nachricht (optional)</label>
+                              <Input
+                                placeholder="Willkommen im Team!"
+                                value={einladungNachricht}
+                                onChange={(e) => setEinladungNachricht(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="py-4 space-y-4">
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                              <CheckCircle2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                              <p className="font-medium text-green-800">Einladung erstellt!</p>
+                              <p className="text-sm text-green-600 mt-1">Gültig für 7 Tage</p>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Einladungslink</label>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={generierterLink}
+                                  readOnly
+                                  className="text-sm"
+                                />
+                                <Button variant="outline" size="icon" onClick={handleCopyLink}>
+                                  <Copy className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Senden Sie diesen Link an {einladungEmail}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        <DialogFooter>
+                          {!generierterLink ? (
+                            <>
+                              <Button variant="outline" onClick={resetEinladungDialog}>
+                                Abbrechen
+                              </Button>
+                              <Button 
+                                onClick={handleCreateEinladung} 
+                                disabled={!einladungEmail || createEinladungMutation.isPending}
+                              >
+                                {createEinladungMutation.isPending ? (
+                                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Wird erstellt...</>
+                                ) : (
+                                  <><Send className="w-4 h-4 mr-2" />Einladung erstellen</>
+                                )}
+                              </Button>
+                            </>
+                          ) : (
+                            <Button onClick={resetEinladungDialog}>
+                              Fertig
+                            </Button>
+                          )}
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline">
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Bestehenden Benutzer
+                        </Button>
+                      </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Benutzer hinzufügen</DialogTitle>
@@ -512,7 +697,8 @@ export default function AdminBoard() {
                         </Button>
                       </DialogFooter>
                     </DialogContent>
-                  </Dialog>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {/* Suchfeld */}
