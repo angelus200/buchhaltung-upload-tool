@@ -21,7 +21,8 @@ import {
   Hash,
   FileSpreadsheet,
   ChevronRight,
-  BarChart3
+  BarChart3,
+  StickyNote
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -325,6 +326,12 @@ export default function Home() {
                 <Button variant="outline">
                   <BarChart3 className="w-4 h-4 mr-2" />
                   Übersicht
+                </Button>
+              </Link>
+              <Link href="/notizen">
+                <Button variant="outline">
+                  <StickyNote className="w-4 h-4 mr-2" />
+                  Notizen
                 </Button>
               </Link>
             </div>

@@ -6,12 +6,14 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Uebersicht from "./pages/Uebersicht";
+import Notizen from "./pages/Notizen";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/uebersicht"} component={Uebersicht} />
+      <Route path={"/notizen"} component={Notizen} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
