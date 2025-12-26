@@ -27,7 +27,9 @@ import {
   Briefcase,
   Users,
   ArrowRightLeft,
-  Bell
+  Bell,
+  LayoutDashboard,
+  Shield
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -433,6 +435,18 @@ export default function Home() {
                 <Button variant="outline">
                   <Users className="w-4 h-4 mr-2" />
                   Benutzer
+                </Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button variant="outline">
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  Dashboard
+                </Button>
+              </Link>
+              <Link href="/admin">
+                <Button variant="outline" className="bg-red-50 hover:bg-red-100 border-red-200">
+                  <Shield className="w-4 h-4 mr-2 text-red-600" />
+                  Admin
                 </Button>
               </Link>
             </div>

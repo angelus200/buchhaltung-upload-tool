@@ -19,3 +19,7 @@
 - [x] Rollen und Berechtigungen implementieren (Administrator, Buchhalter, Nur-Lesen)
 - [x] Benutzer-Unternehmen-Zuordnung implementieren
 - [x] Aktivitätsprotokoll implementieren
+- [x] Mitarbeiter-Dashboard mit Login-Schutz erstellen
+- [x] Admin-Board für Rechteverwaltung erstellen
+- [x] Navigation und Routing für Dashboard/Admin-Board anpassen
+- [x] Login-Seite für Mitarbeiter-Registrierung erstellen
