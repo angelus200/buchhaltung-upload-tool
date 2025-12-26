@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import AppHeader from "@/components/AppHeader";
+import BelegVorschau from "@/components/BelegVorschau";
 
 interface Buchung {
   id: string;
@@ -172,6 +173,10 @@ export default function Home() {
 
   const [buchungen, setBuchungen] = useState<Buchung[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [selectedBuchungId, setSelectedBuchungId] = useState<string | null>(null);
+
+  // Finde die ausgewählte Buchung für die Vorschau
+  const selectedBuchung = buchungen.find(b => b.id === selectedBuchungId);
 
   const createEmptyBuchung = useCallback((): Buchung => ({
     id: generateId(),
@@ -407,9 +412,17 @@ export default function Home() {
               </div>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {buchungen.map((buchung) => (
-                <Card key={buchung.id} className={`transition-all ${buchung.status === "complete" ? "border-green-200 bg-green-50/30" : ""}`}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Buchungsliste - 2/3 Breite */}
+              <div className="lg:col-span-2 space-y-4">
+                {buchungen.map((buchung) => (
+                  <Card 
+                    key={buchung.id} 
+                    className={`transition-all cursor-pointer hover:shadow-md ${
+                      buchung.status === "complete" ? "border-green-200 bg-green-50/30" : ""
+                    } ${selectedBuchungId === buchung.id ? "ring-2 ring-primary" : ""}`}
+                    onClick={() => setSelectedBuchungId(buchung.id)}
+                  >
                   <CardContent className="pt-6">
                     <div className="flex items-start gap-4">
                       {/* Status Icon */}
@@ -620,6 +633,17 @@ export default function Home() {
                   </CardContent>
                 </Card>
               ))}
+              </div>
+              
+              {/* Beleg-Vorschau - 1/3 Breite */}
+              <div className="lg:col-span-1">
+                <div className="sticky top-32">
+                  <BelegVorschau 
+                    file={selectedBuchung?.belegDatei || null}
+                    onClose={() => setSelectedBuchungId(null)}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>

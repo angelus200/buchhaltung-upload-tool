@@ -27,3 +27,5 @@
 - [x] Logo-Upload pro Unternehmen implementieren
 - [x] Firmenname prominent im Header anzeigen
 - [x] Datenbank-Schema für Farbe und Logo erweitern
+- [x] Beleg-Vorschau-Komponente erstellen (PDF, JPG, PNG)
+- [x] Vorschau neben dem Buchungsformular integrieren
