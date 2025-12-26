@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +26,8 @@ import {
   StickyNote,
   Briefcase,
   Users,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Bell
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -163,6 +165,8 @@ function generateDATEVExport(buchungen: Buchung[]): string {
 }
 
 export default function Home() {
+  const { user } = useAuth();
+
   const [buchungen, setBuchungen] = useState<Buchung[]>([]);
   const [dragActive, setDragActive] = useState(false);
 
@@ -411,6 +415,18 @@ export default function Home() {
                 <Button variant="outline">
                   <Briefcase className="w-4 h-4 mr-2" />
                   Stammdaten
+                </Button>
+              </Link>
+              <Link href="/unternehmen">
+                <Button variant="outline">
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Unternehmen
+                </Button>
+              </Link>
+              <Link href="/benachrichtigungen">
+                <Button variant="outline">
+                  <Bell className="w-4 h-4 mr-2" />
+                  Benachrichtigungen
                 </Button>
               </Link>
             </div>
