@@ -78,3 +78,7 @@
 - [x] Separate Rechte für: Buchungen (lesen/schreiben), Stammdaten (lesen/schreiben), Berichte (lesen/exportieren)
 - [x] Rollen-Vorlagen (Admin, Buchhalter, Viewer) mit Standard-Berechtigungen
 - [x] Tests für Berechtigungsverwaltung
+
+
+## Bug-Fixes
+- [x] Bug beim Unternehmen anlegen beheben - Failed query: insert into unternehmen (leere Strings wurden nicht korrekt behandelt)

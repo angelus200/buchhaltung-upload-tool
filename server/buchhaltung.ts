@@ -93,19 +93,51 @@ export const unternehmenRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Datenbank nicht verfügbar");
 
+      // Leere Strings als undefined behandeln, um Datenbankfehler zu vermeiden
+      const cleanInput = Object.fromEntries(
+        Object.entries(input).map(([key, value]) => [
+          key,
+          value === "" ? undefined : value,
+        ])
+      ) as typeof input;
+
       const values: InsertUnternehmen = {
-        ...input,
+        name: cleanInput.name,
+        rechtsform: cleanInput.rechtsform || undefined,
+        steuernummer: cleanInput.steuernummer || undefined,
+        ustIdNr: cleanInput.ustIdNr || undefined,
+        handelsregister: cleanInput.handelsregister || undefined,
+        strasse: cleanInput.strasse || undefined,
+        plz: cleanInput.plz || undefined,
+        ort: cleanInput.ort || undefined,
+        land: cleanInput.land || "Deutschland",
+        telefon: cleanInput.telefon || undefined,
+        email: cleanInput.email || undefined,
+        website: cleanInput.website || undefined,
+        kontenrahmen: cleanInput.kontenrahmen || "SKR03",
+        wirtschaftsjahrBeginn: cleanInput.wirtschaftsjahrBeginn || 1,
+        beraternummer: cleanInput.beraternummer || undefined,
+        mandantennummer: cleanInput.mandantennummer || undefined,
+        farbe: cleanInput.farbe || "#0d9488",
+        logoUrl: cleanInput.logoUrl || undefined,
         createdBy: ctx.user.id,
       };
 
       const result = await db.insert(unternehmen).values(values);
       const insertId = result[0].insertId;
 
-      // Benutzer als Admin dem Unternehmen zuordnen
+      // Benutzer als Admin dem Unternehmen zuordnen mit vollen Berechtigungen
       await db.insert(userUnternehmen).values({
         userId: ctx.user.id,
         unternehmenId: insertId,
         rolle: "admin",
+        buchungenLesen: true,
+        buchungenSchreiben: true,
+        stammdatenLesen: true,
+        stammdatenSchreiben: true,
+        berichteLesen: true,
+        berichteExportieren: true,
+        einladungenVerwalten: true,
       });
 
       return { id: insertId };
