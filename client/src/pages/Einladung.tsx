@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import { 
   Mail, 
   Building2, 
@@ -48,8 +49,8 @@ export default function Einladung() {
 
   const handleAccept = async () => {
     if (!user) {
-      // Zur Login-Seite weiterleiten mit Rücksprung-URL
-      setLocation(`/login?redirect=/einladung/${code}`);
+      // Direkt zum OAuth-Login weiterleiten mit Einladungs-URL als Rücksprung
+      window.location.href = getLoginUrl(`/einladung/${code}`);
       return;
     }
     setIsAccepting(true);
@@ -272,7 +273,7 @@ export default function Einladung() {
                     onClick={handleAccept}
                   >
                     <LogIn className="h-4 w-4 mr-2" />
-                    Anmelden um Einladung anzunehmen
+                    Anmelden oder Registrieren
                   </Button>
                 )}
               </>

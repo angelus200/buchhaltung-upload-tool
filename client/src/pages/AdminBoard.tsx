@@ -560,7 +560,7 @@ export default function AdminBoard() {
                                 </Button>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Senden Sie diesen Link an {einladungEmail}
+                                Senden Sie diesen Link an {einladungEmail}. Der Empfänger kann sich über den Link registrieren und wird automatisch dem Unternehmen hinzugefügt.
                               </p>
                             </div>
                           </div>

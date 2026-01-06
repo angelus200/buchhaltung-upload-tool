@@ -108,3 +108,12 @@
 - [x] Fallback auf Dashboard wenn keine Return-URL vorhanden
 - [x] Sicherheitsvalidierung gegen Open-Redirect-Angriffe
 - [x] Tests für Return-URL-Funktionalität (11 Tests)
+
+
+## Verbesserte Einladungsfunktion
+- [x] E-Mail-Einladung für nicht-registrierte Benutzer ermöglichen
+- [x] Einladungslink mit Token generieren (bereits implementiert)
+- [x] Einladungsseite für eingeladene Benutzer (bereits implementiert)
+- [x] Nach Registrierung automatisch zur Einladung weiterleiten
+- [x] Button-Text verbessert: "Anmelden oder Registrieren"
+- [x] Hinweistext im Admin-Board verbessert
