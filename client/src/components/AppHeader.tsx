@@ -13,7 +13,8 @@ import {
   Shield,
   ChevronDown,
   TrendingUp,
-  CreditCard
+  CreditCard,
+  Calendar
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -220,6 +221,17 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               >
                 <CreditCard className="w-3.5 h-3.5" />
                 Zahlungen
+              </Button>
+            </Link>
+            <Link href="/kalender">
+              <Button 
+                variant={isActive("/kalender") ? "default" : "ghost"} 
+                size="sm" 
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/kalender") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                Kalender
               </Button>
             </Link>
             <Link href="/stammdaten">

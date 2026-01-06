@@ -57,3 +57,14 @@
 - [x] Filter für bezahlt/unbezahlt hinzufügen
 - [x] Zahlungen-Seite mit Statistik-Karten erstellen
 - [x] Zahlungsstatus-Update-Funktion implementieren
+
+## Fälligkeitskalender
+- [x] Kalender-Komponente mit Monatsansicht erstellen
+- [x] API-Endpunkt für Fälligkeiten im Zeitraum implementieren
+- [x] Fälligkeitskalender-Seite erstellen
+- [x] Navigation um Kalender-Link erweitern
+- [x] Farbcodierung nach Zahlungsstatus (offen, überfällig, bezahlt)
+- [x] Klick auf Tag zeigt Details der Fälligkeiten
+- [x] Monatswechsel-Navigation implementieren
+- [x] Monatsstatistiken mit offenen/überfälligen Beträgen
+- [x] Nächste Fälligkeiten-Tabelle

@@ -1,4 +1,4 @@
-import { eq, desc, and, or } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -377,6 +377,52 @@ export const buchungenRouter = router({
       }
 
       return stats;
+    }),
+
+  // Fälligkeiten für Kalender
+  faelligkeiten: protectedProcedure
+    .input(
+      z.object({
+        unternehmenId: z.number(),
+        vonDatum: z.string(),
+        bisDatum: z.string(),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const alleBuchungen = await db
+        .select()
+        .from(buchungen)
+        .where(
+          and(
+            eq(buchungen.unternehmenId, input.unternehmenId),
+            gte(buchungen.faelligkeitsdatum, new Date(input.vonDatum)),
+            lte(buchungen.faelligkeitsdatum, new Date(input.bisDatum))
+          )
+        );
+
+      const heute = new Date();
+
+      return alleBuchungen.map((b) => {
+        // Bestimme den aktuellen Status
+        let status = b.zahlungsstatus;
+        if (status === "offen" && b.faelligkeitsdatum && new Date(b.faelligkeitsdatum) < heute) {
+          status = "ueberfaellig";
+        }
+
+        return {
+          id: b.id,
+          date: b.faelligkeitsdatum,
+          title: b.geschaeftspartner,
+          belegnummer: b.belegnummer,
+          amount: parseFloat(String(b.bruttobetrag)) || 0,
+          status: status as "offen" | "teilweise_bezahlt" | "bezahlt" | "ueberfaellig",
+          type: b.buchungsart,
+          buchungstext: b.buchungstext,
+        };
+      });
     }),
 
   // DATEV-Export für einen Monat
