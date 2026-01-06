@@ -66,6 +66,14 @@ export const userUnternehmen = mysqlTable("user_unternehmen", {
   userId: int("userId").references(() => users.id).notNull(),
   unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
   rolle: mysqlEnum("rolle", ["admin", "buchhalter", "viewer"]).default("buchhalter").notNull(),
+  // Detaillierte Berechtigungen
+  buchungenLesen: boolean("buchungenLesen").default(true).notNull(),
+  buchungenSchreiben: boolean("buchungenSchreiben").default(false).notNull(),
+  stammdatenLesen: boolean("stammdatenLesen").default(true).notNull(),
+  stammdatenSchreiben: boolean("stammdatenSchreiben").default(false).notNull(),
+  berichteLesen: boolean("berichteLesen").default(true).notNull(),
+  berichteExportieren: boolean("berichteExportieren").default(false).notNull(),
+  einladungenVerwalten: boolean("einladungenVerwalten").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -344,6 +352,7 @@ export const aktivitaetsprotokoll = mysqlTable("aktivitaetsprotokoll", {
     "benutzer_hinzugefuegt",
     "benutzer_entfernt",
     "rolle_geaendert",
+    "berechtigungen_geaendert",
     "login",
     "logout"
   ]).notNull(),

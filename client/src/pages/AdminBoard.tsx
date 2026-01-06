@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import AppHeader from "@/components/AppHeader";
+import BerechtigungenDialog from "@/components/BerechtigungenDialog";
 import { 
   Shield, 
   Users, 
@@ -104,6 +105,7 @@ const AKTIONS_LABELS: Record<string, { label: string; icon: React.ReactNode; far
   benutzer_hinzugefuegt: { label: "Benutzer hinzugefügt", icon: <UserPlus className="w-4 h-4" />, farbe: "text-green-600" },
   benutzer_entfernt: { label: "Benutzer entfernt", icon: <Trash2 className="w-4 h-4" />, farbe: "text-red-600" },
   rolle_geaendert: { label: "Rolle geändert", icon: <Shield className="w-4 h-4" />, farbe: "text-orange-600" },
+  berechtigungen_geaendert: { label: "Berechtigungen geändert", icon: <Lock className="w-4 h-4" />, farbe: "text-purple-600" },
   login: { label: "Anmeldung", icon: <User className="w-4 h-4" />, farbe: "text-gray-600" },
 };
 
@@ -126,6 +128,8 @@ export default function AdminBoard() {
   const [einladungRolle, setEinladungRolle] = useState<"admin" | "buchhalter" | "viewer">("buchhalter");
   const [einladungNachricht, setEinladungNachricht] = useState("");
   const [generierterLink, setGenerierterLink] = useState<string | null>(null);
+  const [berechtigungenDialogOpen, setBerechtigungenDialogOpen] = useState(false);
+  const [selectedBenutzerForPermissions, setSelectedBenutzerForPermissions] = useState<Benutzer | null>(null);
 
   // TRPC Queries
   const unternehmenQuery = trpc.unternehmen.list.useQuery(undefined, {
@@ -695,7 +699,20 @@ export default function AdminBoard() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                className="text-teal-400 hover:text-teal-300"
+                                title="Berechtigungen verwalten"
+                                onClick={() => {
+                                  setSelectedBenutzerForPermissions(b);
+                                  setBerechtigungenDialogOpen(true);
+                                }}
+                              >
+                                <Shield className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 className="text-slate-300 hover:text-white"
+                                title="Rolle ändern"
                                 onClick={() => {
                                   setSelectedBenutzer(b);
                                   setNeueRolle(b.rolle);
@@ -708,6 +725,7 @@ export default function AdminBoard() {
                                 variant="ghost"
                                 size="sm"
                                 className="text-red-400 hover:text-red-300"
+                                title="Benutzer entfernen"
                                 onClick={() => handleRemoveBenutzer(b)}
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -817,6 +835,23 @@ export default function AdminBoard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Berechtigungen Dialog */}
+      {selectedBenutzerForPermissions && selectedUnternehmen && (
+        <BerechtigungenDialog
+          open={berechtigungenDialogOpen}
+          onOpenChange={setBerechtigungenDialogOpen}
+          zuordnungId={selectedBenutzerForPermissions.id}
+          unternehmenId={selectedUnternehmen}
+          benutzerName={selectedBenutzerForPermissions.name || ""}
+          benutzerEmail={selectedBenutzerForPermissions.email || ""}
+          aktuelleRolle={selectedBenutzerForPermissions.rolle}
+          onSuccess={() => {
+            benutzerQuery.refetch();
+            protokollQuery.refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

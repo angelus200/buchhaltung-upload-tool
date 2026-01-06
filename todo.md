@@ -68,3 +68,13 @@
 - [x] Monatswechsel-Navigation implementieren
 - [x] Monatsstatistiken mit offenen/überfälligen Beträgen
 - [x] Nächste Fälligkeiten-Tabelle
+
+
+## Mitarbeiter-Einladung und Rechteverwaltung
+- [x] Datenbank-Schema für detaillierte Berechtigungen erweitern
+- [x] API-Endpunkte für Berechtigungsverwaltung erstellen
+- [x] Berechtigungs-UI im Admin-Board implementieren
+- [x] Berechtigungsprüfung in allen relevanten Komponenten
+- [x] Separate Rechte für: Buchungen (lesen/schreiben), Stammdaten (lesen/schreiben), Berichte (lesen/exportieren)
+- [x] Rollen-Vorlagen (Admin, Buchhalter, Viewer) mit Standard-Berechtigungen
+- [x] Tests für Berechtigungsverwaltung

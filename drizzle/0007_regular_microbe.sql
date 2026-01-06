@@ -1,0 +1,1 @@
+ALTER TABLE `aktivitaetsprotokoll` MODIFY COLUMN `aktion` enum('buchung_erstellt','buchung_bearbeitet','buchung_geloescht','buchung_exportiert','stammdaten_erstellt','stammdaten_bearbeitet','stammdaten_geloescht','unternehmen_erstellt','unternehmen_bearbeitet','benutzer_hinzugefuegt','benutzer_entfernt','rolle_geaendert','berechtigungen_geaendert','login','logout') NOT NULL;

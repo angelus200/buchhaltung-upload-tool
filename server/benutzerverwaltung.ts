@@ -334,10 +334,191 @@ export const benutzerRouter = router({
       if (!zuordnung[0]) return null;
 
       const rolle = zuordnung[0].rolle as keyof typeof STANDARD_BERECHTIGUNGEN;
+      
+      // Detaillierte Berechtigungen zurückgeben
       return {
         rolle,
         berechtigungen: STANDARD_BERECHTIGUNGEN[rolle],
+        detailliert: {
+          buchungenLesen: zuordnung[0].buchungenLesen,
+          buchungenSchreiben: zuordnung[0].buchungenSchreiben,
+          stammdatenLesen: zuordnung[0].stammdatenLesen,
+          stammdatenSchreiben: zuordnung[0].stammdatenSchreiben,
+          berichteLesen: zuordnung[0].berichteLesen,
+          berichteExportieren: zuordnung[0].berichteExportieren,
+          einladungenVerwalten: zuordnung[0].einladungenVerwalten,
+        },
       };
+    }),
+
+  // Detaillierte Berechtigungen eines Benutzers abrufen
+  getDetailedPermissions: protectedProcedure
+    .input(z.object({ 
+      zuordnungId: z.number(),
+      unternehmenId: z.number() 
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      // Prüfen ob der aktuelle Benutzer Admin ist
+      const istAdmin = await hatBerechtigung(ctx.user.id, input.unternehmenId, "benutzer", "lesen");
+      if (!istAdmin) {
+        throw new Error("Keine Berechtigung zum Anzeigen von Benutzerberechtigungen");
+      }
+
+      const zuordnung = await db
+        .select()
+        .from(userUnternehmen)
+        .innerJoin(users, eq(userUnternehmen.userId, users.id))
+        .where(eq(userUnternehmen.id, input.zuordnungId))
+        .limit(1);
+
+      if (!zuordnung[0]) return null;
+
+      return {
+        id: zuordnung[0].user_unternehmen.id,
+        userId: zuordnung[0].users.id,
+        name: zuordnung[0].users.name,
+        email: zuordnung[0].users.email,
+        rolle: zuordnung[0].user_unternehmen.rolle,
+        berechtigungen: {
+          buchungenLesen: zuordnung[0].user_unternehmen.buchungenLesen,
+          buchungenSchreiben: zuordnung[0].user_unternehmen.buchungenSchreiben,
+          stammdatenLesen: zuordnung[0].user_unternehmen.stammdatenLesen,
+          stammdatenSchreiben: zuordnung[0].user_unternehmen.stammdatenSchreiben,
+          berichteLesen: zuordnung[0].user_unternehmen.berichteLesen,
+          berichteExportieren: zuordnung[0].user_unternehmen.berichteExportieren,
+          einladungenVerwalten: zuordnung[0].user_unternehmen.einladungenVerwalten,
+        },
+      };
+    }),
+
+  // Detaillierte Berechtigungen aktualisieren
+  updateDetailedPermissions: protectedProcedure
+    .input(
+      z.object({
+        zuordnungId: z.number(),
+        unternehmenId: z.number(),
+        berechtigungen: z.object({
+          buchungenLesen: z.boolean().optional(),
+          buchungenSchreiben: z.boolean().optional(),
+          stammdatenLesen: z.boolean().optional(),
+          stammdatenSchreiben: z.boolean().optional(),
+          berichteLesen: z.boolean().optional(),
+          berichteExportieren: z.boolean().optional(),
+          einladungenVerwalten: z.boolean().optional(),
+        }),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Datenbank nicht verfügbar");
+
+      // Prüfen ob der aktuelle Benutzer Admin ist
+      const istAdmin = await hatBerechtigung(ctx.user.id, input.unternehmenId, "benutzer", "bearbeiten");
+      if (!istAdmin) {
+        throw new Error("Keine Berechtigung zum Ändern von Benutzerberechtigungen");
+      }
+
+      // Zuordnung abrufen für Protokoll
+      const zuordnung = await db
+        .select()
+        .from(userUnternehmen)
+        .innerJoin(users, eq(userUnternehmen.userId, users.id))
+        .where(eq(userUnternehmen.id, input.zuordnungId))
+        .limit(1);
+
+      // Berechtigungen aktualisieren
+      await db
+        .update(userUnternehmen)
+        .set({
+          buchungenLesen: input.berechtigungen.buchungenLesen,
+          buchungenSchreiben: input.berechtigungen.buchungenSchreiben,
+          stammdatenLesen: input.berechtigungen.stammdatenLesen,
+          stammdatenSchreiben: input.berechtigungen.stammdatenSchreiben,
+          berichteLesen: input.berechtigungen.berichteLesen,
+          berichteExportieren: input.berechtigungen.berichteExportieren,
+          einladungenVerwalten: input.berechtigungen.einladungenVerwalten,
+        })
+        .where(eq(userUnternehmen.id, input.zuordnungId));
+
+      // Aktivität protokollieren
+      if (zuordnung[0]) {
+        await logAktivitaet(ctx.user.id, "berechtigungen_geaendert", {
+          unternehmenId: input.unternehmenId,
+          entitaetTyp: "benutzer",
+          entitaetId: zuordnung[0].users.id,
+          entitaetName: zuordnung[0].users.name || zuordnung[0].users.email || "Unbekannt",
+          details: JSON.stringify(input.berechtigungen),
+        });
+      }
+
+      return { success: true };
+    }),
+
+  // Berechtigungen basierend auf Rolle setzen (Vorlage anwenden)
+  applyRoleTemplate: protectedProcedure
+    .input(
+      z.object({
+        zuordnungId: z.number(),
+        unternehmenId: z.number(),
+        rolle: z.enum(["admin", "buchhalter", "viewer"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Datenbank nicht verfügbar");
+
+      // Prüfen ob der aktuelle Benutzer Admin ist
+      const istAdmin = await hatBerechtigung(ctx.user.id, input.unternehmenId, "benutzer", "bearbeiten");
+      if (!istAdmin) {
+        throw new Error("Keine Berechtigung zum Ändern von Benutzerberechtigungen");
+      }
+
+      // Standard-Berechtigungen für die Rolle
+      const rolleBerechtigungen = {
+        admin: {
+          buchungenLesen: true,
+          buchungenSchreiben: true,
+          stammdatenLesen: true,
+          stammdatenSchreiben: true,
+          berichteLesen: true,
+          berichteExportieren: true,
+          einladungenVerwalten: true,
+        },
+        buchhalter: {
+          buchungenLesen: true,
+          buchungenSchreiben: true,
+          stammdatenLesen: true,
+          stammdatenSchreiben: true,
+          berichteLesen: true,
+          berichteExportieren: true,
+          einladungenVerwalten: false,
+        },
+        viewer: {
+          buchungenLesen: true,
+          buchungenSchreiben: false,
+          stammdatenLesen: true,
+          stammdatenSchreiben: false,
+          berichteLesen: true,
+          berichteExportieren: false,
+          einladungenVerwalten: false,
+        },
+      };
+
+      const berechtigungen = rolleBerechtigungen[input.rolle];
+
+      // Rolle und Berechtigungen aktualisieren
+      await db
+        .update(userUnternehmen)
+        .set({
+          rolle: input.rolle,
+          ...berechtigungen,
+        })
+        .where(eq(userUnternehmen.id, input.zuordnungId));
+
+      return { success: true, berechtigungen };
     }),
 });
 
