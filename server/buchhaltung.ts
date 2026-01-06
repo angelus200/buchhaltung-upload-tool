@@ -164,6 +164,8 @@ export const unternehmenRouter = router({
         wirtschaftsjahrBeginn: z.number().min(1).max(12).optional(),
         beraternummer: z.string().optional(),
         mandantennummer: z.string().optional(),
+        farbe: z.string().optional(),
+        logoUrl: z.string().optional(),
         aktiv: z.boolean().optional(),
       })
     )
@@ -171,7 +173,16 @@ export const unternehmenRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Datenbank nicht verfügbar");
 
-      const { id, ...updateData } = input;
+      const { id, ...rawUpdateData } = input;
+      
+      // Leere Strings als null behandeln für optionale Felder
+      const updateData = Object.fromEntries(
+        Object.entries(rawUpdateData).map(([key, value]) => [
+          key,
+          value === "" ? null : value,
+        ])
+      );
+      
       await db.update(unternehmen).set(updateData).where(eq(unternehmen.id, id));
 
       return { success: true };

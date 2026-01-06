@@ -82,3 +82,13 @@
 
 ## Bug-Fixes
 - [x] Bug beim Unternehmen anlegen beheben - Failed query: insert into unternehmen (leere Strings wurden nicht korrekt behandelt)
+
+
+## Unternehmen bearbeiten
+- [x] Bearbeitungs-Dialog für bestehende Unternehmen erstellen
+- [x] Formular mit vorausgefüllten Daten anzeigen
+- [x] Logo-Änderung ermöglichen
+- [x] Farbe-Änderung ermöglichen
+- [x] Speichern-Funktion mit Erfolgsmeldung
+- [x] API-Endpunkt um farbe und logoUrl erweitert
+- [x] Tests für Unternehmen-Update erstellt

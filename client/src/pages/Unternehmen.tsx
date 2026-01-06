@@ -121,10 +121,13 @@ function createEmptyFormData(): UnternehmenFormData {
 
 export default function Unternehmen() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingUnternehmen, setEditingUnternehmen] = useState<number | null>(null);
   const [formData, setFormData] = useState<UnternehmenFormData>(createEmptyFormData());
   const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
   
   // LocalStorage für ausgewähltes Unternehmen
   useEffect(() => {
@@ -143,6 +146,31 @@ export default function Unternehmen() {
       setFormData(createEmptyFormData());
       setLogoPreview("");
       refetch();
+    },
+    onError: (error: { message: string }) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const updateMutation = trpc.unternehmen.update.useMutation({
+    onSuccess: () => {
+      toast.success("Unternehmen erfolgreich aktualisiert");
+      setEditDialogOpen(false);
+      setEditingUnternehmen(null);
+      setFormData(createEmptyFormData());
+      setLogoPreview("");
+      refetch();
+      
+      // LocalStorage aktualisieren wenn das aktive Unternehmen bearbeitet wurde
+      if (editingUnternehmen === selectedUnternehmen) {
+        localStorage.setItem("selectedUnternehmenFarbe", formData.farbe);
+        localStorage.setItem("selectedUnternehmenName", formData.name);
+        if (logoPreview) {
+          localStorage.setItem("selectedUnternehmenLogo", logoPreview);
+        } else {
+          localStorage.removeItem("selectedUnternehmenLogo");
+        }
+      }
     },
     onError: (error: { message: string }) => {
       toast.error(`Fehler: ${error.message}`);
@@ -205,6 +233,73 @@ export default function Unternehmen() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    if (editFileInputRef.current) {
+      editFileInputRef.current.value = "";
+    }
+  };
+
+  const handleEdit = (unternehmenItem: any) => {
+    const u = unternehmenItem.unternehmen;
+    setEditingUnternehmen(u.id);
+    setFormData({
+      name: u.name || "",
+      rechtsform: u.rechtsform || "",
+      steuernummer: u.steuernummer || "",
+      ustIdNr: u.ustIdNr || "",
+      handelsregister: u.handelsregister || "",
+      strasse: u.strasse || "",
+      plz: u.plz || "",
+      ort: u.ort || "",
+      land: u.land || "Deutschland",
+      telefon: u.telefon || "",
+      email: u.email || "",
+      website: u.website || "",
+      kontenrahmen: u.kontenrahmen || "SKR03",
+      wirtschaftsjahrBeginn: u.wirtschaftsjahrBeginn || 1,
+      beraternummer: u.beraternummer || "",
+      mandantennummer: u.mandantennummer || "",
+      farbe: u.farbe || "#0d9488",
+      logoUrl: u.logoUrl || "",
+    });
+    setLogoPreview(u.logoUrl || "");
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = () => {
+    if (!formData.name) {
+      toast.error("Bitte geben Sie einen Firmennamen ein");
+      return;
+    }
+    if (!editingUnternehmen) return;
+    
+    updateMutation.mutate({
+      id: editingUnternehmen,
+      name: formData.name,
+      rechtsform: formData.rechtsform || undefined,
+      steuernummer: formData.steuernummer || undefined,
+      ustIdNr: formData.ustIdNr || undefined,
+      handelsregister: formData.handelsregister || undefined,
+      strasse: formData.strasse || undefined,
+      plz: formData.plz || undefined,
+      ort: formData.ort || undefined,
+      land: formData.land || undefined,
+      telefon: formData.telefon || undefined,
+      email: formData.email || undefined,
+      website: formData.website || undefined,
+      kontenrahmen: formData.kontenrahmen,
+      wirtschaftsjahrBeginn: formData.wirtschaftsjahrBeginn,
+      beraternummer: formData.beraternummer || undefined,
+      mandantennummer: formData.mandantennummer || undefined,
+      farbe: formData.farbe || undefined,
+      logoUrl: logoPreview || undefined,
+    });
+  };
+
+  const closeEditDialog = () => {
+    setEditDialogOpen(false);
+    setEditingUnternehmen(null);
+    setFormData(createEmptyFormData());
+    setLogoPreview("");
   };
 
   // Hilfsfunktion um Farbe als Style zu verwenden
@@ -652,8 +747,16 @@ export default function Unternehmen() {
                       }`}>
                         {item.rolle === "admin" ? "Administrator" : item.rolle === "buchhalter" ? "Buchhalter" : "Nur Lesen"}
                       </span>
-                      <Button variant="ghost" size="icon">
-                        <Settings className="w-4 h-4 text-slate-400" />
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(item);
+                        }}
+                        title="Unternehmen bearbeiten"
+                      >
+                        <Settings className="w-4 h-4 text-slate-400 hover:text-teal-600" />
                       </Button>
                     </div>
                   </div>
@@ -698,6 +801,344 @@ export default function Unternehmen() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Bearbeitungs-Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={(open) => { if (!open) closeEditDialog(); else setEditDialogOpen(true); }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Unternehmen bearbeiten</DialogTitle>
+              <DialogDescription>
+                Ändern Sie die Stammdaten des Unternehmens.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-6 py-4">
+              {/* Visuelle Identität */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-teal-600" />
+                  Visuelle Identität
+                </h3>
+                
+                {/* Logo Upload */}
+                <div>
+                  <Label>Firmenlogo</Label>
+                  <div className="mt-2 flex items-center gap-4">
+                    {logoPreview ? (
+                      <div className="relative">
+                        <img 
+                          src={logoPreview} 
+                          alt="Logo Vorschau" 
+                          className="w-16 h-16 object-contain rounded-lg border border-slate-200"
+                        />
+                        <button
+                          onClick={removeLogo}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div 
+                        className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-teal-500 hover:bg-teal-50 transition-colors"
+                        onClick={() => editFileInputRef.current?.click()}
+                      >
+                        <ImageIcon className="w-6 h-6 text-slate-400" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <input
+                        ref={editFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => editFileInputRef.current?.click()}
+                      >
+                        Logo hochladen
+                      </Button>
+                      <p className="text-xs text-slate-500 mt-1">PNG, JPG oder SVG, max. 2 MB</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Farbauswahl */}
+                <div>
+                  <Label>Firmenfarbe</Label>
+                  <p className="text-xs text-slate-500 mb-2">Diese Farbe wird zur visuellen Unterscheidung verwendet</p>
+                  <div className="flex flex-wrap gap-2">
+                    {FIRMENFARBEN.map((farbe) => (
+                      <button
+                        key={farbe.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, farbe: farbe.value })}
+                        className={`w-8 h-8 rounded-lg transition-all ${
+                          formData.farbe === farbe.value 
+                            ? "ring-2 ring-offset-2 ring-slate-900 scale-110" 
+                            : "hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: farbe.value }}
+                        title={farbe.name}
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Label htmlFor="editCustomColor" className="text-xs">Eigene Farbe:</Label>
+                    <Input
+                      id="editCustomColor"
+                      type="color"
+                      value={formData.farbe}
+                      onChange={(e) => setFormData({ ...formData, farbe: e.target.value })}
+                      className="w-12 h-8 p-1 cursor-pointer"
+                    />
+                    <span className="text-xs text-slate-500 font-mono">{formData.farbe}</span>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Grunddaten */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-teal-600" />
+                  Grunddaten
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label htmlFor="editName">Firmenname *</Label>
+                    <Input
+                      id="editName"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Muster GmbH"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editRechtsform">Rechtsform</Label>
+                    <Select
+                      value={formData.rechtsform}
+                      onValueChange={(value) => setFormData({ ...formData, rechtsform: value })}
+                    >
+                      <SelectTrigger id="editRechtsform">
+                        <SelectValue placeholder="Auswählen..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RECHTSFORMEN.map((rf) => (
+                          <SelectItem key={rf} value={rf}>{rf}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Steuerdaten */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                  <Hash className="w-4 h-4 text-teal-600" />
+                  Steuerdaten
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="editSteuernummer">Steuernummer</Label>
+                    <Input
+                      id="editSteuernummer"
+                      value={formData.steuernummer}
+                      onChange={(e) => setFormData({ ...formData, steuernummer: e.target.value })}
+                      placeholder="123/456/78901"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editUstIdNr">USt-IdNr.</Label>
+                    <Input
+                      id="editUstIdNr"
+                      value={formData.ustIdNr}
+                      onChange={(e) => setFormData({ ...formData, ustIdNr: e.target.value })}
+                      placeholder="DE 123456789"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="editHandelsregister">Handelsregister</Label>
+                    <Input
+                      id="editHandelsregister"
+                      value={formData.handelsregister}
+                      onChange={(e) => setFormData({ ...formData, handelsregister: e.target.value })}
+                      placeholder="HRA 12345, Amtsgericht München"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Adresse */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-teal-600" />
+                  Adresse
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label htmlFor="editStrasse">Straße, Hausnummer</Label>
+                    <Input
+                      id="editStrasse"
+                      value={formData.strasse}
+                      onChange={(e) => setFormData({ ...formData, strasse: e.target.value })}
+                      placeholder="Musterstraße 123"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editPlz">PLZ</Label>
+                    <Input
+                      id="editPlz"
+                      value={formData.plz}
+                      onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
+                      placeholder="12345"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editOrt">Ort</Label>
+                    <Input
+                      id="editOrt"
+                      value={formData.ort}
+                      onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
+                      placeholder="München"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editLand">Land</Label>
+                    <Input
+                      id="editLand"
+                      value={formData.land}
+                      onChange={(e) => setFormData({ ...formData, land: e.target.value })}
+                      placeholder="Deutschland"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Kontakt */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-teal-600" />
+                  Kontakt
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="editTelefon">Telefon</Label>
+                    <Input
+                      id="editTelefon"
+                      value={formData.telefon}
+                      onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
+                      placeholder="+49 123 456789"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editEmail">E-Mail</Label>
+                    <Input
+                      id="editEmail"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="info@beispiel.de"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="editWebsite">Website</Label>
+                    <Input
+                      id="editWebsite"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                      placeholder="www.beispiel.de"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Buchhaltungseinstellungen */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-teal-600" />
+                  Buchhaltungseinstellungen
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="editKontenrahmen">Kontenrahmen *</Label>
+                    <Select
+                      value={formData.kontenrahmen}
+                      onValueChange={(value: "SKR03" | "SKR04") => setFormData({ ...formData, kontenrahmen: value })}
+                    >
+                      <SelectTrigger id="editKontenrahmen">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SKR03">SKR 03 (Prozessgliederung)</SelectItem>
+                        <SelectItem value="SKR04">SKR 04 (Abschlussgliederung)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="editWirtschaftsjahr">Wirtschaftsjahr beginnt</Label>
+                    <Select
+                      value={formData.wirtschaftsjahrBeginn.toString()}
+                      onValueChange={(value) => setFormData({ ...formData, wirtschaftsjahrBeginn: parseInt(value) })}
+                    >
+                      <SelectTrigger id="editWirtschaftsjahr">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MONATE.map((monat) => (
+                          <SelectItem key={monat.value} value={monat.value.toString()}>
+                            {monat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="editBeraternummer">DATEV Beraternummer</Label>
+                    <Input
+                      id="editBeraternummer"
+                      value={formData.beraternummer}
+                      onChange={(e) => setFormData({ ...formData, beraternummer: e.target.value })}
+                      placeholder="12345"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editMandantennummer">DATEV Mandantennummer</Label>
+                    <Input
+                      id="editMandantennummer"
+                      value={formData.mandantennummer}
+                      onChange={(e) => setFormData({ ...formData, mandantennummer: e.target.value })}
+                      placeholder="10001"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={closeEditDialog}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleUpdate} className="bg-teal-600 hover:bg-teal-700">
+                Änderungen speichern
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
