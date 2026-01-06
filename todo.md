@@ -97,3 +97,5 @@
 
 - [x] Login-Problem beheben - Benutzer war eingeloggt, nur kein Unternehmen zugeordnet
 - [x] logoUrl-Spalte auf TEXT erweitern für base64-Logos (varchar(500) war zu kurz)
+
+- [x] 404-Fehler beim Anmelden beheben (useAuth.ts verwendete falsche Login-URL)

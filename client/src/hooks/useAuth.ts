@@ -1,13 +1,14 @@
 import { trpc } from "@/lib/trpc";
 import { useCallback } from "react";
+import { getLoginUrl } from "@/const";
 
 export function useAuth() {
   const { data: user, isLoading, refetch } = trpc.auth.me.useQuery();
   const logoutMutation = trpc.auth.logout.useMutation();
 
   const login = useCallback(() => {
-    // Redirect to OAuth login
-    window.location.href = "/api/auth/login";
+    // Redirect to OAuth portal login
+    window.location.href = getLoginUrl();
   }, []);
 
   const logout = useCallback(async () => {
