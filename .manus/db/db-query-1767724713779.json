@@ -1,0 +1,35 @@
+{
+  "query": "SELECT * FROM unternehmen WHERE name = 'Test Unternehmen';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT * FROM unternehmen WHERE name = 'Test Unternehmen';",
+  "rows": [
+    {
+      "id": "7",
+      "name": "Test Unternehmen",
+      "rechtsform": "NULL",
+      "steuernummer": "NULL",
+      "ustIdNr": "NULL",
+      "handelsregister": "NULL",
+      "strasse": "NULL",
+      "plz": "NULL",
+      "ort": "NULL",
+      "land": "Deutschland",
+      "telefon": "NULL",
+      "email": "NULL",
+      "website": "NULL",
+      "kontenrahmen": "SKR03",
+      "wirtschaftsjahrBeginn": "1",
+      "beraternummer": "NULL",
+      "mandantennummer": "NULL",
+      "aktiv": "1",
+      "createdBy": "1",
+      "createdAt": "2026-01-06 18:38:27",
+      "updatedAt": "2026-01-06 18:38:27",
+      "farbe": "#0d9488",
+      "logoUrl": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\trechtsform\tsteuernummer\tustIdNr\thandelsregister\tstrasse\tplz\tort\tland\ttelefon\temail\twebsite\tkontenrahmen\twirtschaftsjahrBeginn\tberaternummer\tmandantennummer\taktiv\tcreatedBy\tcreatedAt\tupdatedAt\tfarbe\tlogoUrl\n7\tTest Unternehmen\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tDeutschland\tNULL\tNULL\tNULL\tSKR03\t1\tNULL\tNULL\t1\t1\t2026-01-06 18:38:27\t2026-01-06 18:38:27\t#0d9488\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1559
+}

@@ -57,6 +57,13 @@
       "when": 1767722886102,
       "tag": "0007_regular_microbe",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1767725372900,
+      "tag": "0008_flaky_plazm",
+      "breakpoints": true
     }
   ]
 }

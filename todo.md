@@ -92,3 +92,8 @@
 - [x] Speichern-Funktion mit Erfolgsmeldung
 - [x] API-Endpunkt um farbe und logoUrl erweitert
 - [x] Tests für Unternehmen-Update erstellt
+
+- [x] Bug beim Unternehmen anlegen erneut beheben - logoUrl-Spalte auf TEXT erweitert
+
+- [x] Login-Problem beheben - Benutzer war eingeloggt, nur kein Unternehmen zugeordnet
+- [x] logoUrl-Spalte auf TEXT erweitern für base64-Logos (varchar(500) war zu kurz)

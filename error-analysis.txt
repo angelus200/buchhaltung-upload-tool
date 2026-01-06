@@ -1,0 +1,27 @@
+Fehleranalyse aus Screenshot:
+
+Fehler: Failed query: insert into `unternehmen`
+(`id`, `name`, `rechtsform`, `steuernummer`, `ustIdNr`, `handelsregister`, `strasse`, `plz`, `ort`, `land`, `telefon`, `email`, `website`, `kontenrahmen`, `wirtschaftsjahrBeginn`, `beraternummer`, `mandantennummer`, `farbe`, `logoUrl`, `aktiv`, `createdBy`, `createdAt`, `updatedAt`) 
+values (default, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, default, ?, default, default)
+
+params: 
+- Alpenland Heizungswasser KG
+- KG
+- (leer - steuernummer fehlt)
+- DE 280156483
+- HRA 103697
+- Terminal Straße Mitte 18
+- 85356
+- Muenchen
+- Deutschland
+- (leer)
+- office@heizungswasser.com
+- www.heizungswasser.com
+- SKR 04
+- 1
+- (leer)
+- (leer)
+- #2563eb
+- data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAO0AAABkCAYAAABq... (sehr langer base64-String für Logo)
+
+Problem: Das Logo wird als base64-String gespeichert, der zu lang ist für die Datenbank-Spalte logoUrl (varchar(500)).
