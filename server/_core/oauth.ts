@@ -9,6 +9,37 @@ function getQueryParam(req: Request, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+// Parse state to extract returnUrl for post-login redirect
+function parseState(state: string): { redirectUri: string; returnUrl?: string } {
+  try {
+    const decoded = atob(state);
+    // Try to parse as JSON (new format with returnUrl)
+    try {
+      const parsed = JSON.parse(decoded);
+      return {
+        redirectUri: parsed.redirectUri || decoded,
+        returnUrl: parsed.returnUrl
+      };
+    } catch {
+      // Old format: state is just the redirectUri
+      return { redirectUri: decoded };
+    }
+  } catch {
+    return { redirectUri: state };
+  }
+}
+
+// Validate return URL to prevent open redirect attacks
+function isValidReturnUrl(url: string): boolean {
+  // Only allow relative URLs starting with /
+  if (!url.startsWith("/")) return false;
+  // Prevent protocol-relative URLs
+  if (url.startsWith("//")) return false;
+  // Prevent javascript: URLs
+  if (url.toLowerCase().includes("javascript:")) return false;
+  return true;
+}
+
 export function registerOAuthRoutes(app: Express) {
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
@@ -60,8 +91,12 @@ export function registerOAuthRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      console.log("[OAuth] Redirecting to home...");
-      res.redirect(302, "/");
+      // Extract return URL from state and redirect
+      const { returnUrl } = parseState(state);
+      const redirectTo = returnUrl && isValidReturnUrl(returnUrl) ? returnUrl : "/dashboard";
+      
+      console.log("[OAuth] Redirecting to:", redirectTo);
+      res.redirect(302, redirectTo);
     } catch (error) {
       console.error("[OAuth] Callback failed with error:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";

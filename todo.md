@@ -99,3 +99,12 @@
 - [x] logoUrl-Spalte auf TEXT erweitern für base64-Logos (varchar(500) war zu kurz)
 
 - [x] 404-Fehler beim Anmelden beheben (useAuth.ts verwendete falsche Login-URL)
+
+
+## Automatische Weiterleitung nach Login
+- [x] Return-URL vor Login speichern (localStorage und State-Parameter)
+- [x] OAuth-State um Return-URL erweitern (JSON-Format)
+- [x] Nach erfolgreichem Login zur gespeicherten URL weiterleiten
+- [x] Fallback auf Dashboard wenn keine Return-URL vorhanden
+- [x] Sicherheitsvalidierung gegen Open-Redirect-Angriffe
+- [x] Tests für Return-URL-Funktionalität (11 Tests)
