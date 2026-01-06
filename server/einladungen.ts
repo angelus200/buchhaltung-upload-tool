@@ -5,6 +5,7 @@ import { einladungen, userUnternehmen, users, unternehmen } from "../drizzle/sch
 import { eq, and, desc, gt } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { randomUUID } from "crypto";
+import { sendEinladungsEmail } from "./_core/email";
 
 // Hilfsfunktion: Einladungscode generieren
 function generateInviteCode(): string {
@@ -120,13 +121,42 @@ export const einladungenRouter = router({
         .from(unternehmen)
         .where(eq(unternehmen.id, input.unternehmenId));
 
+      const company = companies[0];
+      const unternehmensname = company?.name || "Unbekannt";
+      const unternehmensfarbe = company?.farbe || "#0d9488";
+
+      // Einladungs-URL mit vollständiger Domain erstellen
+      const baseUrl = process.env.NODE_ENV === "production" 
+        ? `https://${process.env.VITE_APP_ID}.manus.space`
+        : "http://localhost:3000";
+      const einladungslink = `${baseUrl}/einladung/${code}`;
+
+      // E-Mail versenden (asynchron, ohne auf Ergebnis zu warten)
+      let emailSent = false;
+      try {
+        emailSent = await sendEinladungsEmail({
+          empfaengerEmail: input.email,
+          unternehmensname,
+          unternehmensfarbe,
+          einladenderName: ctx.user.name || ctx.user.email || "Ein Administrator",
+          rolle: input.rolle,
+          einladungslink,
+          nachricht: input.nachricht,
+          gueltigBis: expiresAt,
+        });
+      } catch (error) {
+        console.error("[Einladung] Fehler beim E-Mail-Versand:", error);
+      }
+
       return {
         id: result.insertId,
         code,
         email: input.email,
         expiresAt,
         inviteUrl: `/einladung/${code}`,
-        unternehmensname: companies[0]?.name || "Unbekannt",
+        fullInviteUrl: einladungslink,
+        unternehmensname,
+        emailSent,
       };
     }),
 

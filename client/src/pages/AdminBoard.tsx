@@ -196,11 +196,16 @@ export default function AdminBoard() {
   // Einladungen Mutations
   const createEinladungMutation = trpc.einladungen.create.useMutation({
     onSuccess: (data) => {
-      const baseUrl = window.location.origin;
-      setGenerierterLink(`${baseUrl}${data.inviteUrl}`);
-      toast.success("Einladung erstellt!", {
-        description: `Einladung an ${data.email} wurde erstellt.`,
-      });
+      setGenerierterLink(data.fullInviteUrl || `${window.location.origin}${data.inviteUrl}`);
+      if (data.emailSent) {
+        toast.success("Einladung erstellt und E-Mail versendet!", {
+          description: `Eine Einladungs-E-Mail wurde an ${data.email} gesendet.`,
+        });
+      } else {
+        toast.success("Einladung erstellt!", {
+          description: `Bitte senden Sie den Einladungslink manuell an ${data.email}.`,
+        });
+      }
       einladungenQuery.refetch();
     },
     onError: (error) => {
@@ -544,9 +549,24 @@ export default function AdminBoard() {
                           <div className="py-4 space-y-4">
                             <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                               <CheckCircle2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                              <p className="font-medium text-green-800">Einladung erstellt!</p>
-                              <p className="text-sm text-green-600 mt-1">Gültig für 7 Tage</p>
+                              <p className="font-medium text-green-800">
+                                {createEinladungMutation.data?.emailSent 
+                                  ? "Einladung erstellt und E-Mail versendet!" 
+                                  : "Einladung erstellt!"}
+                              </p>
+                              <p className="text-sm text-green-600 mt-1">
+                                {createEinladungMutation.data?.emailSent 
+                                  ? `E-Mail wurde an ${einladungEmail} gesendet` 
+                                  : "Gültig für 7 Tage"}
+                              </p>
                             </div>
+                            {!createEinladungMutation.data?.emailSent && (
+                              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                <p className="text-sm text-yellow-800">
+                                  <strong>Hinweis:</strong> Der E-Mail-Versand ist nicht konfiguriert. Bitte senden Sie den Link manuell.
+                                </p>
+                              </div>
+                            )}
                             <div className="space-y-2">
                               <label className="text-sm font-medium">Einladungslink</label>
                               <div className="flex gap-2">
@@ -560,7 +580,9 @@ export default function AdminBoard() {
                                 </Button>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Senden Sie diesen Link an {einladungEmail}. Der Empfänger kann sich über den Link registrieren und wird automatisch dem Unternehmen hinzugefügt.
+                                {createEinladungMutation.data?.emailSent 
+                                  ? "Der Empfänger hat den Link auch per E-Mail erhalten."
+                                  : "Senden Sie diesen Link an den Empfänger. Er kann sich über den Link registrieren und wird automatisch dem Unternehmen hinzugefügt."}
                               </p>
                             </div>
                           </div>

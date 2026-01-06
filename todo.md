@@ -117,3 +117,11 @@
 - [x] Nach Registrierung automatisch zur Einladung weiterleiten
 - [x] Button-Text verbessert: "Anmelden oder Registrieren"
 - [x] Hinweistext im Admin-Board verbessert
+
+
+## Automatischer E-Mail-Versand für Einladungen
+- [x] Resend-Integration implementiert
+- [x] E-Mail-Template für Einladungen erstellt (HTML + Text)
+- [x] Automatischen E-Mail-Versand bei Einladungserstellung implementiert
+- [x] Erfolgs-/Fehlermeldung für E-Mail-Versand im UI anzeigen
+- [x] Hinweis wenn E-Mail-Versand nicht konfiguriert ist
