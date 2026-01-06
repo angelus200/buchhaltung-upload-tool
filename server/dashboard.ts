@@ -53,8 +53,8 @@ export const dashboardRouter = router({
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
             eq(buchungen.buchungsart, "ertrag"),
-            gte(buchungen.belegdatum, startDatum),
-            lte(buchungen.belegdatum, endDatum)
+            gte(buchungen.belegdatum, new Date(startDatum)),
+            lte(buchungen.belegdatum, new Date(endDatum))
           )
         );
 
@@ -69,8 +69,8 @@ export const dashboardRouter = router({
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
             eq(buchungen.buchungsart, "aufwand"),
-            gte(buchungen.belegdatum, startDatum),
-            lte(buchungen.belegdatum, endDatum)
+            gte(buchungen.belegdatum, new Date(startDatum)),
+            lte(buchungen.belegdatum, new Date(endDatum))
           )
         );
 
@@ -83,8 +83,8 @@ export const dashboardRouter = router({
         .where(
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
-            gte(buchungen.belegdatum, startDatum),
-            lte(buchungen.belegdatum, endDatum)
+            gte(buchungen.belegdatum, new Date(startDatum)),
+            lte(buchungen.belegdatum, new Date(endDatum))
           )
         );
 
@@ -141,8 +141,8 @@ export const dashboardRouter = router({
             and(
               eq(buchungen.unternehmenId, input.unternehmenId),
               eq(buchungen.buchungsart, "ertrag"),
-              gte(buchungen.belegdatum, startDatum),
-              lte(buchungen.belegdatum, endDatum)
+              gte(buchungen.belegdatum, new Date(startDatum)),
+              lte(buchungen.belegdatum, new Date(endDatum))
             )
           );
 
@@ -156,8 +156,8 @@ export const dashboardRouter = router({
             and(
               eq(buchungen.unternehmenId, input.unternehmenId),
               eq(buchungen.buchungsart, "aufwand"),
-              gte(buchungen.belegdatum, startDatum),
-              lte(buchungen.belegdatum, endDatum)
+              gte(buchungen.belegdatum, new Date(startDatum)),
+              lte(buchungen.belegdatum, new Date(endDatum))
             )
           );
 
@@ -207,8 +207,8 @@ export const dashboardRouter = router({
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
             eq(buchungen.buchungsart, "aufwand"),
-            gte(buchungen.belegdatum, startDatum),
-            lte(buchungen.belegdatum, endDatum)
+            gte(buchungen.belegdatum, new Date(startDatum)),
+            lte(buchungen.belegdatum, new Date(endDatum))
           )
         )
         .groupBy(buchungen.sachkonto)
@@ -253,8 +253,8 @@ export const dashboardRouter = router({
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
             eq(buchungen.buchungsart, "ertrag"),
-            gte(buchungen.belegdatum, startDatum),
-            lte(buchungen.belegdatum, endDatum)
+            gte(buchungen.belegdatum, new Date(startDatum)),
+            lte(buchungen.belegdatum, new Date(endDatum))
           )
         )
         .groupBy(buchungen.sachkonto)
@@ -298,8 +298,8 @@ export const dashboardRouter = router({
             eq(buchungen.unternehmenId, input.unternehmenId),
             eq(buchungen.buchungsart, buchungsart),
             eq(buchungen.geschaeftspartnerTyp, input.typ),
-            gte(buchungen.belegdatum, startDatum),
-            lte(buchungen.belegdatum, endDatum)
+            gte(buchungen.belegdatum, new Date(startDatum)),
+            lte(buchungen.belegdatum, new Date(endDatum))
           )
         )
         .groupBy(buchungen.geschaeftspartner)

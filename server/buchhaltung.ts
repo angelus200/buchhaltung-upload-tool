@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, desc, and, or } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -270,6 +270,113 @@ export const buchungenRouter = router({
 
       await db.delete(buchungen).where(eq(buchungen.id, input.id));
       return { success: true };
+    }),
+
+  // Zahlungsstatus aktualisieren
+  updateZahlungsstatus: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        zahlungsstatus: z.enum(["offen", "teilweise_bezahlt", "bezahlt", "ueberfaellig"]),
+        bezahltAm: z.string().optional(),
+        bezahlterBetrag: z.string().optional(),
+        zahlungsreferenz: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Datenbank nicht verfügbar");
+
+      const { id, bezahltAm, ...updateData } = input;
+      const finalData: Record<string, unknown> = { ...updateData };
+      if (bezahltAm) {
+        finalData.bezahltAm = new Date(bezahltAm);
+      }
+
+      await db.update(buchungen).set(finalData).where(eq(buchungen.id, id));
+      return { success: true };
+    }),
+
+  // Offene Rechnungen abrufen
+  offeneRechnungen: protectedProcedure
+    .input(z.object({ unternehmenId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const result = await db
+        .select()
+        .from(buchungen)
+        .where(
+          and(
+            eq(buchungen.unternehmenId, input.unternehmenId),
+            or(
+              eq(buchungen.zahlungsstatus, "offen"),
+              eq(buchungen.zahlungsstatus, "teilweise_bezahlt"),
+              eq(buchungen.zahlungsstatus, "ueberfaellig")
+            )
+          )
+        )
+        .orderBy(buchungen.faelligkeitsdatum);
+
+      return result;
+    }),
+
+  // Zahlungsübersicht (Statistiken)
+  zahlungsUebersicht: protectedProcedure
+    .input(z.object({ unternehmenId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { offen: 0, teilweise: 0, bezahlt: 0, ueberfaellig: 0, offenerBetrag: 0, bezahlterBetrag: 0 };
+
+      const alleBuchungen = await db
+        .select()
+        .from(buchungen)
+        .where(eq(buchungen.unternehmenId, input.unternehmenId));
+
+      const stats = {
+        offen: 0,
+        teilweise: 0,
+        bezahlt: 0,
+        ueberfaellig: 0,
+        offenerBetrag: 0,
+        bezahlterBetrag: 0,
+      };
+
+      const heute = new Date();
+
+      for (const b of alleBuchungen) {
+        const brutto = parseFloat(String(b.bruttobetrag)) || 0;
+        const bezahlt = parseFloat(String(b.bezahlterBetrag)) || 0;
+
+        switch (b.zahlungsstatus) {
+          case "offen":
+            // Prüfe ob überfällig
+            if (b.faelligkeitsdatum && new Date(b.faelligkeitsdatum) < heute) {
+              stats.ueberfaellig++;
+              stats.offenerBetrag += brutto;
+            } else {
+              stats.offen++;
+              stats.offenerBetrag += brutto;
+            }
+            break;
+          case "teilweise_bezahlt":
+            stats.teilweise++;
+            stats.offenerBetrag += (brutto - bezahlt);
+            stats.bezahlterBetrag += bezahlt;
+            break;
+          case "bezahlt":
+            stats.bezahlt++;
+            stats.bezahlterBetrag += brutto;
+            break;
+          case "ueberfaellig":
+            stats.ueberfaellig++;
+            stats.offenerBetrag += brutto;
+            break;
+        }
+      }
+
+      return stats;
     }),
 
   // DATEV-Export für einen Monat

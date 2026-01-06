@@ -292,6 +292,12 @@ export const buchungen = mysqlTable("buchungen", {
   belegUrl: varchar("belegUrl", { length: 500 }),
   status: mysqlEnum("status", ["entwurf", "geprueft", "exportiert"]).default("entwurf").notNull(),
   exportiertAm: timestamp("exportiertAm"),
+  // Zahlungsstatus
+  zahlungsstatus: mysqlEnum("zahlungsstatus", ["offen", "teilweise_bezahlt", "bezahlt", "ueberfaellig"]).default("offen").notNull(),
+  faelligkeitsdatum: date("faelligkeitsdatum"),
+  bezahltAm: date("bezahltAm"),
+  bezahlterBetrag: decimal("bezahlterBetrag", { precision: 15, scale: 2 }),
+  zahlungsreferenz: varchar("zahlungsreferenz", { length: 100 }),
   createdBy: int("createdBy").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

@@ -50,3 +50,10 @@
 - [x] PDF-Export für BWA (Betriebswirtschaftliche Auswertung)
 - [x] PDF-Export für Kennzahlen-Übersicht
 - [x] PDF-Export für Summen- und Saldenliste
+- [x] Unterscheidung bezahlt/unbezahlt für Rechnungen
+- [x] Datenbank-Schema um Zahlungsstatus erweitern
+- [x] Übersicht offener Rechnungen erstellen
+- [x] Zahlungsstatus in Buchungsliste anzeigen
+- [x] Filter für bezahlt/unbezahlt hinzufügen
+- [x] Zahlungen-Seite mit Statistik-Karten erstellen
+- [x] Zahlungsstatus-Update-Funktion implementieren

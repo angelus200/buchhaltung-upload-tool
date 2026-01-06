@@ -254,81 +254,99 @@ export default function Kennzahlen() {
   const JAHRE = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
   // PDF Export Mutations
-  const exportBwaMutation = trpc.pdfExport.bwa.useMutation({
+  const exportBwaMutation = trpc.pdfExport.generateBwa.useMutation({
     onSuccess: (data) => {
       // Download als HTML (wird vom Browser als PDF gedruckt)
       const blob = new Blob([data.html], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `BWA_${data.unternehmenName}_${selectedJahr}.html`;
+      a.download = data.filename;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("BWA wurde exportiert", {
         description: "Öffnen Sie die Datei und drucken Sie sie als PDF.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Export fehlgeschlagen", { description: error.message });
     },
   });
 
-  const exportKennzahlenMutation = trpc.pdfExport.kennzahlen.useMutation({
+  const exportKennzahlenMutation = trpc.pdfExport.generateKennzahlen.useMutation({
     onSuccess: (data) => {
       const blob = new Blob([data.html], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Kennzahlen_${data.unternehmenName}_${selectedJahr}.html`;
+      a.download = data.filename;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Kennzahlen wurden exportiert");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Export fehlgeschlagen", { description: error.message });
     },
   });
 
-  const exportSuSaMutation = trpc.pdfExport.summenSaldenliste.useMutation({
+  const exportSuSaMutation = trpc.pdfExport.generateSuSa.useMutation({
     onSuccess: (data) => {
       const blob = new Blob([data.html], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `SuSa_${data.unternehmenName}_${selectedJahr}.html`;
+      a.download = data.filename;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Summen- und Saldenliste wurde exportiert");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Export fehlgeschlagen", { description: error.message });
     },
   });
 
   const handleExportBwa = () => {
     if (!selectedUnternehmen) return;
+    const vonDatum = selectedMonat 
+        ? `${selectedJahr}-${String(selectedMonat).padStart(2, '0')}-01`
+        : `${selectedJahr}-01-01`;
+    const bisDatum = selectedMonat
+        ? new Date(selectedJahr, selectedMonat, 0).toISOString().split('T')[0]
+        : `${selectedJahr}-12-31`;
     exportBwaMutation.mutate({
-      unternehmenId: selectedUnternehmen,
-      jahr: selectedJahr,
-      monat: selectedMonat,
+      unternehmensId: selectedUnternehmen,
+      vonDatum,
+      bisDatum,
     });
   };
 
   const handleExportKennzahlen = () => {
     if (!selectedUnternehmen) return;
+    const vonDatum = selectedMonat 
+        ? `${selectedJahr}-${String(selectedMonat).padStart(2, '0')}-01`
+        : `${selectedJahr}-01-01`;
+    const bisDatum = selectedMonat
+        ? new Date(selectedJahr, selectedMonat, 0).toISOString().split('T')[0]
+        : `${selectedJahr}-12-31`;
     exportKennzahlenMutation.mutate({
-      unternehmenId: selectedUnternehmen,
-      jahr: selectedJahr,
-      monat: selectedMonat,
+      unternehmensId: selectedUnternehmen,
+      vonDatum,
+      bisDatum,
     });
   };
 
   const handleExportSuSa = () => {
     if (!selectedUnternehmen) return;
+    const vonDatum = selectedMonat 
+        ? `${selectedJahr}-${String(selectedMonat).padStart(2, '0')}-01`
+        : `${selectedJahr}-01-01`;
+    const bisDatum = selectedMonat
+        ? new Date(selectedJahr, selectedMonat, 0).toISOString().split('T')[0]
+        : `${selectedJahr}-12-31`;
     exportSuSaMutation.mutate({
-      unternehmenId: selectedUnternehmen,
-      jahr: selectedJahr,
-      monat: selectedMonat,
+      unternehmensId: selectedUnternehmen,
+      vonDatum,
+      bisDatum,
     });
   };
 
@@ -539,18 +557,18 @@ export default function Kennzahlen() {
                 </CardContent>
               </Card>
 
-              <Card className={kennzahlen.zahllast >= 0 ? "" : "border-green-200"}>
+              <Card className={(kennzahlen.zahllast ?? 0) >= 0 ? "" : "border-green-200"}>
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-lg ${kennzahlen.zahllast >= 0 ? "bg-red-100" : "bg-green-100"} flex items-center justify-center`}>
-                      <Calculator className={`w-5 h-5 ${kennzahlen.zahllast >= 0 ? "text-red-600" : "text-green-600"}`} />
+                    <div className={`w-10 h-10 rounded-lg ${(kennzahlen.zahllast ?? 0) >= 0 ? "bg-red-100" : "bg-green-100"} flex items-center justify-center`}>
+                      <Calculator className={`w-5 h-5 ${(kennzahlen.zahllast ?? 0) >= 0 ? "text-red-600" : "text-green-600"}`} />
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">
-                        {kennzahlen.zahllast >= 0 ? "Zahllast" : "Vorsteuerüberhang"}
+                        {(kennzahlen.zahllast ?? 0) >= 0 ? "Zahllast" : "Vorsteuerüberhang"}
                       </p>
-                      <p className={`text-xl font-bold tabular-nums ${kennzahlen.zahllast >= 0 ? "text-red-600" : "text-green-600"}`}>
-                        {formatCurrency(Math.abs(kennzahlen.zahllast))} €
+                      <p className={`text-xl font-bold tabular-nums ${(kennzahlen.zahllast ?? 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
+                        {formatCurrency(Math.abs(kennzahlen.zahllast ?? 0))} €
                       </p>
                     </div>
                   </div>

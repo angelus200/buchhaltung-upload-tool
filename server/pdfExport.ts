@@ -250,6 +250,7 @@ export const pdfExportRouter = router({
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new Error("Datenbank nicht verfügbar");
       
       // Unternehmensdaten laden
       const [firma] = await db
@@ -267,9 +268,9 @@ export const pdfExportRouter = router({
         .from(buchungen)
         .where(
           and(
-            eq(buchungen.unternehmensId, input.unternehmensId),
-            gte(buchungen.belegdatum, input.vonDatum),
-            lte(buchungen.belegdatum, input.bisDatum)
+            eq(buchungen.unternehmenId, input.unternehmensId),
+            gte(buchungen.belegdatum, new Date(input.vonDatum)),
+            lte(buchungen.belegdatum, new Date(input.bisDatum))
           )
         );
       
@@ -282,7 +283,7 @@ export const pdfExportRouter = router({
       const kontoSummen: Record<string, { bezeichnung: string; betrag: number; typ: string }> = {};
       
       for (const buchung of buchungenData) {
-        const konto = buchung.sollKonto || "9999";
+        const konto = buchung.sachkonto || "9999";
         const betrag = parseFloat(buchung.nettobetrag?.toString() || "0");
         
         if (!kontoSummen[konto]) {
@@ -420,6 +421,7 @@ export const pdfExportRouter = router({
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new Error("Datenbank nicht verfügbar");
       
       // Unternehmensdaten laden
       const [firma] = await db
@@ -437,9 +439,9 @@ export const pdfExportRouter = router({
         .from(buchungen)
         .where(
           and(
-            eq(buchungen.unternehmensId, input.unternehmensId),
-            gte(buchungen.belegdatum, input.vonDatum),
-            lte(buchungen.belegdatum, input.bisDatum)
+            eq(buchungen.unternehmenId, input.unternehmensId),
+            gte(buchungen.belegdatum, new Date(input.vonDatum)),
+            lte(buchungen.belegdatum, new Date(input.bisDatum))
           )
         );
       
@@ -453,20 +455,21 @@ export const pdfExportRouter = router({
       
       for (const buchung of buchungenData) {
         const netto = parseFloat(buchung.nettobetrag?.toString() || "0");
-        const steuer = parseFloat(buchung.steuerbetrag?.toString() || "0");
+        const brutto = parseFloat(buchung.bruttobetrag?.toString() || "0");
+        const steuer = brutto - netto;
         
         if (buchung.buchungsart === "ertrag") {
           einnahmen += netto;
           umsatzsteuer += steuer;
-          if (buchung.debitorId) {
-            const key = buchung.debitorId.toString();
+          if (buchung.geschaeftspartner) {
+            const key = buchung.geschaeftspartner;
             debitorenSummen[key] = (debitorenSummen[key] || 0) + netto;
           }
         } else {
           ausgaben += netto;
           vorsteuer += steuer;
-          if (buchung.kreditorId) {
-            const key = buchung.kreditorId.toString();
+          if (buchung.geschaeftspartner) {
+            const key = buchung.geschaeftspartner;
             kreditorenSummen[key] = (kreditorenSummen[key] || 0) + netto;
           }
         }
@@ -476,12 +479,12 @@ export const pdfExportRouter = router({
       const topKreditoren = Object.entries(kreditorenSummen)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
-        .map(([id, betrag]) => ({ name: `Kreditor ${id}`, betrag }));
+        .map(([name, betrag]) => ({ name, betrag }));
       
       const topDebitoren = Object.entries(debitorenSummen)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
-        .map(([id, betrag]) => ({ name: `Debitor ${id}`, betrag }));
+        .map(([name, betrag]) => ({ name, betrag }));
       
       const kennzahlenData: KennzahlenData = {
         unternehmen: {
@@ -615,6 +618,7 @@ export const pdfExportRouter = router({
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
+      if (!db) throw new Error("Datenbank nicht verfügbar");
       
       // Unternehmensdaten laden
       const [firma] = await db
@@ -632,9 +636,9 @@ export const pdfExportRouter = router({
         .from(buchungen)
         .where(
           and(
-            eq(buchungen.unternehmensId, input.unternehmensId),
-            gte(buchungen.belegdatum, input.vonDatum),
-            lte(buchungen.belegdatum, input.bisDatum)
+            eq(buchungen.unternehmenId, input.unternehmensId),
+            gte(buchungen.belegdatum, new Date(input.vonDatum)),
+            lte(buchungen.belegdatum, new Date(input.bisDatum))
           )
         );
       
@@ -642,8 +646,8 @@ export const pdfExportRouter = router({
       const kontenSalden: Record<string, SuSaPosition> = {};
       
       for (const buchung of buchungenData) {
-        const sollKonto = buchung.sollKonto || "9999";
-        const habenKonto = buchung.habenKonto || "9999";
+        const sollKonto = buchung.sachkonto || "9999";
+        const habenKonto = buchung.geschaeftspartnerKonto || "9999";
         const betrag = parseFloat(buchung.bruttobetrag?.toString() || "0");
         
         // Soll-Konto
