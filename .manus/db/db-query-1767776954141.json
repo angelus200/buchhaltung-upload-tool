@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, name, email, openId FROM users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT id, name, email, openId FROM users;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Thomas Gross",
+      "email": "grossdigitalpartner@gmail.com",
+      "openId": "ZiRgMhhh4SUTEG7PySo237"
+    },
+    {
+      "id": "180005",
+      "name": "thomasgross65",
+      "email": "thomasgross65@gmail.com",
+      "openId": "3cmgKCELCsTshU3jxmLap5"
+    },
+    {
+      "id": "270026",
+      "name": "n.gross",
+      "email": "n.gross@angelus.group",
+      "openId": "YUjfR8Fpf3kPnmYDb2vf6v"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\topenId\n1\tThomas Gross\tgrossdigitalpartner@gmail.com\tZiRgMhhh4SUTEG7PySo237\n180005\tthomasgross65\tthomasgross65@gmail.com\t3cmgKCELCsTshU3jxmLap5\n270026\tn.gross\tn.gross@angelus.group\tYUjfR8Fpf3kPnmYDb2vf6v\n",
+  "stderr": "",
+  "execution_time_ms": 1543
+}

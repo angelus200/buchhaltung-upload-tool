@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, name, aktiv FROM unternehmen;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT id, name, aktiv FROM unternehmen;",
+  "rows": [
+    {
+      "id": "8",
+      "name": "Test Firma GmbH",
+      "aktiv": "1"
+    },
+    {
+      "id": "60001",
+      "name": "Commercehelden GmbH",
+      "aktiv": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\taktiv\n8\tTest Firma GmbH\t1\n60001\tCommercehelden GmbH\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1540
+}

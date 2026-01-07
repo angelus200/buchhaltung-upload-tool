@@ -1,0 +1,8 @@
+{
+  "query": "SELECT uu.id, uu.user_id, u.name as user_name, u.email, uu.unternehmen_id, un.name as firma, uu.rolle FROM user_unternehmen uu JOIN users u ON uu.user_id = u.id JOIN unternehmen un ON uu.unternehmen_id = un.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT uu.id, uu.user_id, u.name as user_name, u.email, uu.unternehmen_id, un.name as firma, uu.rolle FROM user_unternehmen uu JOIN users u ON uu.user_id = u.id JOIN unternehmen un ON uu.unternehmen_id = un.id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'uu.user_id' in 'on clause'"
+  ]
+}

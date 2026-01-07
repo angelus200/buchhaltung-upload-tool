@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Building2, 
   Upload, 
@@ -14,10 +22,15 @@ import {
   ChevronDown,
   TrendingUp,
   CreditCard,
-  Calendar
+  Calendar,
+  LogOut,
+  User,
+  Settings
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 
 interface AppHeaderProps {
   title?: string;
@@ -36,11 +49,14 @@ interface UnternehmenData {
 }
 
 export default function AppHeader({ title, subtitle }: AppHeaderProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [firmenFarbe, setFirmenFarbe] = useState<string>("#0d9488");
   const [firmenName, setFirmenName] = useState<string>("");
   const [firmenLogo, setFirmenLogo] = useState<string>("");
+
+  // Auth Hook für Benutzer und Logout
+  const { user, isAuthenticated, logout, loading } = useAuth();
 
   // TRPC Query für Unternehmensliste
   const { data: unternehmenList } = trpc.unternehmen.list.useQuery();
@@ -95,7 +111,23 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    // Nach Logout zur Login-Seite weiterleiten
+    window.location.href = getLoginUrl();
+  };
+
   const isActive = (path: string) => location === path;
+
+  // Benutzer-Initialen für Avatar
+  const getUserInitials = () => {
+    if (!user?.name) return "?";
+    const names = user.name.split(" ");
+    if (names.length >= 2) {
+      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    }
+    return user.name.substring(0, 2).toUpperCase();
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
@@ -177,7 +209,7 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
             )}
           </div>
           
-          {/* Rechts: Navigation */}
+          {/* Rechts: Navigation + Benutzer-Menü */}
           <div className="flex items-center gap-1">
             <Link href="/">
               <Button 
@@ -310,6 +342,64 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                 <Shield className="w-3.5 h-3.5" />
               </Button>
             </Link>
+
+            {/* Benutzer-Menü mit Logout */}
+            <div className="w-px h-6 bg-slate-200 mx-2" />
+            
+            {isAuthenticated && user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="gap-2 h-8 px-2"
+                  >
+                    <div 
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold"
+                      style={{ backgroundColor: firmenFarbe }}
+                    >
+                      {getUserInitials()}
+                    </div>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{user.name || "Benutzer"}</span>
+                      <span className="text-xs text-slate-500 font-normal">{user.email || ""}</span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setLocation("/dashboard")}>
+                    <User className="w-4 h-4 mr-2" />
+                    Mein Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setLocation("/admin")}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Einstellungen
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Abmelden
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-1.5 h-8 text-xs"
+                onClick={() => window.location.href = getLoginUrl()}
+              >
+                <User className="w-3.5 h-3.5" />
+                Anmelden
+              </Button>
+            )}
           </div>
         </div>
       </div>

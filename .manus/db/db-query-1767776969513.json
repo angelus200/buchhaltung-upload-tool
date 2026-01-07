@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, userId, unternehmenId, rolle FROM user_unternehmen;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT id, userId, unternehmenId, rolle FROM user_unternehmen;",
+  "rows": [
+    {
+      "id": "7",
+      "userId": "1",
+      "unternehmenId": "8",
+      "rolle": "admin"
+    },
+    {
+      "id": "60001",
+      "userId": "1",
+      "unternehmenId": "60001",
+      "rolle": "admin"
+    },
+    {
+      "id": "60002",
+      "userId": "270026",
+      "unternehmenId": "8",
+      "rolle": "admin"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tunternehmenId\trolle\n7\t1\t8\tadmin\n60001\t1\t60001\tadmin\n60002\t270026\t8\tadmin\n",
+  "stderr": "",
+  "execution_time_ms": 1558
+}

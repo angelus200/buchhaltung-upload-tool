@@ -1,0 +1,52 @@
+{
+  "query": "SELECT * FROM user_unternehmen;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT * FROM user_unternehmen;",
+  "rows": [
+    {
+      "id": "7",
+      "userId": "1",
+      "unternehmenId": "8",
+      "rolle": "admin",
+      "createdAt": "2026-01-06 18:50:44",
+      "buchungenLesen": "1",
+      "buchungenSchreiben": "1",
+      "stammdatenLesen": "1",
+      "stammdatenSchreiben": "1",
+      "berichteLesen": "1",
+      "berichteExportieren": "1",
+      "einladungenVerwalten": "1"
+    },
+    {
+      "id": "60001",
+      "userId": "1",
+      "unternehmenId": "60001",
+      "rolle": "admin",
+      "createdAt": "2026-01-07 08:54:49",
+      "buchungenLesen": "1",
+      "buchungenSchreiben": "1",
+      "stammdatenLesen": "1",
+      "stammdatenSchreiben": "1",
+      "berichteLesen": "1",
+      "berichteExportieren": "1",
+      "einladungenVerwalten": "1"
+    },
+    {
+      "id": "60002",
+      "userId": "270026",
+      "unternehmenId": "8",
+      "rolle": "admin",
+      "createdAt": "2026-01-07 09:04:49",
+      "buchungenLesen": "1",
+      "buchungenSchreiben": "0",
+      "stammdatenLesen": "1",
+      "stammdatenSchreiben": "0",
+      "berichteLesen": "1",
+      "berichteExportieren": "0",
+      "einladungenVerwalten": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tunternehmenId\trolle\tcreatedAt\tbuchungenLesen\tbuchungenSchreiben\tstammdatenLesen\tstammdatenSchreiben\tberichteLesen\tberichteExportieren\teinladungenVerwalten\n7\t1\t8\tadmin\t2026-01-06 18:50:44\t1\t1\t1\t1\t1\t1\t1\n60001\t1\t60001\tadmin\t2026-01-07 08:54:49\t1\t1\t1\t1\t1\t1\t1\n60002\t270026\t8\tadmin\t2026-01-07 09:04:49\t1\t0\t1\t0\t1\t0\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1587
+}

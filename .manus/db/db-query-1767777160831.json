@@ -1,0 +1,16 @@
+{
+  "query": "SELECT u.id as user_id, u.email, un.id as unternehmen_id, un.name FROM users u, unternehmen un WHERE u.email LIKE '%angelus%' AND un.name LIKE '%Commercehelden%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT u.id as user_id, u.email, un.id as unternehmen_id, un.name FROM users u, unternehmen un WHERE u.email LIKE '%angelus%' AND un.name LIKE '%Commercehelden%';",
+  "rows": [
+    {
+      "user_id": "270026",
+      "email": "n.gross@angelus.group",
+      "unternehmen_id": "60001",
+      "name": "Commercehelden GmbH"
+    }
+  ],
+  "messages": [],
+  "stdout": "user_id\temail\tunternehmen_id\tname\n270026\tn.gross@angelus.group\t60001\tCommercehelden GmbH\n",
+  "stderr": "",
+  "execution_time_ms": 1496
+}

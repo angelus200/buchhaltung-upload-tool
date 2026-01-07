@@ -139,3 +139,16 @@
 - [x] Währungsunterstützung (EUR, CHF, GBP)
 - [x] Länderspezifische Rechtsformen pro Land
 - [x] Datenbank-Schema um landCode und waehrung erweitert
+
+
+## Bug-Fix: Eingeladener Admin sieht Firma nicht
+- [ ] Problem analysieren: n.gross@angelus.group sieht Firma Commercehelden nicht
+- [ ] Benutzer-Unternehmen-Zuordnung in Datenbank prüfen
+- [ ] Einladungsannahme-Flow korrigieren falls nötig
+
+
+## Logout-Button im Header
+- [x] Benutzer-Dropdown-Menü im Header implementiert
+- [x] Logout-Button mit roter Hervorhebung hinzugefügt
+- [x] Benutzer-Initialen als Avatar angezeigt
+- [x] Menü mit "Mein Dashboard", "Einstellungen" und "Abmelden"
