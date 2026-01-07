@@ -235,3 +235,8 @@
 ## Alpenland - Steuerberater Stammdaten Import (07.01.2026)
 - [x] Kreditoren-Stammdaten vom Steuerberater importiert (442 aktualisiert mit Adresse, USt-ID, IBAN)
 - [x] Debitoren-Stammdaten vom Steuerberater importiert (171 aktualisiert, 329 neu eingefügt)
+
+
+## Angelus - Steuerberater Stammdaten Import (07.01.2026)
+- [x] Kreditoren-Stammdaten vom Steuerberater importiert (183 aktualisiert, 131 neu = 314 gesamt)
+- [x] Debitoren-Stammdaten vom Steuerberater importiert (24 aktualisiert, 22 neu = 46 gesamt)
