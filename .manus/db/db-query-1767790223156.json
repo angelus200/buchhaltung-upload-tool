@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO debitoren (unternehmenId, kontonummer, name, aktiv) VALUES \n(90001, '20000', 'Privatpersonen', true),\n(90001, '20010', 'Amazon', true),\n(90001, '20020', 'Kaufland', true),\n(90001, '20030', 'Ebay', true)\nON DUPLICATE KEY UPDATE name = VALUES(name);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute INSERT INTO debitoren (unternehmenId, kontonummer, name, aktiv) VALUES \n(90001, '20000', 'Privatpersonen', true),\n(90001, '20010', 'Amazon', true),\n(90001, '20020', 'Kaufland', true),\n(90001, '20030', 'Ebay', true)\nON DUPLICATE KEY UPDATE name = VALUES(name);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1519
+}

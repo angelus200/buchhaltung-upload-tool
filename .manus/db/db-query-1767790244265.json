@@ -1,0 +1,14 @@
+{
+  "query": "SELECT \n  (SELECT COUNT(*) FROM kreditoren WHERE unternehmenId = 90001) as kreditoren_count,\n  (SELECT COUNT(*) FROM debitoren WHERE unternehmenId = 90001) as debitoren_count;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT \n  (SELECT COUNT(*) FROM kreditoren WHERE unternehmenId = 90001) as kreditoren_count,\n  (SELECT COUNT(*) FROM debitoren WHERE unternehmenId = 90001) as debitoren_count;",
+  "rows": [
+    {
+      "kreditoren_count": "40",
+      "debitoren_count": "4"
+    }
+  ],
+  "messages": [],
+  "stdout": "kreditoren_count\tdebitoren_count\n40\t4\n",
+  "stderr": "",
+  "execution_time_ms": 1540
+}

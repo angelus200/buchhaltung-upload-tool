@@ -160,3 +160,10 @@
 - [x] Geschäftspartner automatisch erkennen
 - [x] Automatische OCR-Analyse beim Beleg-Upload
 - [x] Manueller Analyse-Button für erneute Erkennung
+
+
+## BWA-Import Alpenland Heizungswasser KG
+- [x] BWA-PDF analysiert und Daten extrahiert
+- [x] Sachkonten als JSON-Vorlage gespeichert (Tabelle existiert noch nicht)
+- [x] Kreditoren (Lieferanten) in Datenbank importiert (40 Einträge)
+- [x] Debitoren (Kunden) in Datenbank importiert (4 Einträge)
