@@ -225,8 +225,9 @@ export default function Home() {
   const [selectedBuchungId, setSelectedBuchungId] = useState<string | null>(null);
   const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
 
-  // OCR Mutation
+  // OCR Mutations
   const ocrMutation = trpc.ocr.analyzeImage.useMutation();
+  const pdfOcrMutation = trpc.ocr.analyzePdf.useMutation();
 
   // Finde die ausgewählte Buchung für die Vorschau
   const selectedBuchung = buchungen.find(b => b.id === selectedBuchungId);
@@ -249,13 +250,15 @@ export default function Home() {
     status: "pending"
   }), []);
 
-  // OCR-Analyse für einen Beleg durchführen
+  // OCR-Analyse für einen Beleg durchführen (Bilder und PDFs)
   const analyzeBeleg = useCallback(async (buchungId: string, file: File) => {
     if (!file || analyzingIds.has(buchungId)) return;
     
-    // Nur Bilder analysieren (PDFs werden später unterstützt)
-    if (!file.type.startsWith("image/")) {
-      toast.info("OCR-Analyse ist derzeit nur für Bilder verfügbar");
+    const isPdf = file.type === "application/pdf";
+    const isImage = file.type.startsWith("image/");
+    
+    if (!isPdf && !isImage) {
+      toast.info("OCR-Analyse ist nur für Bilder und PDFs verfügbar");
       return;
     }
 
@@ -275,11 +278,21 @@ export default function Home() {
         reader.readAsDataURL(file);
       });
 
-      const result = await ocrMutation.mutateAsync({
-        imageBase64: base64,
-        mimeType: file.type,
-        kontenrahmen: "SKR04" // TODO: Aus Firmeneinstellungen laden
-      });
+      // Wähle die richtige OCR-Methode basierend auf Dateityp
+      let result;
+      if (isPdf) {
+        toast.info("PDF wird analysiert...");
+        result = await pdfOcrMutation.mutateAsync({
+          pdfBase64: base64,
+          kontenrahmen: "SKR04" // TODO: Aus Firmeneinstellungen laden
+        });
+      } else {
+        result = await ocrMutation.mutateAsync({
+          imageBase64: base64,
+          mimeType: file.type,
+          kontenrahmen: "SKR04" // TODO: Aus Firmeneinstellungen laden
+        });
+      }
 
       // Aktualisiere die Buchung mit den erkannten Daten
       setBuchungen(prev => prev.map(b => {
@@ -325,7 +338,7 @@ export default function Home() {
         return next;
       });
     }
-  }, [analyzingIds, ocrMutation]);
+  }, [analyzingIds, ocrMutation, pdfOcrMutation]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();

@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM, type Message } from "./_core/llm";
+import { exec } from "child_process";
+import { promisify } from "util";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+
+const execAsync = promisify(exec);
 
 // ============================================
 // OCR SERVICE - Automatische Belegerkennung mit Vision-AI
@@ -489,6 +496,56 @@ Wichtig:
 }
 
 // ============================================
+// PDF ZU BILD KONVERTIERUNG
+// ============================================
+async function convertPdfToImage(pdfBase64: string): Promise<{ imageBase64: string; mimeType: string }> {
+  // Erstelle temporäres Verzeichnis
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "pdf-ocr-"));
+  const pdfPath = path.join(tempDir, "input.pdf");
+  const outputPrefix = path.join(tempDir, "page");
+  
+  try {
+    // Schreibe PDF in temporäre Datei
+    const pdfBuffer = Buffer.from(pdfBase64, "base64");
+    await fs.promises.writeFile(pdfPath, pdfBuffer);
+    
+    // Konvertiere erste Seite zu PNG mit pdftoppm
+    // -png: Output als PNG
+    // -f 1 -l 1: Nur erste Seite
+    // -r 200: 200 DPI für gute Qualität
+    await execAsync(`pdftoppm -png -f 1 -l 1 -r 200 "${pdfPath}" "${outputPrefix}"`);
+    
+    // Finde die generierte Bilddatei
+    const files = await fs.promises.readdir(tempDir);
+    const imageFile = files.find(f => f.startsWith("page") && f.endsWith(".png"));
+    
+    if (!imageFile) {
+      throw new Error("PDF-Konvertierung fehlgeschlagen: Keine Bilddatei generiert");
+    }
+    
+    const imagePath = path.join(tempDir, imageFile);
+    const imageBuffer = await fs.promises.readFile(imagePath);
+    const imageBase64 = imageBuffer.toString("base64");
+    
+    return {
+      imageBase64,
+      mimeType: "image/png"
+    };
+  } finally {
+    // Aufräumen: Lösche temporäre Dateien
+    try {
+      const files = await fs.promises.readdir(tempDir);
+      for (const file of files) {
+        await fs.promises.unlink(path.join(tempDir, file));
+      }
+      await fs.promises.rmdir(tempDir);
+    } catch (cleanupError) {
+      console.error("[OCR] Cleanup-Fehler:", cleanupError);
+    }
+  }
+}
+
+// ============================================
 // OCR ROUTER
 // ============================================
 export const ocrRouter = router({
@@ -575,6 +632,37 @@ export const ocrRouter = router({
         ? input.kontenrahmen 
         : "SKR03";
       return extractDataFromText(simulatedText, effectiveKontenrahmen);
+    }),
+
+  // PDF-OCR: Konvertiert PDF zu Bild und analysiert mit Vision-AI
+  analyzePdf: protectedProcedure
+    .input(
+      z.object({
+        pdfBase64: z.string(),
+        kontenrahmen: z.enum(["SKR03", "SKR04", "OeKR", "RLG", "KMU", "OR", "UK_GAAP", "IFRS", "CY_GAAP"]).default("SKR03"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      console.log("[OCR] PDF-Analyse gestartet...");
+      
+      try {
+        // Konvertiere PDF zu Bild
+        const { imageBase64, mimeType } = await convertPdfToImage(input.pdfBase64);
+        console.log("[OCR] PDF erfolgreich zu Bild konvertiert");
+        
+        // Analysiere das Bild mit Vision-AI
+        const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen) 
+          ? input.kontenrahmen 
+          : "SKR03";
+        
+        const result = await analyzeImageWithVision(imageBase64, mimeType, effectiveKontenrahmen);
+        console.log("[OCR] PDF-Analyse abgeschlossen, Konfidenz:", result.konfidenz);
+        
+        return result;
+      } catch (error) {
+        console.error("[OCR] PDF-Analyse Fehler:", error);
+        throw new Error(`PDF-Analyse fehlgeschlagen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`);
+      }
     }),
 });
 

@@ -187,3 +187,9 @@
 - [x] Suchfunktion im Sachkonto-Dropdown implementieren (Combobox mit Suche)
 - [x] Standard-Sachkonto pro Lieferant (Kreditor) hinzugefügt
 - [x] Automatische Sachkonto-Vorschläge bei Lieferantenauswahl
+
+
+## PDF-OCR
+- [x] PDF-zu-Bild-Konvertierung im Backend implementieren (pdftoppm)
+- [x] OCR-Endpunkt für PDF-Dateien erweitern (analyzePdf)
+- [x] Frontend für PDF-Upload mit OCR anpassen
