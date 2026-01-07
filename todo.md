@@ -206,3 +206,11 @@
 - [x] API-Endpunkt für Debitor → Kreditor Konvertierung
 - [x] Konvertierungs-Button in der UI hinzugefügt
 - [x] Falsch zugeordnete Einträge (10000-10999) korrigiert (40 Einträge zu Debitoren verschoben)
+
+
+## Vollständiger Debitoren-Import aus Summen und Salden
+- [x] Debitoren aus Blatt 6 extrahieren (10000xx)
+- [x] Debitoren aus Blatt 7 extrahieren (10101xx - 10601xx)
+- [x] Debitoren aus Blatt 8 extrahieren (10601xx - 11401xx)
+- [x] Debitoren aus Blatt 9 extrahieren (11401xx - 12701xx + 20000xx)
+- [x] Alle 171 Debitoren in Datenbank importiert
