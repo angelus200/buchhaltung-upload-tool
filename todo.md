@@ -199,3 +199,10 @@
 - [x] Kreditoren aus Datenbank laden statt localStorage
 - [x] Debitoren aus Datenbank laden statt localStorage
 - [x] Stammdaten-Seite mit Datenbank-Queries aktualisieren
+
+
+## Kreditor/Debitor Konvertierung
+- [x] API-Endpunkt für Kreditor → Debitor Konvertierung
+- [x] API-Endpunkt für Debitor → Kreditor Konvertierung
+- [x] Konvertierungs-Button in der UI hinzugefügt
+- [x] Falsch zugeordnete Einträge (10000-10999) korrigiert (40 Einträge zu Debitoren verschoben)

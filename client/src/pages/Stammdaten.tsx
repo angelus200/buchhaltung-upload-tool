@@ -36,7 +36,8 @@ import {
   Factory,
   UserCircle,
   PiggyBank,
-  Calculator
+  Calculator,
+  ArrowRightLeft
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
@@ -393,6 +394,29 @@ export default function Stammdaten() {
     onSuccess: () => {
       refetchSachkonten();
       toast.info("Sachkonto gelöscht");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  // Konvertierungs-Mutations
+  const convertToDebitorMutation = trpc.stammdaten.kreditoren.convertToDebitor.useMutation({
+    onSuccess: () => {
+      refetchKreditoren();
+      refetchDebitoren();
+      toast.success("Kreditor zu Debitor konvertiert");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const convertToKreditorMutation = trpc.stammdaten.debitoren.convertToKreditor.useMutation({
+    onSuccess: () => {
+      refetchKreditoren();
+      refetchDebitoren();
+      toast.success("Debitor zu Kreditor konvertiert");
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -827,14 +851,29 @@ export default function Stammdaten() {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => openEditKreditorDialog(kreditor)}
+                                title="Bearbeiten"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => {
+                                  if (confirm(`"${kreditor.name}" zu Debitor (Kunde) konvertieren?`)) {
+                                    convertToDebitorMutation.mutate({ id: kreditor.id });
+                                  }
+                                }}
+                                title="Zu Debitor konvertieren"
+                              >
+                                <ArrowRightLeft className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                 onClick={() => handleDeleteKreditor(kreditor.id)}
+                                title="Löschen"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -915,14 +954,29 @@ export default function Stammdaten() {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => openEditDebitorDialog(debitor)}
+                                title="Bearbeiten"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => {
+                                  if (confirm(`"${debitor.name}" zu Kreditor (Lieferant) konvertieren?`)) {
+                                    convertToKreditorMutation.mutate({ id: debitor.id });
+                                  }
+                                }}
+                                title="Zu Kreditor konvertieren"
+                              >
+                                <ArrowRightLeft className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                 onClick={() => handleDeleteDebitor(debitor.id)}
+                                title="Löschen"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>

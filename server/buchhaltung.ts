@@ -594,6 +594,40 @@ export const stammdatenRouter = router({
         await db.delete(kreditoren).where(eq(kreditoren.id, input.id));
         return { success: true };
       }),
+
+    // Kreditor zu Debitor konvertieren
+    convertToDebitor: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+        
+        // Kreditor laden
+        const [kreditor] = await db.select().from(kreditoren).where(eq(kreditoren.id, input.id));
+        if (!kreditor) throw new Error("Kreditor nicht gefunden");
+        
+        // Als Debitor erstellen
+        const result = await db.insert(debitoren).values({
+          unternehmenId: kreditor.unternehmenId,
+          kontonummer: kreditor.kontonummer,
+          name: kreditor.name,
+          kurzbezeichnung: kreditor.kurzbezeichnung,
+          strasse: kreditor.strasse,
+          plz: kreditor.plz,
+          ort: kreditor.ort,
+          land: kreditor.land,
+          telefon: kreditor.telefon,
+          email: kreditor.email,
+          ustIdNr: kreditor.ustIdNr,
+          zahlungsziel: kreditor.zahlungsziel,
+          notizen: kreditor.notizen,
+        } as InsertDebitor);
+        
+        // Kreditor löschen
+        await db.delete(kreditoren).where(eq(kreditoren.id, input.id));
+        
+        return { success: true, newId: result[0].insertId };
+      }),
   }),
 
   // Debitoren
@@ -649,6 +683,40 @@ export const stammdatenRouter = router({
         if (!db) throw new Error("Datenbank nicht verfügbar");
         await db.delete(debitoren).where(eq(debitoren.id, input.id));
         return { success: true };
+      }),
+
+    // Debitor zu Kreditor konvertieren
+    convertToKreditor: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+        
+        // Debitor laden
+        const [debitor] = await db.select().from(debitoren).where(eq(debitoren.id, input.id));
+        if (!debitor) throw new Error("Debitor nicht gefunden");
+        
+        // Als Kreditor erstellen
+        const result = await db.insert(kreditoren).values({
+          unternehmenId: debitor.unternehmenId,
+          kontonummer: debitor.kontonummer,
+          name: debitor.name,
+          kurzbezeichnung: debitor.kurzbezeichnung,
+          strasse: debitor.strasse,
+          plz: debitor.plz,
+          ort: debitor.ort,
+          land: debitor.land,
+          telefon: debitor.telefon,
+          email: debitor.email,
+          ustIdNr: debitor.ustIdNr,
+          zahlungsziel: debitor.zahlungsziel,
+          notizen: debitor.notizen,
+        } as InsertKreditor);
+        
+        // Debitor löschen
+        await db.delete(debitoren).where(eq(debitoren.id, input.id));
+        
+        return { success: true, newId: result[0].insertId };
       }),
   }),
 
