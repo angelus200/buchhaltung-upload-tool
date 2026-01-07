@@ -1,0 +1,54 @@
+{
+  "query": "SELECT COUNT(*) as anzahl, kategorie FROM sachkonten WHERE unternehmenId = 90001 GROUP BY kategorie ORDER BY kategorie;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT COUNT(*) as anzahl, kategorie FROM sachkonten WHERE unternehmenId = 90001 GROUP BY kategorie ORDER BY kategorie;",
+  "rows": [
+    {
+      "anzahl": "6",
+      "kategorie": "Betriebskosten"
+    },
+    {
+      "anzahl": "4",
+      "kategorie": "Erlöse"
+    },
+    {
+      "anzahl": "6",
+      "kategorie": "Fahrzeugkosten"
+    },
+    {
+      "anzahl": "11",
+      "kategorie": "Personal"
+    },
+    {
+      "anzahl": "2",
+      "kategorie": "Raumkosten"
+    },
+    {
+      "anzahl": "23",
+      "kategorie": "Restliche Aufwendungen"
+    },
+    {
+      "anzahl": "1",
+      "kategorie": "Steuern"
+    },
+    {
+      "anzahl": "9",
+      "kategorie": "Wareneinkauf"
+    },
+    {
+      "anzahl": "7",
+      "kategorie": "Werbe-/Reisekosten"
+    },
+    {
+      "anzahl": "1",
+      "kategorie": "Zinsen/Aufwand"
+    },
+    {
+      "anzahl": "1",
+      "kategorie": "Zinsen/Erträge"
+    }
+  ],
+  "messages": [],
+  "stdout": "anzahl\tkategorie\n6\tBetriebskosten\n4\tErlöse\n6\tFahrzeugkosten\n11\tPersonal\n2\tRaumkosten\n23\tRestliche Aufwendungen\n1\tSteuern\n9\tWareneinkauf\n7\tWerbe-/Reisekosten\n1\tZinsen/Aufwand\n1\tZinsen/Erträge\n",
+  "stderr": "",
+  "execution_time_ms": 1558
+}

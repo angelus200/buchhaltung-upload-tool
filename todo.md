@@ -167,3 +167,9 @@
 - [x] Sachkonten als JSON-Vorlage gespeichert (Tabelle existiert noch nicht)
 - [x] Kreditoren (Lieferanten) in Datenbank importiert (40 Einträge)
 - [x] Debitoren (Kunden) in Datenbank importiert (4 Einträge)
+
+
+## Sachkonten-Tabelle
+- [x] Sachkonten-Tabelle im Schema definieren
+- [x] Datenbank-Migration durchgeführt
+- [x] SKR04-Konten aus JSON importiert (70+ Konten)

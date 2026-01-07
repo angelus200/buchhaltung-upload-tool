@@ -71,6 +71,13 @@
       "when": 1767773706489,
       "tag": "0009_silly_secret_warriors",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1767790547816,
+      "tag": "0010_romantic_squirrel_girl",
+      "breakpoints": true
     }
   ]
 }

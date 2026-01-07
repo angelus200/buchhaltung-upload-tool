@@ -493,3 +493,45 @@ export const einladungen = mysqlTable("einladungen", {
 
 export type Einladung = typeof einladungen.$inferSelect;
 export type InsertEinladung = typeof einladungen.$inferInsert;
+
+/**
+ * Sachkonten - Kontenrahmen (SKR03, SKR04, etc.)
+ */
+export const sachkonten = mysqlTable("sachkonten", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unternehmen, zu dem das Konto gehört (null = Standard-Kontenrahmen) */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id),
+  /** Kontenrahmen (SKR03, SKR04, etc.) */
+  kontenrahmen: mysqlEnum("kontenrahmen", [
+    "SKR03", "SKR04",           // Deutschland
+    "OeKR", "RLG",              // Österreich
+    "KMU", "OR",                // Schweiz
+    "UK_GAAP", "IFRS",          // UK & International
+    "CY_GAAP"                   // Zypern
+  ]).default("SKR04").notNull(),
+  /** Kontonummer (z.B. "4400", "6800") */
+  kontonummer: varchar("kontonummer", { length: 20 }).notNull(),
+  /** Bezeichnung des Kontos */
+  bezeichnung: varchar("bezeichnung", { length: 255 }).notNull(),
+  /** Kategorie für Gruppierung (z.B. "Erlöse", "Personal", "Betriebskosten") */
+  kategorie: varchar("kategorie", { length: 100 }),
+  /** Kontotyp für Bilanz/GuV-Zuordnung */
+  kontotyp: mysqlEnum("kontotyp", [
+    "aktiv",      // Aktivkonten (Vermögen)
+    "passiv",     // Passivkonten (Schulden/Eigenkapital)
+    "aufwand",    // Aufwandskonten (GuV)
+    "ertrag",     // Ertragskonten (GuV)
+    "neutral"     // Neutrale Konten
+  ]).default("aufwand"),
+  /** Standard-Steuersatz für dieses Konto */
+  standardSteuersatz: decimal("standardSteuersatz", { precision: 5, scale: 2 }),
+  /** Ist das Konto aktiv/verwendbar? */
+  aktiv: boolean("aktiv").default(true).notNull(),
+  /** Notizen zum Konto */
+  notizen: text("notizen"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Sachkonto = typeof sachkonten.$inferSelect;
+export type InsertSachkonto = typeof sachkonten.$inferInsert;
