@@ -152,3 +152,11 @@
 - [x] Logout-Button mit roter Hervorhebung hinzugefügt
 - [x] Benutzer-Initialen als Avatar angezeigt
 - [x] Menü mit "Mein Dashboard", "Einstellungen" und "Abmelden"
+
+
+## OCR-Verbesserung
+- [x] OCR mit Vision-AI (Gemini) für echte Bilderkennung implementieren
+- [x] Beträge besser aus Rechnungen extrahieren
+- [x] Geschäftspartner automatisch erkennen
+- [x] Automatische OCR-Analyse beim Beleg-Upload
+- [x] Manueller Analyse-Button für erneute Erkennung

@@ -1,0 +1,43 @@
+{
+  "query": "SELECT * FROM users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT * FROM users;",
+  "rows": [
+    {
+      "id": "1",
+      "openId": "ZiRgMhhh4SUTEG7PySo237",
+      "name": "Thomas Gross",
+      "email": "grossdigitalpartner@gmail.com",
+      "loginMethod": "google",
+      "role": "admin",
+      "createdAt": "2025-12-26 10:20:52",
+      "updatedAt": "2026-01-07 09:23:35",
+      "lastSignedIn": "2026-01-07 09:23:35"
+    },
+    {
+      "id": "180005",
+      "openId": "3cmgKCELCsTshU3jxmLap5",
+      "name": "thomasgross65",
+      "email": "thomasgross65@gmail.com",
+      "loginMethod": "google",
+      "role": "user",
+      "createdAt": "2026-01-06 15:41:27",
+      "updatedAt": "2026-01-06 19:23:34",
+      "lastSignedIn": "2026-01-06 19:23:35"
+    },
+    {
+      "id": "270026",
+      "openId": "YUjfR8Fpf3kPnmYDb2vf6v",
+      "name": "n.gross",
+      "email": "n.gross@angelus.group",
+      "loginMethod": "email",
+      "role": "user",
+      "createdAt": "2026-01-07 09:04:37",
+      "updatedAt": "2026-01-07 09:25:02",
+      "lastSignedIn": "2026-01-07 09:25:03"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\tloginMethod\trole\tcreatedAt\tupdatedAt\tlastSignedIn\n1\tZiRgMhhh4SUTEG7PySo237\tThomas Gross\tgrossdigitalpartner@gmail.com\tgoogle\tadmin\t2025-12-26 10:20:52\t2026-01-07 09:23:35\t2026-01-07 09:23:35\n180005\t3cmgKCELCsTshU3jxmLap5\tthomasgross65\tthomasgross65@gmail.com\tgoogle\tuser\t2026-01-06 15:41:27\t2026-01-06 19:23:34\t2026-01-06 19:23:35\n270026\tYUjfR8Fpf3kPnmYDb2vf6v\tn.gross\tn.gross@angelus.group\temail\tuser\t2026-01-07 09:04:37\t2026-01-07 09:25:02\t2026-01-07 09:25:03\n",
+  "stderr": "",
+  "execution_time_ms": 1580
+}

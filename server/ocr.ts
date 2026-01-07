@@ -1,92 +1,117 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
+import { invokeLLM, type Message } from "./_core/llm";
 
 // ============================================
-// OCR SERVICE - Automatische Belegerkennung
+// OCR SERVICE - Automatische Belegerkennung mit Vision-AI
 // ============================================
 
-// Regex-Patterns für deutsche Rechnungen
+// Regex-Patterns für deutsche Rechnungen (Fallback)
 const PATTERNS = {
   // Datum: DD.MM.YYYY oder DD/MM/YYYY oder YYYY-MM-DD
   datum: /(\d{1,2}[.\/]\d{1,2}[.\/]\d{2,4}|\d{4}-\d{2}-\d{2})/g,
   
-  // Beträge: 1.234,56 € oder 1234.56 EUR oder €1,234.56
+  // Beträge: verschiedene Formate
   betrag: /(?:€\s*)?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))\s*(?:€|EUR)?/g,
   
-  // Steuersätze: 19%, 7%, MwSt
+  // Steuersätze
   steuersatz: /(\d{1,2})\s*%\s*(?:MwSt|USt|Mehrwertsteuer|Umsatzsteuer)?/gi,
   
   // Rechnungsnummer
-  rechnungsnummer: /(?:Rechnung(?:s)?(?:nummer|nr\.?)?|Invoice(?:\s*No\.?)?|Beleg(?:nummer|nr\.?)?)\s*[:#]?\s*([A-Z0-9\-\/]+)/gi,
+  rechnungsnummer: /(?:Rechnung(?:s)?(?:nummer|nr\.?)?|Invoice(?:\s*No\.?)?|Beleg(?:nummer|nr\.?)?|Nr\.?)\s*[:#]?\s*([A-Z0-9\-\/]+)/gi,
   
   // IBAN
   iban: /[A-Z]{2}\d{2}\s?(?:\d{4}\s?){4}\d{2}/g,
   
   // USt-IdNr
-  ustIdNr: /DE\s?\d{9}/g,
-  
-  // Steuernummer
-  steuernummer: /\d{2,3}\/\d{3}\/\d{5}/g,
+  ustIdNr: /(?:DE|AT|CH)\s?\d{9}/g,
 };
 
 // Bekannte Sachkonten-Keywords für SKR03/SKR04
 const SACHKONTO_KEYWORDS: Record<string, { skr03: string; skr04: string; beschreibung: string }> = {
-  // Aufwendungen
+  // Telekommunikation
+  "telefon": { skr03: "4920", skr04: "6805", beschreibung: "Telefon" },
+  "telekom": { skr03: "4920", skr04: "6805", beschreibung: "Telefon" },
+  "vodafone": { skr03: "4920", skr04: "6805", beschreibung: "Telefon" },
+  "o2": { skr03: "4920", skr04: "6805", beschreibung: "Telefon" },
+  "internet": { skr03: "4920", skr04: "6805", beschreibung: "Telefon/Internet" },
+  "tenios": { skr03: "4920", skr04: "6805", beschreibung: "Telefon/VoIP" },
+  "sipgate": { skr03: "4920", skr04: "6805", beschreibung: "Telefon/VoIP" },
+  "voip": { skr03: "4920", skr04: "6805", beschreibung: "Telefon/VoIP" },
+  
+  // Büro
   "büromaterial": { skr03: "4930", skr04: "6815", beschreibung: "Bürobedarf" },
   "bürobedarf": { skr03: "4930", skr04: "6815", beschreibung: "Bürobedarf" },
-  "telefon": { skr03: "4920", skr04: "6805", beschreibung: "Telefon" },
-  "internet": { skr03: "4920", skr04: "6805", beschreibung: "Telefon/Internet" },
+  "amazon": { skr03: "4930", skr04: "6815", beschreibung: "Bürobedarf" },
+  
+  // Miete & Nebenkosten
   "miete": { skr03: "4210", skr04: "6310", beschreibung: "Miete" },
   "strom": { skr03: "4240", skr04: "6325", beschreibung: "Gas, Strom, Wasser" },
   "gas": { skr03: "4240", skr04: "6325", beschreibung: "Gas, Strom, Wasser" },
+  "heizung": { skr03: "4240", skr04: "6325", beschreibung: "Gas, Strom, Wasser" },
+  
+  // Versicherungen
   "versicherung": { skr03: "4360", skr04: "6400", beschreibung: "Versicherungen" },
+  "allianz": { skr03: "4360", skr04: "6400", beschreibung: "Versicherungen" },
+  "axa": { skr03: "4360", skr04: "6400", beschreibung: "Versicherungen" },
+  
+  // KFZ
   "kfz": { skr03: "4510", skr04: "6520", beschreibung: "Kfz-Kosten" },
   "tanken": { skr03: "4530", skr04: "6530", beschreibung: "Kfz-Betriebskosten" },
   "benzin": { skr03: "4530", skr04: "6530", beschreibung: "Kfz-Betriebskosten" },
   "diesel": { skr03: "4530", skr04: "6530", beschreibung: "Kfz-Betriebskosten" },
+  "shell": { skr03: "4530", skr04: "6530", beschreibung: "Kfz-Betriebskosten" },
+  "aral": { skr03: "4530", skr04: "6530", beschreibung: "Kfz-Betriebskosten" },
+  
+  // Reise
   "reise": { skr03: "4660", skr04: "6650", beschreibung: "Reisekosten" },
   "hotel": { skr03: "4660", skr04: "6650", beschreibung: "Reisekosten" },
+  "flug": { skr03: "4660", skr04: "6650", beschreibung: "Reisekosten" },
+  "bahn": { skr03: "4660", skr04: "6650", beschreibung: "Reisekosten" },
+  "db": { skr03: "4660", skr04: "6650", beschreibung: "Reisekosten" },
+  
+  // Bewirtung
   "bewirtung": { skr03: "4650", skr04: "6640", beschreibung: "Bewirtungskosten" },
   "restaurant": { skr03: "4650", skr04: "6640", beschreibung: "Bewirtungskosten" },
+  
+  // Werbung
   "werbung": { skr03: "4600", skr04: "6600", beschreibung: "Werbekosten" },
+  "marketing": { skr03: "4600", skr04: "6600", beschreibung: "Werbekosten" },
+  "google ads": { skr03: "4600", skr04: "6600", beschreibung: "Werbekosten" },
+  "facebook": { skr03: "4600", skr04: "6600", beschreibung: "Werbekosten" },
+  
+  // EDV
   "software": { skr03: "4964", skr04: "6835", beschreibung: "EDV-Kosten" },
   "hardware": { skr03: "4964", skr04: "6835", beschreibung: "EDV-Kosten" },
   "computer": { skr03: "4964", skr04: "6835", beschreibung: "EDV-Kosten" },
+  "microsoft": { skr03: "4964", skr04: "6835", beschreibung: "EDV-Kosten" },
+  "adobe": { skr03: "4964", skr04: "6835", beschreibung: "EDV-Kosten" },
+  "hosting": { skr03: "4964", skr04: "6835", beschreibung: "EDV-Kosten" },
+  "server": { skr03: "4964", skr04: "6835", beschreibung: "EDV-Kosten" },
+  "cloud": { skr03: "4964", skr04: "6835", beschreibung: "EDV-Kosten" },
+  "aws": { skr03: "4964", skr04: "6835", beschreibung: "EDV-Kosten" },
+  
+  // Porto
   "porto": { skr03: "4910", skr04: "6800", beschreibung: "Porto" },
+  "dhl": { skr03: "4910", skr04: "6800", beschreibung: "Porto/Versand" },
+  "ups": { skr03: "4910", skr04: "6800", beschreibung: "Porto/Versand" },
+  "dpd": { skr03: "4910", skr04: "6800", beschreibung: "Porto/Versand" },
+  
+  // Beratung
   "rechtsanwalt": { skr03: "4950", skr04: "6825", beschreibung: "Rechts- und Beratungskosten" },
   "steuerberater": { skr03: "4955", skr04: "6827", beschreibung: "Buchführungskosten" },
+  "beratung": { skr03: "4950", skr04: "6825", beschreibung: "Beratungskosten" },
+  
+  // Fortbildung
   "fortbildung": { skr03: "4945", skr04: "6821", beschreibung: "Fortbildungskosten" },
   "schulung": { skr03: "4945", skr04: "6821", beschreibung: "Fortbildungskosten" },
+  "seminar": { skr03: "4945", skr04: "6821", beschreibung: "Fortbildungskosten" },
   
   // Erträge
   "umsatz": { skr03: "8400", skr04: "4400", beschreibung: "Erlöse" },
   "erlöse": { skr03: "8400", skr04: "4400", beschreibung: "Erlöse" },
   "honorar": { skr03: "8400", skr04: "4400", beschreibung: "Erlöse" },
   "provision": { skr03: "8400", skr04: "4400", beschreibung: "Erlöse" },
-};
-
-// Bekannte Lieferanten/Kreditoren
-const BEKANNTE_LIEFERANTEN: Record<string, { name: string; typ: string }> = {
-  "amazon": { name: "Amazon", typ: "kreditor" },
-  "telekom": { name: "Deutsche Telekom", typ: "kreditor" },
-  "vodafone": { name: "Vodafone", typ: "kreditor" },
-  "o2": { name: "O2/Telefónica", typ: "kreditor" },
-  "ikea": { name: "IKEA", typ: "kreditor" },
-  "mediamarkt": { name: "MediaMarkt", typ: "kreditor" },
-  "saturn": { name: "Saturn", typ: "kreditor" },
-  "conrad": { name: "Conrad Electronic", typ: "kreditor" },
-  "office depot": { name: "Office Depot", typ: "kreditor" },
-  "staples": { name: "Staples", typ: "kreditor" },
-  "shell": { name: "Shell", typ: "kreditor" },
-  "aral": { name: "Aral", typ: "kreditor" },
-  "esso": { name: "Esso", typ: "kreditor" },
-  "total": { name: "TotalEnergies", typ: "kreditor" },
-  "db": { name: "Deutsche Bahn", typ: "kreditor" },
-  "lufthansa": { name: "Lufthansa", typ: "kreditor" },
-  "microsoft": { name: "Microsoft", typ: "kreditor" },
-  "google": { name: "Google", typ: "kreditor" },
-  "apple": { name: "Apple", typ: "kreditor" },
-  "adobe": { name: "Adobe", typ: "kreditor" },
 };
 
 interface OcrResult {
@@ -178,7 +203,6 @@ function extractDataFromText(text: string, kontenrahmen: string = "SKR03"): OcrR
   // 1. Datum extrahieren
   const datumMatches = text.match(PATTERNS.datum);
   if (datumMatches && datumMatches.length > 0) {
-    // Nimm das erste gefundene Datum (meist Rechnungsdatum)
     const parsedDate = parseGermanDate(datumMatches[0]);
     if (parsedDate) {
       result.belegdatum = parsedDate;
@@ -195,36 +219,45 @@ function extractDataFromText(text: string, kontenrahmen: string = "SKR03"): OcrR
     konfidenzPunkte += 10;
   }
   
-  // 3. Beträge extrahieren
+  // 3. Beträge extrahieren - verbesserte Logik
   const betragMatches = text.match(PATTERNS.betrag);
   if (betragMatches && betragMatches.length > 0) {
     const betraege = betragMatches
       .map(b => parseGermanAmount(b))
       .filter((b): b is number => b !== null && b > 0)
-      .sort((a, b) => b - a); // Größter zuerst
+      .sort((a, b) => b - a);
     
     if (betraege.length > 0) {
-      // Größter Betrag ist meist Brutto
       result.bruttobetrag = betraege[0];
       result.erkannteFelder.push("bruttobetrag");
       konfidenzPunkte += 20;
       
-      // Wenn mehrere Beträge, versuche Netto zu finden
+      // Suche nach Netto-Brutto-Verhältnissen
       if (betraege.length > 1) {
-        // Suche nach typischen Netto-Brutto-Verhältnissen (19%, 7%)
         for (const netto of betraege.slice(1)) {
-          const ratio19 = result.bruttobetrag / netto;
-          const ratio7 = result.bruttobetrag / netto;
+          const ratio = result.bruttobetrag / netto;
           
-          if (Math.abs(ratio19 - 1.19) < 0.01) {
+          if (Math.abs(ratio - 1.19) < 0.02) {
             result.nettobetrag = netto;
             result.steuersatz = 19;
             result.steuerbetrag = result.bruttobetrag - netto;
+            result.erkannteFelder.push("nettobetrag");
+            konfidenzPunkte += 15;
             break;
-          } else if (Math.abs(ratio7 - 1.07) < 0.01) {
+          } else if (Math.abs(ratio - 1.07) < 0.02) {
             result.nettobetrag = netto;
             result.steuersatz = 7;
             result.steuerbetrag = result.bruttobetrag - netto;
+            result.erkannteFelder.push("nettobetrag");
+            konfidenzPunkte += 15;
+            break;
+          } else if (Math.abs(ratio - 1.20) < 0.02) {
+            // Österreich 20%
+            result.nettobetrag = netto;
+            result.steuersatz = 20;
+            result.steuerbetrag = result.bruttobetrag - netto;
+            result.erkannteFelder.push("nettobetrag");
+            konfidenzPunkte += 15;
             break;
           }
         }
@@ -237,12 +270,11 @@ function extractDataFromText(text: string, kontenrahmen: string = "SKR03"): OcrR
     const steuersatzMatch = PATTERNS.steuersatz.exec(text);
     if (steuersatzMatch) {
       const satz = parseInt(steuersatzMatch[1]);
-      if (satz === 19 || satz === 7 || satz === 0) {
+      if ([0, 7, 10, 13, 19, 20].includes(satz)) {
         result.steuersatz = satz;
         result.erkannteFelder.push("steuersatz");
         konfidenzPunkte += 10;
         
-        // Berechne Netto aus Brutto wenn möglich
         if (result.bruttobetrag && !result.nettobetrag) {
           result.nettobetrag = result.bruttobetrag / (1 + satz / 100);
           result.steuerbetrag = result.bruttobetrag - result.nettobetrag;
@@ -251,30 +283,29 @@ function extractDataFromText(text: string, kontenrahmen: string = "SKR03"): OcrR
     }
   }
   
-  // 5. Geschäftspartner erkennen
-  for (const [keyword, info] of Object.entries(BEKANNTE_LIEFERANTEN)) {
-    if (textLower.includes(keyword)) {
-      result.geschaeftspartner = info.name;
-      result.geschaeftspartnerTyp = info.typ as "kreditor" | "debitor" | "sonstig";
-      result.erkannteFelder.push("geschaeftspartner");
-      konfidenzPunkte += 15;
-      break;
-    }
-  }
-  
-  // 6. Sachkonto vorschlagen basierend auf Keywords
+  // 5. Geschäftspartner und Sachkonto erkennen
   for (const [keyword, konto] of Object.entries(SACHKONTO_KEYWORDS)) {
-    if (textLower.includes(keyword)) {
-      result.sachkonto = kontenrahmen === "SKR04" ? konto.skr04 : konto.skr03;
-      result.sachkontoBeschreibung = konto.beschreibung;
-      result.buchungsart = konto.skr03.startsWith("8") || konto.skr04.startsWith("4") ? "ertrag" : "aufwand";
-      result.erkannteFelder.push("sachkonto");
-      konfidenzPunkte += 10;
+    if (textLower.includes(keyword.toLowerCase())) {
+      if (!result.geschaeftspartner) {
+        // Kapitalisiere den ersten Buchstaben
+        result.geschaeftspartner = keyword.charAt(0).toUpperCase() + keyword.slice(1);
+        result.geschaeftspartnerTyp = "kreditor";
+        result.erkannteFelder.push("geschaeftspartner");
+        konfidenzPunkte += 15;
+      }
+      
+      if (!result.sachkonto) {
+        result.sachkonto = kontenrahmen === "SKR04" ? konto.skr04 : konto.skr03;
+        result.sachkontoBeschreibung = konto.beschreibung;
+        result.buchungsart = konto.skr03.startsWith("8") || konto.skr04.startsWith("4") ? "ertrag" : "aufwand";
+        result.erkannteFelder.push("sachkonto");
+        konfidenzPunkte += 10;
+      }
       break;
     }
   }
   
-  // 7. IBAN extrahieren
+  // 6. IBAN extrahieren
   const ibanMatch = text.match(PATTERNS.iban);
   if (ibanMatch) {
     result.iban = ibanMatch[0].replace(/\s/g, "");
@@ -282,7 +313,7 @@ function extractDataFromText(text: string, kontenrahmen: string = "SKR03"): OcrR
     konfidenzPunkte += 5;
   }
   
-  // 8. USt-IdNr extrahieren
+  // 7. USt-IdNr extrahieren
   const ustIdNrMatch = text.match(PATTERNS.ustIdNr);
   if (ustIdNrMatch) {
     result.ustIdNr = ustIdNrMatch[0].replace(/\s/g, "");
@@ -290,21 +321,171 @@ function extractDataFromText(text: string, kontenrahmen: string = "SKR03"): OcrR
     konfidenzPunkte += 5;
   }
   
-  // Konfidenz berechnen (max 100)
+  // Konfidenz berechnen
   result.konfidenz = Math.min(konfidenzPunkte, 100);
   
-  // Standardwerte setzen falls nicht erkannt
+  // Standardwerte
   if (!result.steuersatz) {
-    result.steuersatz = 19; // Standard-Steuersatz
+    result.steuersatz = 19;
   }
   if (!result.buchungsart) {
-    result.buchungsart = "aufwand"; // Standard: Aufwand
+    result.buchungsart = "aufwand";
   }
   if (!result.geschaeftspartnerTyp) {
-    result.geschaeftspartnerTyp = "kreditor"; // Standard: Kreditor
+    result.geschaeftspartnerTyp = "kreditor";
   }
   
   return result;
+}
+
+// Vision-AI basierte OCR-Analyse
+async function analyzeImageWithVision(
+  imageBase64: string, 
+  mimeType: string,
+  kontenrahmen: string = "SKR03"
+): Promise<OcrResult> {
+  const systemPrompt = `Du bist ein Experte für die Analyse von deutschen Geschäftsbelegen und Rechnungen.
+Analysiere das Bild und extrahiere folgende Informationen:
+
+1. Belegdatum (im Format YYYY-MM-DD)
+2. Belegnummer/Rechnungsnummer
+3. Nettobetrag (als Zahl, z.B. 84.03)
+4. Bruttobetrag (als Zahl, z.B. 100.00)
+5. Steuersatz (als Zahl, z.B. 19)
+6. Steuerbetrag (als Zahl)
+7. Name des Geschäftspartners/Lieferanten
+8. IBAN (falls vorhanden)
+9. USt-IdNr (falls vorhanden)
+
+Antworte NUR mit einem JSON-Objekt im folgenden Format:
+{
+  "belegdatum": "YYYY-MM-DD" oder null,
+  "belegnummer": "string" oder null,
+  "nettobetrag": number oder null,
+  "bruttobetrag": number oder null,
+  "steuersatz": number oder null,
+  "steuerbetrag": number oder null,
+  "geschaeftspartner": "string" oder null,
+  "iban": "string" oder null,
+  "ustIdNr": "string" oder null,
+  "erkannterText": "Der vollständige erkannte Text aus dem Beleg"
+}
+
+Wichtig:
+- Beträge immer als Dezimalzahlen mit Punkt als Dezimaltrennzeichen (z.B. 100.00, nicht 100,00)
+- Datum immer im Format YYYY-MM-DD
+- Wenn ein Wert nicht erkennbar ist, setze null
+- Der Geschäftspartner ist der Rechnungssteller/Lieferant, NICHT der Empfänger`;
+
+  try {
+    const messages: Message[] = [
+      {
+        role: "system",
+        content: systemPrompt
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Analysiere diesen Beleg und extrahiere die Rechnungsdaten:"
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${imageBase64}`,
+              detail: "high"
+            }
+          }
+        ]
+      }
+    ];
+
+    const response = await invokeLLM({ messages });
+    
+    const content = response.choices[0]?.message?.content;
+    if (!content || typeof content !== "string") {
+      throw new Error("Keine Antwort von Vision-AI erhalten");
+    }
+
+    // Parse JSON aus der Antwort
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("Keine JSON-Antwort gefunden");
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    
+    // Erstelle OcrResult aus der Vision-Antwort
+    const result: OcrResult = {
+      belegdatum: parsed.belegdatum || null,
+      belegnummer: parsed.belegnummer || null,
+      nettobetrag: typeof parsed.nettobetrag === "number" ? parsed.nettobetrag : null,
+      bruttobetrag: typeof parsed.bruttobetrag === "number" ? parsed.bruttobetrag : null,
+      steuersatz: typeof parsed.steuersatz === "number" ? parsed.steuersatz : null,
+      steuerbetrag: typeof parsed.steuerbetrag === "number" ? parsed.steuerbetrag : null,
+      geschaeftspartner: parsed.geschaeftspartner || null,
+      geschaeftspartnerTyp: "kreditor",
+      sachkonto: null,
+      sachkontoBeschreibung: null,
+      buchungsart: "aufwand",
+      iban: parsed.iban || null,
+      ustIdNr: parsed.ustIdNr || null,
+      konfidenz: 0,
+      erkannteFelder: [],
+      rohtext: parsed.erkannterText || "",
+    };
+
+    // Berechne Konfidenz basierend auf erkannten Feldern
+    let konfidenzPunkte = 0;
+    if (result.belegdatum) { konfidenzPunkte += 15; result.erkannteFelder.push("belegdatum"); }
+    if (result.belegnummer) { konfidenzPunkte += 10; result.erkannteFelder.push("belegnummer"); }
+    if (result.bruttobetrag) { konfidenzPunkte += 20; result.erkannteFelder.push("bruttobetrag"); }
+    if (result.nettobetrag) { konfidenzPunkte += 15; result.erkannteFelder.push("nettobetrag"); }
+    if (result.steuersatz) { konfidenzPunkte += 10; result.erkannteFelder.push("steuersatz"); }
+    if (result.geschaeftspartner) { konfidenzPunkte += 15; result.erkannteFelder.push("geschaeftspartner"); }
+    if (result.iban) { konfidenzPunkte += 5; result.erkannteFelder.push("iban"); }
+    if (result.ustIdNr) { konfidenzPunkte += 5; result.erkannteFelder.push("ustIdNr"); }
+    
+    result.konfidenz = Math.min(konfidenzPunkte, 100);
+
+    // Sachkonto basierend auf Geschäftspartner vorschlagen
+    if (result.geschaeftspartner) {
+      const partnerLower = result.geschaeftspartner.toLowerCase();
+      for (const [keyword, konto] of Object.entries(SACHKONTO_KEYWORDS)) {
+        if (partnerLower.includes(keyword.toLowerCase())) {
+          result.sachkonto = kontenrahmen === "SKR04" ? konto.skr04 : konto.skr03;
+          result.sachkontoBeschreibung = konto.beschreibung;
+          result.erkannteFelder.push("sachkonto");
+          break;
+        }
+      }
+    }
+
+    // Fallback: Versuche Sachkonto aus dem Rohtext zu ermitteln
+    if (!result.sachkonto && result.rohtext) {
+      const textLower = result.rohtext.toLowerCase();
+      for (const [keyword, konto] of Object.entries(SACHKONTO_KEYWORDS)) {
+        if (textLower.includes(keyword.toLowerCase())) {
+          result.sachkonto = kontenrahmen === "SKR04" ? konto.skr04 : konto.skr03;
+          result.sachkontoBeschreibung = konto.beschreibung;
+          result.erkannteFelder.push("sachkonto");
+          break;
+        }
+      }
+    }
+
+    // Standardwerte
+    if (!result.steuersatz) {
+      result.steuersatz = 19;
+    }
+
+    return result;
+  } catch (error) {
+    console.error("[OCR] Vision-AI Fehler:", error);
+    // Fallback auf Text-basierte Extraktion
+    return extractDataFromText("", kontenrahmen);
+  }
 }
 
 // ============================================
@@ -316,67 +497,68 @@ export const ocrRouter = router({
     .input(
       z.object({
         text: z.string(),
-        kontenrahmen: z.enum(["SKR03", "SKR04"]).default("SKR03"),
+        kontenrahmen: z.enum(["SKR03", "SKR04", "OeKR", "RLG", "KMU", "OR", "UK_GAAP", "IFRS", "CY_GAAP"]).default("SKR03"),
       })
     )
     .mutation(async ({ input }) => {
-      return extractDataFromText(input.text, input.kontenrahmen);
+      // Konvertiere internationale Kontenrahmen zu SKR03/SKR04 für die Kontenzuordnung
+      const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen) 
+        ? input.kontenrahmen 
+        : "SKR03";
+      return extractDataFromText(input.text, effectiveKontenrahmen);
     }),
 
-  // Simulierte OCR für Demo-Zwecke (ohne echte OCR-Engine)
-  // In Produktion würde hier eine echte OCR-API (Google Vision, AWS Textract, etc.) verwendet
+  // Vision-AI basierte OCR für Bilder
+  analyzeImage: protectedProcedure
+    .input(
+      z.object({
+        imageBase64: z.string(),
+        mimeType: z.string(),
+        kontenrahmen: z.enum(["SKR03", "SKR04", "OeKR", "RLG", "KMU", "OR", "UK_GAAP", "IFRS", "CY_GAAP"]).default("SKR03"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen) 
+        ? input.kontenrahmen 
+        : "SKR03";
+      return analyzeImageWithVision(input.imageBase64, input.mimeType, effectiveKontenrahmen);
+    }),
+
+  // Simulierte OCR für Demo-Zwecke (Fallback)
   simulateOcr: protectedProcedure
     .input(
       z.object({
         filename: z.string(),
-        kontenrahmen: z.enum(["SKR03", "SKR04"]).default("SKR03"),
+        kontenrahmen: z.enum(["SKR03", "SKR04", "OeKR", "RLG", "KMU", "OR", "UK_GAAP", "IFRS", "CY_GAAP"]).default("SKR03"),
       })
     )
     .mutation(async ({ input }) => {
-      // Simuliere OCR basierend auf Dateinamen
       const filename = input.filename.toLowerCase();
       let simulatedText = "";
       
-      if (filename.includes("rechnung") || filename.includes("invoice")) {
+      if (filename.includes("tenios")) {
+        simulatedText = `
+          Tenios GmbH
+          Rechnung Nr. T218680
+          Datum: 06.01.2026
+          
+          VoIP Telefonie Services
+          Nettobetrag: 50,42 €
+          MwSt 19%: 9,58 €
+          Bruttobetrag: 60,00 €
+        `;
+      } else if (filename.includes("rechnung") || filename.includes("invoice")) {
         simulatedText = `
           Rechnung Nr. RE-2024-001
           Datum: 15.12.2024
           
           Amazon EU S.à r.l.
-          USt-IdNr: LU26375245
-          
           Büromaterial
           Nettobetrag: 84,03 €
           MwSt 19%: 15,97 €
           Bruttobetrag: 100,00 €
-          
-          IBAN: DE89 3704 0044 0532 0130 00
-        `;
-      } else if (filename.includes("tankquittung") || filename.includes("tanken")) {
-        simulatedText = `
-          Shell Station
-          Datum: 20.12.2024
-          
-          Diesel: 45,50 Liter
-          Preis: 1,659 €/L
-          
-          Netto: 63,45 €
-          MwSt 19%: 12,06 €
-          Brutto: 75,51 €
-        `;
-      } else if (filename.includes("hotel") || filename.includes("reise")) {
-        simulatedText = `
-          Hotel Beispiel GmbH
-          Rechnung Nr. H-2024-5678
-          Datum: 10.12.2024
-          
-          Übernachtung 2 Nächte
-          Netto: 168,07 €
-          MwSt 7%: 11,76 €
-          Brutto: 179,83 €
         `;
       } else {
-        // Generische Rechnung
         simulatedText = `
           Lieferant GmbH
           Rechnung Nr. R-${Date.now()}
@@ -389,7 +571,10 @@ export const ocrRouter = router({
         `;
       }
       
-      return extractDataFromText(simulatedText, input.kontenrahmen);
+      const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen) 
+        ? input.kontenrahmen 
+        : "SKR03";
+      return extractDataFromText(simulatedText, effectiveKontenrahmen);
     }),
 });
 

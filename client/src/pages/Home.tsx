@@ -178,6 +178,10 @@ export default function Home() {
   const [buchungen, setBuchungen] = useState<Buchung[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [selectedBuchungId, setSelectedBuchungId] = useState<string | null>(null);
+  const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
+
+  // OCR Mutation
+  const ocrMutation = trpc.ocr.analyzeImage.useMutation();
 
   // Finde die ausgewählte Buchung für die Vorschau
   const selectedBuchung = buchungen.find(b => b.id === selectedBuchungId);
@@ -199,6 +203,84 @@ export default function Home() {
     belegDatei: null,
     status: "pending"
   }), []);
+
+  // OCR-Analyse für einen Beleg durchführen
+  const analyzeBeleg = useCallback(async (buchungId: string, file: File) => {
+    if (!file || analyzingIds.has(buchungId)) return;
+    
+    // Nur Bilder analysieren (PDFs werden später unterstützt)
+    if (!file.type.startsWith("image/")) {
+      toast.info("OCR-Analyse ist derzeit nur für Bilder verfügbar");
+      return;
+    }
+
+    setAnalyzingIds(prev => new Set(prev).add(buchungId));
+    
+    try {
+      // Datei zu Base64 konvertieren
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Entferne den Data-URL-Prefix
+          const base64Data = result.split(",")[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const result = await ocrMutation.mutateAsync({
+        imageBase64: base64,
+        mimeType: file.type,
+        kontenrahmen: "SKR04" // TODO: Aus Firmeneinstellungen laden
+      });
+
+      // Aktualisiere die Buchung mit den erkannten Daten
+      setBuchungen(prev => prev.map(b => {
+        if (b.id !== buchungId) return b;
+        
+        const updated = { ...b };
+        
+        if (result.belegdatum) updated.belegdatum = result.belegdatum;
+        if (result.belegnummer) updated.belegnummer = result.belegnummer;
+        if (result.geschaeftspartner) updated.geschaeftspartner = result.geschaeftspartner;
+        if (result.nettobetrag) updated.nettobetrag = result.nettobetrag.toFixed(2).replace(".", ",");
+        if (result.bruttobetrag) updated.bruttobetrag = result.bruttobetrag.toFixed(2).replace(".", ",");
+        if (result.steuersatz) updated.steuersatz = String(result.steuersatz);
+        if (result.sachkonto) updated.sachkonto = result.sachkonto;
+        if (result.sachkontoBeschreibung) updated.buchungstext = result.sachkontoBeschreibung;
+        
+        // Status aktualisieren
+        const isComplete = 
+          updated.belegdatum && 
+          updated.belegnummer && 
+          updated.geschaeftspartner && 
+          updated.sachkonto && 
+          updated.bruttobetrag;
+        
+        updated.status = isComplete ? "complete" : "pending";
+        
+        return updated;
+      }));
+
+      const erkannteAnzahl = result.erkannteFelder.length;
+      if (erkannteAnzahl > 0) {
+        toast.success(`${erkannteAnzahl} Felder automatisch erkannt (${result.konfidenz}% Konfidenz)`);
+      } else {
+        toast.info("Keine Daten automatisch erkannt");
+      }
+    } catch (error) {
+      console.error("OCR Fehler:", error);
+      toast.error("Fehler bei der Belegerkennung");
+    } finally {
+      setAnalyzingIds(prev => {
+        const next = new Set(prev);
+        next.delete(buchungId);
+        return next;
+      });
+    }
+  }, [analyzingIds, ocrMutation]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -222,30 +304,50 @@ export default function Home() {
     );
     
     if (validFiles.length > 0) {
-      const newBuchungen = validFiles.map(file => ({
-        ...createEmptyBuchung(),
-        belegDatei: file,
-        belegnummer: file.name.replace(/\.[^/.]+$/, "").slice(0, 20)
-      }));
+      const newBuchungen = validFiles.map(file => {
+        const buchung = {
+          ...createEmptyBuchung(),
+          belegDatei: file,
+          belegnummer: file.name.replace(/\.[^/.]+$/, "").slice(0, 20)
+        };
+        return buchung;
+      });
       setBuchungen(prev => [...prev, ...newBuchungen]);
-      toast.success(`${validFiles.length} Beleg(e) hinzugefügt`);
+      toast.success(`${validFiles.length} Beleg(e) hinzugefügt - Starte automatische Erkennung...`);
+      
+      // Starte OCR-Analyse für jeden Beleg
+      newBuchungen.forEach(buchung => {
+        if (buchung.belegDatei) {
+          setTimeout(() => analyzeBeleg(buchung.id, buchung.belegDatei!), 100);
+        }
+      });
     } else {
       toast.error("Bitte nur PDF oder Bilddateien hochladen");
     }
-  }, [createEmptyBuchung]);
+  }, [createEmptyBuchung, analyzeBeleg]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      const newBuchungen = files.map(file => ({
-        ...createEmptyBuchung(),
-        belegDatei: file,
-        belegnummer: file.name.replace(/\.[^/.]+$/, "").slice(0, 20)
-      }));
+      const newBuchungen = files.map(file => {
+        const buchung = {
+          ...createEmptyBuchung(),
+          belegDatei: file,
+          belegnummer: file.name.replace(/\.[^/.]+$/, "").slice(0, 20)
+        };
+        return buchung;
+      });
       setBuchungen(prev => [...prev, ...newBuchungen]);
-      toast.success(`${files.length} Beleg(e) hinzugefügt`);
+      toast.success(`${files.length} Beleg(e) hinzugefügt - Starte automatische Erkennung...`);
+      
+      // Starte OCR-Analyse für jeden Beleg
+      newBuchungen.forEach(buchung => {
+        if (buchung.belegDatei) {
+          setTimeout(() => analyzeBeleg(buchung.id, buchung.belegDatei!), 100);
+        }
+      });
     }
-  }, [createEmptyBuchung]);
+  }, [createEmptyBuchung, analyzeBeleg]);
 
   const addEmptyBuchung = useCallback(() => {
     setBuchungen(prev => [...prev, createEmptyBuchung()]);
@@ -615,15 +717,42 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Delete Button */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => removeBuchung(buchung.id)}
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </Button>
+                      {/* Action Buttons */}
+                      <div className="flex flex-col gap-2">
+                        {/* Analyse Button */}
+                        {buchung.belegDatei && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              analyzeBeleg(buchung.id, buchung.belegDatei!);
+                            }}
+                            disabled={analyzingIds.has(buchung.id)}
+                            title="Beleg erneut analysieren"
+                          >
+                            {analyzingIds.has(buchung.id) ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                              <Wand2 className="w-5 h-5" />
+                            )}
+                          </Button>
+                        )}
+                        
+                        {/* Delete Button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeBuchung(buchung.id);
+                          }}
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Beleg Info */}
@@ -632,6 +761,12 @@ export default function Home() {
                         <FileText className="w-4 h-4" />
                         <span>{buchung.belegDatei.name}</span>
                         <span className="text-xs">({(buchung.belegDatei.size / 1024).toFixed(1)} KB)</span>
+                        {analyzingIds.has(buchung.id) && (
+                          <span className="flex items-center gap-1 text-primary ml-2">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span className="text-xs">Analysiere...</span>
+                          </span>
+                        )}
                       </div>
                     )}
                   </CardContent>
