@@ -180,3 +180,10 @@
 - [x] Sachkonten-Dropdown in der Buchungsmaske implementieren
 - [x] Kategorien als Gruppen im Dropdown anzeigen
 - [x] Unit-Tests für Sachkonten-Router erstellt
+
+
+## Erweiterte Sachkonten-Funktionen
+- [x] Sachkonten in der Stammdaten-Seite anzeigen und bearbeiten
+- [x] Suchfunktion im Sachkonto-Dropdown implementieren (Combobox mit Suche)
+- [x] Standard-Sachkonto pro Lieferant (Kreditor) hinzugefügt
+- [x] Automatische Sachkonto-Vorschläge bei Lieferantenauswahl

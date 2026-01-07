@@ -35,8 +35,10 @@ import {
   Search,
   Factory,
   UserCircle,
-  PiggyBank
+  PiggyBank,
+  Calculator
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 // Typen für alle Stammdaten
 interface Stammdatum {
@@ -71,6 +73,7 @@ const STAMMDATEN_TYPEN = [
       { key: "ustid", label: "USt-IdNr." },
       { key: "iban", label: "IBAN" },
       { key: "zahlungsziel", label: "Zahlungsziel (Tage)" },
+      { key: "standardSachkonto", label: "Standard-Sachkonto" },
     ]
   },
   { 
@@ -210,6 +213,22 @@ const STAMMDATEN_TYPEN = [
       { key: "buchungskonto", label: "Buchungskonto" },
     ]
   },
+  { 
+    value: "sachkonto", 
+    label: "Sachkonten", 
+    labelSingular: "Sachkonto",
+    icon: Calculator, 
+    color: "text-cyan-600",
+    bgColor: "bg-cyan-100",
+    kontobereich: "4000-7999",
+    felder: [
+      { key: "kontonummer", label: "Kontonummer", required: true },
+      { key: "bezeichnung", label: "Bezeichnung", required: true },
+      { key: "kategorie", label: "Kategorie" },
+      { key: "kontotyp", label: "Kontotyp (aufwand/ertrag/aktiv/passiv)" },
+      { key: "standardSteuersatz", label: "Standard-Steuersatz (%)" },
+    ]
+  },
 ];
 
 function generateId(): string {
@@ -244,11 +263,73 @@ export default function Stammdaten() {
   const [suchbegriff, setSuchbegriff] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<Stammdatum | null>(null);
+  const [editingSachkontoId, setEditingSachkontoId] = useState<number | null>(null);
 
   // Formular-State
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [formKontonummer, setFormKontonummer] = useState("");
   const [formNotizen, setFormNotizen] = useState("");
+
+  // Hole die ausgewählte Unternehmens-ID aus dem LocalStorage
+  const [selectedUnternehmenId, setSelectedUnternehmenId] = useState<number | null>(() => {
+    const saved = localStorage.getItem("selectedUnternehmenId");
+    return saved ? parseInt(saved) : null;
+  });
+
+  // Lade Sachkonten für das ausgewählte Unternehmen
+  const { data: sachkontenList, refetch: refetchSachkonten } = trpc.stammdaten.sachkonten.list.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId && activeTab === "sachkonto" }
+  );
+
+  // Mutations für Sachkonten
+  const createSachkontoMutation = trpc.stammdaten.sachkonten.create.useMutation({
+    onSuccess: () => {
+      refetchSachkonten();
+      toast.success("Sachkonto erstellt");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const updateSachkontoMutation = trpc.stammdaten.sachkonten.update.useMutation({
+    onSuccess: () => {
+      refetchSachkonten();
+      toast.success("Sachkonto aktualisiert");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const deleteSachkontoMutation = trpc.stammdaten.sachkonten.delete.useMutation({
+    onSuccess: () => {
+      refetchSachkonten();
+      toast.info("Sachkonto gelöscht");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  // Aktualisiere selectedUnternehmenId wenn sich LocalStorage ändert
+  useEffect(() => {
+    const checkStorage = () => {
+      const saved = localStorage.getItem("selectedUnternehmenId");
+      const newId = saved ? parseInt(saved) : null;
+      if (newId !== selectedUnternehmenId) {
+        setSelectedUnternehmenId(newId);
+      }
+    };
+    
+    const interval = setInterval(checkStorage, 1000);
+    return () => clearInterval(interval);
+  }, [selectedUnternehmenId]);
 
   useEffect(() => {
     setStammdaten(loadStammdaten());
@@ -261,6 +342,7 @@ export default function Stammdaten() {
     setFormKontonummer("");
     setFormNotizen("");
     setEditItem(null);
+    setEditingSachkontoId(null);
   }, []);
 
   const openNewDialog = useCallback(() => {
@@ -285,6 +367,41 @@ export default function Stammdaten() {
       return;
     }
 
+    // Spezielle Behandlung für Sachkonten (Datenbank)
+    if (activeTab === "sachkonto") {
+      if (!selectedUnternehmenId) {
+        toast.error("Bitte wählen Sie zuerst ein Unternehmen aus");
+        return;
+      }
+
+      if (editingSachkontoId) {
+        // Sachkonto aktualisieren
+        updateSachkontoMutation.mutate({
+          id: editingSachkontoId,
+          kontonummer: formData.kontonummer,
+          bezeichnung: formData.bezeichnung,
+          kategorie: formData.kategorie || undefined,
+          kontotyp: (formData.kontotyp as any) || undefined,
+          standardSteuersatz: formData.standardSteuersatz || undefined,
+          notizen: formNotizen || undefined,
+        });
+      } else {
+        // Neues Sachkonto erstellen
+        createSachkontoMutation.mutate({
+          unternehmenId: selectedUnternehmenId,
+          kontenrahmen: "SKR04",
+          kontonummer: formData.kontonummer,
+          bezeichnung: formData.bezeichnung,
+          kategorie: formData.kategorie || undefined,
+          kontotyp: (formData.kontotyp as any) || undefined,
+          standardSteuersatz: formData.standardSteuersatz || undefined,
+          notizen: formNotizen || undefined,
+        });
+      }
+      return;
+    }
+
+    // Standard-Behandlung für andere Stammdaten (LocalStorage)
     const now = new Date().toISOString();
     const name = formData[activeTypConfig.felder[0].key] || "Unbenannt";
     
@@ -316,7 +433,7 @@ export default function Stammdaten() {
 
     setDialogOpen(false);
     resetForm();
-  }, [activeTab, activeTypConfig, formData, formKontonummer, formNotizen, editItem, stammdaten, resetForm]);
+  }, [activeTab, activeTypConfig, formData, formKontonummer, formNotizen, editItem, stammdaten, resetForm, selectedUnternehmenId, editingSachkontoId, createSachkontoMutation, updateSachkontoMutation]);
 
   const handleDelete = useCallback((id: string) => {
     const updated = stammdaten.filter(s => s.id !== id);
@@ -324,6 +441,36 @@ export default function Stammdaten() {
     saveStammdaten(updated);
     toast.info(`${activeTypConfig.labelSingular} gelöscht`);
   }, [stammdaten, activeTypConfig]);
+
+  // Sachkonto löschen (Datenbank)
+  const handleDeleteSachkonto = useCallback((id: number) => {
+    if (confirm("Möchten Sie dieses Sachkonto wirklich löschen?")) {
+      deleteSachkontoMutation.mutate({ id });
+    }
+  }, [deleteSachkontoMutation]);
+
+  // Sachkonto bearbeiten
+  const openEditSachkontoDialog = useCallback((sachkonto: any) => {
+    setEditingSachkontoId(sachkonto.id);
+    setFormData({
+      kontonummer: sachkonto.kontonummer,
+      bezeichnung: sachkonto.bezeichnung,
+      kategorie: sachkonto.kategorie || "",
+      kontotyp: sachkonto.kontotyp || "",
+      standardSteuersatz: sachkonto.standardSteuersatz || "",
+    });
+    setFormNotizen(sachkonto.notizen || "");
+    setDialogOpen(true);
+  }, []);
+
+  // Gefilterte Sachkonten
+  const gefilterteSachkonten = sachkontenList?.filter(s => {
+    if (!suchbegriff) return true;
+    const searchLower = suchbegriff.toLowerCase();
+    return s.kontonummer.toLowerCase().includes(searchLower) ||
+           s.bezeichnung.toLowerCase().includes(searchLower) ||
+           (s.kategorie?.toLowerCase().includes(searchLower) ?? false);
+  }) || [];
 
   // Gefilterte Daten für aktiven Tab
   const gefilterteDaten = stammdaten.filter(s => {
@@ -357,7 +504,10 @@ export default function Stammdaten() {
             <TabsList className="inline-flex h-auto p-1 bg-muted/50">
               {STAMMDATEN_TYPEN.map((typ) => {
                 const TabIcon = typ.icon;
-                const count = stammdaten.filter(s => s.typ === typ.value).length;
+                // Für Sachkonten: Zähle aus der Datenbank, sonst aus LocalStorage
+                const count = typ.value === "sachkonto" 
+                  ? (sachkontenList?.length || 0)
+                  : stammdaten.filter(s => s.typ === typ.value).length;
                 return (
                   <TabsTrigger 
                     key={typ.value} 
@@ -395,7 +545,96 @@ export default function Stammdaten() {
           {/* Inhalt für jeden Tab */}
           {STAMMDATEN_TYPEN.map((typ) => (
             <TabsContent key={typ.value} value={typ.value} className="mt-0">
-              {gefilterteDaten.length === 0 ? (
+              {/* Spezielle Anzeige für Sachkonten */}
+              {typ.value === "sachkonto" ? (
+                !selectedUnternehmenId ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <Calculator className="w-12 h-12 mx-auto mb-4 opacity-50 text-cyan-600" />
+                      <p className="font-medium">Kein Unternehmen ausgewählt</p>
+                      <p className="text-sm">Bitte wählen Sie zuerst ein Unternehmen aus</p>
+                    </div>
+                  </Card>
+                ) : gefilterteSachkonten.length === 0 ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <Calculator className="w-12 h-12 mx-auto mb-4 opacity-50 text-cyan-600" />
+                      <p className="font-medium">Keine Sachkonten vorhanden</p>
+                      <p className="text-sm">Legen Sie ein neues Sachkonto an</p>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {gefilterteSachkonten.map((sachkonto) => (
+                      <Card key={sachkonto.id} className="flex flex-col">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center">
+                                <Calculator className="w-5 h-5 text-cyan-600" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-base font-mono">{sachkonto.kontonummer}</CardTitle>
+                                <CardDescription className="text-sm">
+                                  {sachkonto.bezeichnung}
+                                </CardDescription>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => openEditSachkontoDialog(sachkonto)}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteSachkonto(sachkonto.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 pt-0">
+                          <div className="space-y-1 text-sm">
+                            {sachkonto.kategorie && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Kategorie:</span>
+                                <span className="font-medium">{sachkonto.kategorie}</span>
+                              </div>
+                            )}
+                            {sachkonto.kontotyp && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Typ:</span>
+                                <span className="font-medium capitalize">{sachkonto.kontotyp}</span>
+                              </div>
+                            )}
+                            {sachkonto.standardSteuersatz && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Steuersatz:</span>
+                                <span className="font-medium">{sachkonto.standardSteuersatz}%</span>
+                              </div>
+                            )}
+                          </div>
+                          {sachkonto.notizen && (
+                            <>
+                              <Separator className="my-3" />
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {sachkonto.notizen}
+                              </p>
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : gefilterteDaten.length === 0 ? (
                 <Card className="p-12">
                   <div className="text-center text-muted-foreground">
                     <Icon className={`w-12 h-12 mx-auto mb-4 opacity-50 ${typ.color}`} />

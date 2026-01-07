@@ -179,6 +179,7 @@ export const kreditoren = mysqlTable("kreditoren", {
   zahlungsziel: int("zahlungsziel").default(30),
   skonto: decimal("skonto", { precision: 5, scale: 2 }),
   skontofrist: int("skontofrist"),
+  standardSachkonto: varchar("standardSachkonto", { length: 20 }),
   notizen: text("notizen"),
   aktiv: boolean("aktiv").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

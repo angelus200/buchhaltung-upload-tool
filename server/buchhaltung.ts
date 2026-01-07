@@ -565,6 +565,7 @@ export const stammdatenRouter = router({
           zahlungsziel: z.number().optional(),
           skonto: z.string().optional(),
           skontofrist: z.number().optional(),
+          standardSachkonto: z.string().optional(),
           notizen: z.string().optional(),
         })
       )

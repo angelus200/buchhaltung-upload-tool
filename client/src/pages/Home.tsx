@@ -37,6 +37,7 @@ import {
 import { Link } from "wouter";
 import AppHeader from "@/components/AppHeader";
 import BelegVorschau from "@/components/BelegVorschau";
+import { SachkontoCombobox } from "@/components/SachkontoCombobox";
 import { trpc } from "@/lib/trpc";
 
 interface Buchung {
@@ -183,6 +184,12 @@ export default function Home() {
 
   // Lade Sachkonten für das ausgewählte Unternehmen
   const { data: sachkontenGrouped } = trpc.stammdaten.sachkonten.listGrouped.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId }
+  );
+
+  // Lade Kreditoren für automatische Sachkonto-Zuordnung
+  const { data: kreditorenList } = trpc.stammdaten.kreditoren.list.useQuery(
     { unternehmenId: selectedUnternehmenId! },
     { enabled: !!selectedUnternehmenId }
   );
@@ -410,6 +417,14 @@ export default function Home() {
         }
       }
       
+      // Auto-update Sachkonto bei Personenkonto-Änderung (basierend auf Kreditor-Stammdaten)
+      if (field === "geschaeftspartnerKonto" && kreditorenList) {
+        const kreditor = kreditorenList.find(k => k.kontonummer === value);
+        if (kreditor?.standardSachkonto && !updated.sachkonto) {
+          updated.sachkonto = kreditor.standardSachkonto;
+        }
+      }
+      
       // Auto-calculate brutto when netto or steuersatz changes
       if (field === "nettobetrag" || field === "steuersatz") {
         const netto = field === "nettobetrag" ? value as string : b.nettobetrag;
@@ -429,7 +444,7 @@ export default function Home() {
       
       return updated;
     }));
-  }, []);
+  }, [kreditorenList]);
 
   const handleExport = useCallback(() => {
     const completeBuchungen = buchungen.filter(b => b.status === "complete");
@@ -685,42 +700,16 @@ export default function Home() {
                           />
                         </div>
 
-                        {/* Sachkonto */}
+                        {/* Sachkonto mit Suchfunktion */}
                         <div className="space-y-2">
                           <Label>Sachkonto</Label>
-                          <Select 
-                            value={buchung.sachkonto} 
+                          <SachkontoCombobox
+                            value={buchung.sachkonto}
                             onValueChange={(v) => updateBuchung(buchung.id, "sachkonto", v)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Konto wählen" />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
-                              {hasDatabaseSachkonten ? (
-                                // Gruppierte Anzeige mit Kategorien aus der Datenbank
-                                Object.entries(sachkontenGrouped!).map(([kategorie, konten]) => (
-                                  <SelectGroup key={kategorie}>
-                                    <SelectLabel className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
-                                      {kategorie}
-                                    </SelectLabel>
-                                    {(konten as any[]).map((konto) => (
-                                      <SelectItem key={konto.kontonummer} value={konto.kontonummer}>
-                                        <span className="font-mono text-xs">{konto.kontonummer}</span>
-                                        <span className="ml-2">{konto.bezeichnung}</span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectGroup>
-                                ))
-                              ) : (
-                                // Fallback auf statischen Kontenrahmen
-                                getKontenForBuchungsart(buchung.buchungsart).map((k) => (
-                                  <SelectItem key={k.konto} value={k.konto}>
-                                    {k.konto} - {k.bezeichnung}
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
+                            sachkontenGrouped={sachkontenGrouped as any}
+                            fallbackKonten={getKontenForBuchungsart(buchung.buchungsart)}
+                            placeholder="Konto suchen..."
+                          />
                         </div>
 
                         {/* Kostenstelle */}
