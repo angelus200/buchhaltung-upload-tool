@@ -15,6 +15,7 @@ import {
   vertraege,
   buchungen,
   notizen,
+  sachkonten,
   InsertUnternehmen,
   InsertKreditor,
   InsertDebitor,
@@ -26,6 +27,7 @@ import {
   InsertVertrag,
   InsertBuchung,
   InsertNotiz,
+  InsertSachkonto,
 } from "../drizzle/schema";
 
 // ============================================
@@ -921,6 +923,88 @@ export const stammdatenRouter = router({
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
         await db.delete(vertraege).where(eq(vertraege.id, input.id));
+        return { success: true };
+      }),
+  }),
+
+  // Sachkonten
+  sachkonten: router({
+    list: protectedProcedure
+      .input(z.object({ unternehmenId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        // Hole firmenspezifische Sachkonten
+        const konten = await db
+          .select()
+          .from(sachkonten)
+          .where(eq(sachkonten.unternehmenId, input.unternehmenId))
+          .orderBy(sachkonten.kategorie, sachkonten.kontonummer);
+        return konten;
+      }),
+
+    // Gruppierte Liste für Dropdown mit Kategorien
+    listGrouped: protectedProcedure
+      .input(z.object({ unternehmenId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        
+        const konten = await db
+          .select()
+          .from(sachkonten)
+          .where(eq(sachkonten.unternehmenId, input.unternehmenId))
+          .orderBy(sachkonten.kategorie, sachkonten.kontonummer);
+        
+        // Gruppiere nach Kategorie
+        const grouped: Record<string, typeof konten> = {};
+        for (const konto of konten) {
+          const kategorie = konto.kategorie || "Sonstige";
+          if (!grouped[kategorie]) {
+            grouped[kategorie] = [];
+          }
+          grouped[kategorie].push(konto);
+        }
+        
+        return grouped;
+      }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          unternehmenId: z.number(),
+          kontenrahmen: z.enum(["SKR03", "SKR04", "OeKR", "RLG", "KMU", "OR", "UK_GAAP", "IFRS", "CY_GAAP"]).default("SKR04"),
+          kontonummer: z.string(),
+          bezeichnung: z.string(),
+          kategorie: z.string().optional(),
+          kontotyp: z.enum(["aktiv", "passiv", "aufwand", "ertrag", "neutral"]).optional(),
+          standardSteuersatz: z.string().optional(),
+          notizen: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+        const result = await db.insert(sachkonten).values(input as InsertSachkonto);
+        return { id: result[0].insertId };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({ id: z.number() }).passthrough())
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+        const { id, ...data } = input;
+        await db.update(sachkonten).set(data).where(eq(sachkonten.id, id));
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+        await db.delete(sachkonten).where(eq(sachkonten.id, input.id));
         return { success: true };
       }),
   }),

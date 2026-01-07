@@ -173,3 +173,10 @@
 - [x] Sachkonten-Tabelle im Schema definieren
 - [x] Datenbank-Migration durchgeführt
 - [x] SKR04-Konten aus JSON importiert (70+ Konten)
+
+
+## Sachkonten-Dropdown in Buchungsmaske
+- [x] API-Endpunkt für Sachkonten erstellen (list und listGrouped)
+- [x] Sachkonten-Dropdown in der Buchungsmaske implementieren
+- [x] Kategorien als Gruppen im Dropdown anzeigen
+- [x] Unit-Tests für Sachkonten-Router erstellt

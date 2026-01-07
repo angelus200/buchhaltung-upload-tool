@@ -1,9 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -174,6 +174,44 @@ function generateDATEVExport(buchungen: Buchung[]): string {
 
 export default function Home() {
   const { user } = useAuth();
+
+  // Hole die ausgewählte Unternehmens-ID aus dem LocalStorage
+  const [selectedUnternehmenId, setSelectedUnternehmenId] = useState<number | null>(() => {
+    const saved = localStorage.getItem("selectedUnternehmenId");
+    return saved ? parseInt(saved) : null;
+  });
+
+  // Lade Sachkonten für das ausgewählte Unternehmen
+  const { data: sachkontenGrouped } = trpc.stammdaten.sachkonten.listGrouped.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId }
+  );
+
+  // Aktualisiere selectedUnternehmenId wenn sich LocalStorage ändert
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem("selectedUnternehmenId");
+      setSelectedUnternehmenId(saved ? parseInt(saved) : null);
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Auch bei Fokus prüfen (für Änderungen im gleichen Tab)
+    const checkStorage = () => {
+      const saved = localStorage.getItem("selectedUnternehmenId");
+      const newId = saved ? parseInt(saved) : null;
+      if (newId !== selectedUnternehmenId) {
+        setSelectedUnternehmenId(newId);
+      }
+    };
+    
+    const interval = setInterval(checkStorage, 1000);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [selectedUnternehmenId]);
 
   const [buchungen, setBuchungen] = useState<Buchung[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -420,8 +458,25 @@ export default function Home() {
     .filter(b => b.status === "complete")
     .reduce((sum, b) => sum + parseFloat(b.bruttobetrag.replace(",", ".") || "0"), 0);
 
-  // Konten basierend auf Buchungsart
+  // Konten basierend auf Buchungsart - nutzt Sachkonten aus der Datenbank wenn verfügbar
   const getKontenForBuchungsart = (art: string) => {
+    // Wenn Sachkonten aus der Datenbank geladen sind, diese verwenden
+    if (sachkontenGrouped && Object.keys(sachkontenGrouped).length > 0) {
+      // Alle Sachkonten aus allen Kategorien zusammenführen
+      const allKonten: { konto: string; bezeichnung: string; kategorie?: string }[] = [];
+      for (const [kategorie, konten] of Object.entries(sachkontenGrouped)) {
+        for (const konto of konten as any[]) {
+          allKonten.push({
+            konto: konto.kontonummer,
+            bezeichnung: konto.bezeichnung,
+            kategorie
+          });
+        }
+      }
+      return allKonten;
+    }
+    
+    // Fallback auf statischen Kontenrahmen
     switch (art) {
       case "aufwand": return KONTENRAHMEN_SKR03.aufwand;
       case "ertrag": return KONTENRAHMEN_SKR03.ertrag;
@@ -429,6 +484,9 @@ export default function Home() {
       default: return [...KONTENRAHMEN_SKR03.finanz, ...KONTENRAHMEN_SKR03.eigenkapital];
     }
   };
+
+  // Prüfe ob Sachkonten aus der Datenbank verfügbar sind
+  const hasDatabaseSachkonten = sachkontenGrouped && Object.keys(sachkontenGrouped).length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -637,12 +695,30 @@ export default function Home() {
                             <SelectTrigger>
                               <SelectValue placeholder="Konto wählen" />
                             </SelectTrigger>
-                            <SelectContent>
-                              {getKontenForBuchungsart(buchung.buchungsart).map((k) => (
-                                <SelectItem key={k.konto} value={k.konto}>
-                                  {k.konto} - {k.bezeichnung}
-                                </SelectItem>
-                              ))}
+                            <SelectContent className="max-h-[300px]">
+                              {hasDatabaseSachkonten ? (
+                                // Gruppierte Anzeige mit Kategorien aus der Datenbank
+                                Object.entries(sachkontenGrouped!).map(([kategorie, konten]) => (
+                                  <SelectGroup key={kategorie}>
+                                    <SelectLabel className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
+                                      {kategorie}
+                                    </SelectLabel>
+                                    {(konten as any[]).map((konto) => (
+                                      <SelectItem key={konto.kontonummer} value={konto.kontonummer}>
+                                        <span className="font-mono text-xs">{konto.kontonummer}</span>
+                                        <span className="ml-2">{konto.bezeichnung}</span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                ))
+                              ) : (
+                                // Fallback auf statischen Kontenrahmen
+                                getKontenForBuchungsart(buchung.buchungsart).map((k) => (
+                                  <SelectItem key={k.konto} value={k.konto}>
+                                    {k.konto} - {k.bezeichnung}
+                                  </SelectItem>
+                                ))
+                              )}
                             </SelectContent>
                           </Select>
                         </div>
