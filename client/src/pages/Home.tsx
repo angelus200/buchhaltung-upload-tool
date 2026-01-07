@@ -56,6 +56,9 @@ interface Buchung {
   buchungstext: string;
   belegDatei: File | null;
   status: "pending" | "complete" | "error";
+  // Zusätzliche erkannte Felder
+  iban: string;
+  ustIdNr: string;
 }
 
 // Erweiterter Kontenrahmen SKR03
@@ -247,7 +250,9 @@ export default function Home() {
     bruttobetrag: "",
     buchungstext: "",
     belegDatei: null,
-    status: "pending"
+    status: "pending",
+    iban: "",
+    ustIdNr: ""
   }), []);
 
   // OCR-Analyse für einen Beleg durchführen (Bilder und PDFs)
@@ -308,6 +313,9 @@ export default function Home() {
         if (result.steuersatz) updated.steuersatz = String(result.steuersatz);
         if (result.sachkonto) updated.sachkonto = result.sachkonto;
         if (result.sachkontoBeschreibung) updated.buchungstext = result.sachkontoBeschreibung;
+        // Neue Felder: IBAN und USt-ID
+        if (result.iban) updated.iban = result.iban;
+        if (result.ustIdNr) updated.ustIdNr = result.ustIdNr;
         
         // Status aktualisieren
         const isComplete = 
@@ -833,17 +841,54 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Beleg Info */}
+                    {/* Beleg Info mit erkannten Daten */}
                     {buchung.belegDatei && (
-                      <div className="mt-4 pt-4 border-t flex items-center gap-2 text-sm text-muted-foreground">
-                        <FileText className="w-4 h-4" />
-                        <span>{buchung.belegDatei.name}</span>
-                        <span className="text-xs">({(buchung.belegDatei.size / 1024).toFixed(1)} KB)</span>
-                        {analyzingIds.has(buchung.id) && (
-                          <span className="flex items-center gap-1 text-primary ml-2">
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            <span className="text-xs">Analysiere...</span>
-                          </span>
+                      <div className="mt-4 pt-4 border-t space-y-3">
+                        {/* Datei-Info */}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <FileText className="w-4 h-4" />
+                          <span>{buchung.belegDatei.name}</span>
+                          <span className="text-xs">({(buchung.belegDatei.size / 1024).toFixed(1)} KB)</span>
+                          {analyzingIds.has(buchung.id) && (
+                            <span className="flex items-center gap-1 text-primary ml-2">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span className="text-xs">Analysiere...</span>
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Erkannte Daten - nur anzeigen wenn vorhanden */}
+                        {(buchung.belegdatum || buchung.belegnummer || buchung.iban || buchung.ustIdNr) && (
+                          <div className="flex flex-wrap gap-4 text-xs">
+                            {buchung.belegdatum && (
+                              <div className="flex items-center gap-1.5 bg-primary/5 px-2 py-1 rounded">
+                                <Calendar className="w-3 h-3 text-primary" />
+                                <span className="text-muted-foreground">Datum:</span>
+                                <span className="font-medium">{new Date(buchung.belegdatum).toLocaleDateString('de-DE')}</span>
+                              </div>
+                            )}
+                            {buchung.belegnummer && (
+                              <div className="flex items-center gap-1.5 bg-primary/5 px-2 py-1 rounded">
+                                <Hash className="w-3 h-3 text-primary" />
+                                <span className="text-muted-foreground">Beleg-Nr:</span>
+                                <span className="font-medium font-mono">{buchung.belegnummer}</span>
+                              </div>
+                            )}
+                            {buchung.iban && (
+                              <div className="flex items-center gap-1.5 bg-green-50 px-2 py-1 rounded">
+                                <Building2 className="w-3 h-3 text-green-600" />
+                                <span className="text-muted-foreground">IBAN:</span>
+                                <span className="font-medium font-mono text-green-700">{buchung.iban}</span>
+                              </div>
+                            )}
+                            {buchung.ustIdNr && (
+                              <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded">
+                                <FileSpreadsheet className="w-3 h-3 text-blue-600" />
+                                <span className="text-muted-foreground">USt-ID:</span>
+                                <span className="font-medium font-mono text-blue-700">{buchung.ustIdNr}</span>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}

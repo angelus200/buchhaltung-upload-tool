@@ -240,3 +240,10 @@
 ## Angelus - Steuerberater Stammdaten Import (07.01.2026)
 - [x] Kreditoren-Stammdaten vom Steuerberater importiert (183 aktualisiert, 131 neu = 314 gesamt)
 - [x] Debitoren-Stammdaten vom Steuerberater importiert (24 aktualisiert, 22 neu = 46 gesamt)
+
+
+## Buchungen-Seite Verbesserung
+- [x] Bei Beleg-Upload automatisch Belegdatum erkennen und anzeigen
+- [x] Bei Beleg-Upload automatisch Belegnummer erkennen und anzeigen
+- [x] Bei Beleg-Upload automatisch Kontoverbindung (IBAN) erkennen und anzeigen
+- [x] USt-ID wird ebenfalls erkannt und angezeigt
