@@ -214,3 +214,12 @@
 - [x] Debitoren aus Blatt 8 extrahieren (10601xx - 11401xx)
 - [x] Debitoren aus Blatt 9 extrahieren (11401xx - 12701xx + 20000xx)
 - [x] Alle 171 Debitoren in Datenbank importiert
+
+
+## Vollständiger Kreditoren-Import aus Summen und Salden
+- [x] Kreditoren aus Blatt 11 extrahieren (70000xx)
+- [x] Kreditoren aus Blatt 12 extrahieren (70000xx - 70301xx)
+- [x] Kreditoren aus Blatt 13 extrahieren (70301xx - 71001xx)
+- [x] Kreditoren aus Blatt 14 extrahieren (71101xx - 72301xx)
+- [x] Kreditoren aus Blatt 15 extrahieren (72301xx - 80001xx)
+- [x] Alle 194 Kreditoren in Datenbank importiert
