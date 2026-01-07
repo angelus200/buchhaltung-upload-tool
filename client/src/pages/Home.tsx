@@ -32,7 +32,12 @@ import {
   Shield,
   Loader2,
   Sparkles,
-  Wand2
+  Wand2,
+  Clock,
+  CreditCard,
+  CircleDot,
+  Ban,
+  Link2
 } from "lucide-react";
 import { Link } from "wouter";
 import AppHeader from "@/components/AppHeader";
@@ -59,6 +64,13 @@ interface Buchung {
   // Zusätzliche erkannte Felder
   iban: string;
   ustIdNr: string;
+  // Zahlungsstatus
+  zahlungsstatus: "offen" | "bezahlt" | "teilbezahlt" | "storniert";
+  faelligkeitsdatum: string;
+  zahlungsdatum: string;
+  // Kreditor-Match
+  kreditorId: number | null;
+  kreditorMatch: "exact" | "partial" | "none";
 }
 
 // Erweiterter Kontenrahmen SKR03
@@ -133,6 +145,13 @@ const GESCHAEFTSPARTNER_TYPEN = [
   { value: "debitor", label: "Debitor (Kunde)", kontobereich: "10000" },
   { value: "gesellschafter", label: "Gesellschafter", kontobereich: "08000" },
   { value: "sonstig", label: "Sonstige", kontobereich: "00000" },
+];
+
+const ZAHLUNGSSTATUS_OPTIONEN = [
+  { value: "offen", label: "Offen", icon: Clock, color: "text-amber-600", bgColor: "bg-amber-50" },
+  { value: "bezahlt", label: "Bezahlt", icon: CheckCircle2, color: "text-green-600", bgColor: "bg-green-50" },
+  { value: "teilbezahlt", label: "Teilbezahlt", icon: CircleDot, color: "text-blue-600", bgColor: "bg-blue-50" },
+  { value: "storniert", label: "Storniert", icon: Ban, color: "text-red-600", bgColor: "bg-red-50" },
 ];
 
 function generateId(): string {
@@ -235,6 +254,13 @@ export default function Home() {
   // Finde die ausgewählte Buchung für die Vorschau
   const selectedBuchung = buchungen.find(b => b.id === selectedBuchungId);
 
+  // Berechne Standard-Fälligkeitsdatum (14 Tage nach heute)
+  const getDefaultFaelligkeit = useCallback(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 14);
+    return date.toISOString().split("T")[0];
+  }, []);
+
   const createEmptyBuchung = useCallback((): Buchung => ({
     id: generateId(),
     buchungsart: "aufwand",
@@ -252,8 +278,13 @@ export default function Home() {
     belegDatei: null,
     status: "pending",
     iban: "",
-    ustIdNr: ""
-  }), []);
+    ustIdNr: "",
+    zahlungsstatus: "offen",
+    faelligkeitsdatum: getDefaultFaelligkeit(),
+    zahlungsdatum: "",
+    kreditorId: null,
+    kreditorMatch: "none"
+  }), [getDefaultFaelligkeit]);
 
   // OCR-Analyse für einen Beleg durchführen (Bilder und PDFs)
   const analyzeBeleg = useCallback(async (buchungId: string, file: File) => {
@@ -305,7 +336,13 @@ export default function Home() {
         
         const updated = { ...b };
         
-        if (result.belegdatum) updated.belegdatum = result.belegdatum;
+        if (result.belegdatum) {
+          updated.belegdatum = result.belegdatum;
+          // Setze Fälligkeitsdatum auf 14 Tage nach Belegdatum
+          const belegDate = new Date(result.belegdatum);
+          belegDate.setDate(belegDate.getDate() + 14);
+          updated.faelligkeitsdatum = belegDate.toISOString().split("T")[0];
+        }
         if (result.belegnummer) updated.belegnummer = result.belegnummer;
         if (result.geschaeftspartner) updated.geschaeftspartner = result.geschaeftspartner;
         if (result.nettobetrag) updated.nettobetrag = result.nettobetrag.toFixed(2).replace(".", ",");
@@ -316,6 +353,60 @@ export default function Home() {
         // Neue Felder: IBAN und USt-ID
         if (result.iban) updated.iban = result.iban;
         if (result.ustIdNr) updated.ustIdNr = result.ustIdNr;
+        
+        // IBAN-Matching mit Kreditoren-Stammdaten
+        if (result.iban && kreditorenList) {
+          const normalizedIban = result.iban.replace(/\s/g, "").toUpperCase();
+          
+          // Suche nach exaktem IBAN-Match
+          const exactMatch = kreditorenList.find(k => 
+            k.iban && k.iban.replace(/\s/g, "").toUpperCase() === normalizedIban
+          );
+          
+          if (exactMatch) {
+            updated.kreditorId = exactMatch.id;
+            updated.kreditorMatch = "exact";
+            updated.geschaeftspartner = exactMatch.name;
+            updated.geschaeftspartnerKonto = exactMatch.kontonummer;
+            // Standard-Sachkonto vom Kreditor übernehmen falls vorhanden
+            if (exactMatch.standardSachkonto) {
+              updated.sachkonto = exactMatch.standardSachkonto;
+            }
+            toast.success(`Kreditor "${exactMatch.name}" via IBAN erkannt!`);
+          } else {
+            // Suche nach partiellem Match (Name)
+            if (result.geschaeftspartner) {
+              const nameLower = result.geschaeftspartner.toLowerCase();
+              const partialMatch = kreditorenList.find(k => 
+                k.name.toLowerCase().includes(nameLower) || 
+                nameLower.includes(k.name.toLowerCase())
+              );
+              if (partialMatch) {
+                updated.kreditorId = partialMatch.id;
+                updated.kreditorMatch = "partial";
+                updated.geschaeftspartnerKonto = partialMatch.kontonummer;
+                if (partialMatch.standardSachkonto) {
+                  updated.sachkonto = partialMatch.standardSachkonto;
+                }
+              }
+            }
+          }
+        } else if (result.geschaeftspartner && kreditorenList) {
+          // Fallback: Nur Name-Matching wenn keine IBAN vorhanden
+          const nameLower = result.geschaeftspartner.toLowerCase();
+          const nameMatch = kreditorenList.find(k => 
+            k.name.toLowerCase().includes(nameLower) || 
+            nameLower.includes(k.name.toLowerCase())
+          );
+          if (nameMatch) {
+            updated.kreditorId = nameMatch.id;
+            updated.kreditorMatch = "partial";
+            updated.geschaeftspartnerKonto = nameMatch.kontonummer;
+            if (nameMatch.standardSachkonto) {
+              updated.sachkonto = nameMatch.standardSachkonto;
+            }
+          }
+        }
         
         // Status aktualisieren
         const isComplete = 
@@ -791,7 +882,7 @@ export default function Home() {
                         </div>
 
                         {/* Buchungstext */}
-                        <div className="space-y-2 md:col-span-2 lg:col-span-4">
+                        <div className="space-y-2 md:col-span-2">
                           <Label htmlFor={`text-${buchung.id}`}>Buchungstext</Label>
                           <Textarea
                             id={`text-${buchung.id}`}
@@ -799,6 +890,64 @@ export default function Home() {
                             value={buchung.buchungstext}
                             onChange={(e) => updateBuchung(buchung.id, "buchungstext", e.target.value)}
                             rows={2}
+                          />
+                        </div>
+
+                        {/* Zahlungsstatus */}
+                        <div className="space-y-2">
+                          <Label>Zahlungsstatus</Label>
+                          <Select 
+                            value={buchung.zahlungsstatus} 
+                            onValueChange={(v) => {
+                              updateBuchung(buchung.id, "zahlungsstatus", v);
+                              // Setze Zahlungsdatum automatisch wenn auf "bezahlt" gesetzt
+                              if (v === "bezahlt" && !buchung.zahlungsdatum) {
+                                updateBuchung(buchung.id, "zahlungsdatum", new Date().toISOString().split("T")[0]);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className={`${
+                              buchung.zahlungsstatus === "offen" ? "border-amber-300 bg-amber-50/50" :
+                              buchung.zahlungsstatus === "bezahlt" ? "border-green-300 bg-green-50/50" :
+                              buchung.zahlungsstatus === "teilbezahlt" ? "border-blue-300 bg-blue-50/50" :
+                              "border-red-300 bg-red-50/50"
+                            }`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ZAHLUNGSSTATUS_OPTIONEN.map((status) => {
+                                const Icon = status.icon;
+                                return (
+                                  <SelectItem key={status.value} value={status.value}>
+                                    <div className="flex items-center gap-2">
+                                      <Icon className={`w-4 h-4 ${status.color}`} />
+                                      {status.label}
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Fälligkeitsdatum */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`faelligkeit-${buchung.id}`} className="flex items-center gap-1">
+                            Fälligkeit
+                            {buchung.faelligkeitsdatum && new Date(buchung.faelligkeitsdatum) < new Date() && buchung.zahlungsstatus === "offen" && (
+                              <span className="text-xs text-red-500 font-medium">Überfällig!</span>
+                            )}
+                          </Label>
+                          <Input
+                            id={`faelligkeit-${buchung.id}`}
+                            type="date"
+                            value={buchung.faelligkeitsdatum}
+                            onChange={(e) => updateBuchung(buchung.id, "faelligkeitsdatum", e.target.value)}
+                            className={`${
+                              buchung.faelligkeitsdatum && new Date(buchung.faelligkeitsdatum) < new Date() && buchung.zahlungsstatus === "offen"
+                                ? "border-red-300 bg-red-50/50"
+                                : ""
+                            }`}
                           />
                         </div>
                       </div>
@@ -886,6 +1035,52 @@ export default function Home() {
                                 <FileSpreadsheet className="w-3 h-3 text-blue-600" />
                                 <span className="text-muted-foreground">USt-ID:</span>
                                 <span className="font-medium font-mono text-blue-700">{buchung.ustIdNr}</span>
+                              </div>
+                            )}
+                            {/* Kreditor-Match Anzeige */}
+                            {buchung.kreditorMatch !== "none" && (
+                              <div className={`flex items-center gap-1.5 px-2 py-1 rounded ${
+                                buchung.kreditorMatch === "exact" ? "bg-green-100" : "bg-amber-50"
+                              }`}>
+                                <Link2 className={`w-3 h-3 ${
+                                  buchung.kreditorMatch === "exact" ? "text-green-600" : "text-amber-600"
+                                }`} />
+                                <span className="text-muted-foreground">Kreditor:</span>
+                                <span className={`font-medium ${
+                                  buchung.kreditorMatch === "exact" ? "text-green-700" : "text-amber-700"
+                                }`}>
+                                  {buchung.kreditorMatch === "exact" ? "✓ IBAN-Match" : "≈ Name-Match"}
+                                </span>
+                              </div>
+                            )}
+                            {/* Fälligkeit Anzeige */}
+                            {buchung.faelligkeitsdatum && (
+                              <div className={`flex items-center gap-1.5 px-2 py-1 rounded ${
+                                new Date(buchung.faelligkeitsdatum) < new Date() && buchung.zahlungsstatus === "offen"
+                                  ? "bg-red-100"
+                                  : buchung.zahlungsstatus === "bezahlt"
+                                    ? "bg-green-50"
+                                    : "bg-gray-50"
+                              }`}>
+                                <Clock className={`w-3 h-3 ${
+                                  new Date(buchung.faelligkeitsdatum) < new Date() && buchung.zahlungsstatus === "offen"
+                                    ? "text-red-600"
+                                    : buchung.zahlungsstatus === "bezahlt"
+                                      ? "text-green-600"
+                                      : "text-gray-600"
+                                }`} />
+                                <span className="text-muted-foreground">Fällig:</span>
+                                <span className={`font-medium ${
+                                  new Date(buchung.faelligkeitsdatum) < new Date() && buchung.zahlungsstatus === "offen"
+                                    ? "text-red-700"
+                                    : buchung.zahlungsstatus === "bezahlt"
+                                      ? "text-green-700"
+                                      : "text-gray-700"
+                                }`}>
+                                  {new Date(buchung.faelligkeitsdatum).toLocaleDateString('de-DE')}
+                                  {new Date(buchung.faelligkeitsdatum) < new Date() && buchung.zahlungsstatus === "offen" && " (Überfällig!)"}
+                                  {buchung.zahlungsstatus === "bezahlt" && " (Bezahlt)"}
+                                </span>
                               </div>
                             )}
                           </div>

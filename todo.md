@@ -247,3 +247,12 @@
 - [x] Bei Beleg-Upload automatisch Belegnummer erkennen und anzeigen
 - [x] Bei Beleg-Upload automatisch Kontoverbindung (IBAN) erkennen und anzeigen
 - [x] USt-ID wird ebenfalls erkannt und angezeigt
+
+
+## Kreditor-Matching und Zahlungsstatus
+- [x] IBAN-Matching: Erkannte IBAN automatisch mit Kreditoren-Stammdaten abgleichen
+- [x] Zahlungsstatus-Feld hinzufügen (bezahlt/offen/teilbezahlt/storniert)
+- [x] Fälligkeitsdatum-Feld hinzufügen (Standard: 14 Tage nach Belegdatum)
+- [x] UI für Zahlungsstatus und Fälligkeit in Buchungskarte
+- [x] Überfällig-Warnung bei offenen Rechnungen
+- [x] Automatisches Zahlungsdatum bei Status "bezahlt"
