@@ -193,3 +193,9 @@
 - [x] PDF-zu-Bild-Konvertierung im Backend implementieren (pdftoppm)
 - [x] OCR-Endpunkt für PDF-Dateien erweitern (analyzePdf)
 - [x] Frontend für PDF-Upload mit OCR anpassen
+
+
+## Bug-Fix: Kreditoren/Debitoren aus Datenbank laden
+- [x] Kreditoren aus Datenbank laden statt localStorage
+- [x] Debitoren aus Datenbank laden statt localStorage
+- [x] Stammdaten-Seite mit Datenbank-Queries aktualisieren

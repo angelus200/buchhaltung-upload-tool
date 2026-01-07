@@ -1,0 +1,8 @@
+{
+  "query": "SELECT \n  'Kreditoren' as typ, \n  COUNT(*) as anzahl, \n  u.name as firma\nFROM kreditoren k\nJOIN unternehmen u ON k.unternehmen_id = u.id\nGROUP BY u.name\nUNION ALL\nSELECT \n  'Debitoren' as typ, \n  COUNT(*) as anzahl, \n  u.name as firma\nFROM debitoren d\nJOIN unternehmen u ON d.unternehmen_id = u.id\nGROUP BY u.name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute SELECT \n  'Kreditoren' as typ, \n  COUNT(*) as anzahl, \n  u.name as firma\nFROM kreditoren k\nJOIN unternehmen u ON k.unternehmen_id = u.id\nGROUP BY u.name\nUNION ALL\nSELECT \n  'Debitoren' as typ, \n  COUNT(*) as anzahl, \n  u.name as firma\nFROM debitoren d\nJOIN unternehmen u ON d.unternehmen_id = u.id\nGROUP BY u.name;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'k.unternehmen_id' in 'on clause'"
+  ]
+}

@@ -276,11 +276,93 @@ export default function Stammdaten() {
     return saved ? parseInt(saved) : null;
   });
 
+  // Lade Kreditoren für das ausgewählte Unternehmen
+  const { data: kreditorenList, refetch: refetchKreditoren } = trpc.stammdaten.kreditoren.list.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId && activeTab === "kreditor" }
+  );
+
+  // Lade Debitoren für das ausgewählte Unternehmen
+  const { data: debitorenList, refetch: refetchDebitoren } = trpc.stammdaten.debitoren.list.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId && activeTab === "debitor" }
+  );
+
   // Lade Sachkonten für das ausgewählte Unternehmen
   const { data: sachkontenList, refetch: refetchSachkonten } = trpc.stammdaten.sachkonten.list.useQuery(
     { unternehmenId: selectedUnternehmenId! },
     { enabled: !!selectedUnternehmenId && activeTab === "sachkonto" }
   );
+
+  // Mutations für Kreditoren
+  const createKreditorMutation = trpc.stammdaten.kreditoren.create.useMutation({
+    onSuccess: () => {
+      refetchKreditoren();
+      toast.success("Kreditor erstellt");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const updateKreditorMutation = trpc.stammdaten.kreditoren.update.useMutation({
+    onSuccess: () => {
+      refetchKreditoren();
+      toast.success("Kreditor aktualisiert");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const deleteKreditorMutation = trpc.stammdaten.kreditoren.delete.useMutation({
+    onSuccess: () => {
+      refetchKreditoren();
+      toast.info("Kreditor gelöscht");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  // Mutations für Debitoren
+  const createDebitorMutation = trpc.stammdaten.debitoren.create.useMutation({
+    onSuccess: () => {
+      refetchDebitoren();
+      toast.success("Debitor erstellt");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const updateDebitorMutation = trpc.stammdaten.debitoren.update.useMutation({
+    onSuccess: () => {
+      refetchDebitoren();
+      toast.success("Debitor aktualisiert");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const deleteDebitorMutation = trpc.stammdaten.debitoren.delete.useMutation({
+    onSuccess: () => {
+      refetchDebitoren();
+      toast.info("Debitor gelöscht");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
 
   // Mutations für Sachkonten
   const createSachkontoMutation = trpc.stammdaten.sachkonten.create.useMutation({
@@ -401,6 +483,67 @@ export default function Stammdaten() {
       return;
     }
 
+    // Kreditoren (Datenbank)
+    if (activeTab === "kreditor") {
+      if (!selectedUnternehmenId) {
+        toast.error("Bitte wählen Sie zuerst ein Unternehmen aus");
+        return;
+      }
+
+      const kreditorData = {
+        kontonummer: formKontonummer,
+        name: formData.firma || "",
+        kurzbezeichnung: formData.ansprechpartner || undefined,
+        strasse: formData.strasse || undefined,
+        plz: formData.plz || undefined,
+        ort: formData.ort || undefined,
+        telefon: formData.telefon || undefined,
+        email: formData.email || undefined,
+        ustIdNr: formData.ustid || undefined,
+        iban: formData.iban || undefined,
+        zahlungsziel: formData.zahlungsziel ? parseInt(formData.zahlungsziel) : undefined,
+        standardSachkonto: formData.standardSachkonto || undefined,
+        notizen: formNotizen || undefined,
+      };
+
+      if (editItem) {
+        updateKreditorMutation.mutate({ id: parseInt(editItem.id), ...kreditorData });
+      } else {
+        createKreditorMutation.mutate({ unternehmenId: selectedUnternehmenId, ...kreditorData });
+      }
+      return;
+    }
+
+    // Debitoren (Datenbank)
+    if (activeTab === "debitor") {
+      if (!selectedUnternehmenId) {
+        toast.error("Bitte wählen Sie zuerst ein Unternehmen aus");
+        return;
+      }
+
+      const debitorData = {
+        kontonummer: formKontonummer,
+        name: formData.firma || "",
+        kurzbezeichnung: formData.ansprechpartner || undefined,
+        strasse: formData.strasse || undefined,
+        plz: formData.plz || undefined,
+        ort: formData.ort || undefined,
+        telefon: formData.telefon || undefined,
+        email: formData.email || undefined,
+        ustIdNr: formData.ustid || undefined,
+        kreditlimit: formData.kreditlimit || undefined,
+        zahlungsziel: formData.zahlungsziel ? parseInt(formData.zahlungsziel) : undefined,
+        notizen: formNotizen || undefined,
+      };
+
+      if (editItem) {
+        updateDebitorMutation.mutate({ id: parseInt(editItem.id), ...debitorData });
+      } else {
+        createDebitorMutation.mutate({ unternehmenId: selectedUnternehmenId, ...debitorData });
+      }
+      return;
+    }
+
     // Standard-Behandlung für andere Stammdaten (LocalStorage)
     const now = new Date().toISOString();
     const name = formData[activeTypConfig.felder[0].key] || "Unbenannt";
@@ -433,7 +576,7 @@ export default function Stammdaten() {
 
     setDialogOpen(false);
     resetForm();
-  }, [activeTab, activeTypConfig, formData, formKontonummer, formNotizen, editItem, stammdaten, resetForm, selectedUnternehmenId, editingSachkontoId, createSachkontoMutation, updateSachkontoMutation]);
+  }, [activeTab, activeTypConfig, formData, formKontonummer, formNotizen, editItem, stammdaten, resetForm, selectedUnternehmenId, editingSachkontoId, createSachkontoMutation, updateSachkontoMutation, createKreditorMutation, updateKreditorMutation, createDebitorMutation, updateDebitorMutation]);
 
   const handleDelete = useCallback((id: string) => {
     const updated = stammdaten.filter(s => s.id !== id);
@@ -442,12 +585,85 @@ export default function Stammdaten() {
     toast.info(`${activeTypConfig.labelSingular} gelöscht`);
   }, [stammdaten, activeTypConfig]);
 
+  // Kreditor löschen (Datenbank)
+  const handleDeleteKreditor = useCallback((id: number) => {
+    if (confirm("Möchten Sie diesen Kreditor wirklich löschen?")) {
+      deleteKreditorMutation.mutate({ id });
+    }
+  }, [deleteKreditorMutation]);
+
+  // Debitor löschen (Datenbank)
+  const handleDeleteDebitor = useCallback((id: number) => {
+    if (confirm("Möchten Sie diesen Debitor wirklich löschen?")) {
+      deleteDebitorMutation.mutate({ id });
+    }
+  }, [deleteDebitorMutation]);
+
   // Sachkonto löschen (Datenbank)
   const handleDeleteSachkonto = useCallback((id: number) => {
     if (confirm("Möchten Sie dieses Sachkonto wirklich löschen?")) {
       deleteSachkontoMutation.mutate({ id });
     }
   }, [deleteSachkontoMutation]);
+
+  // Kreditor bearbeiten
+  const openEditKreditorDialog = useCallback((kreditor: any) => {
+    setEditItem({
+      id: kreditor.id.toString(),
+      typ: "kreditor",
+      name: kreditor.name,
+      kontonummer: kreditor.kontonummer,
+      details: {},
+      notizen: kreditor.notizen || "",
+      erstelltAm: kreditor.createdAt,
+      aktualisiertAm: kreditor.updatedAt,
+    });
+    setFormKontonummer(kreditor.kontonummer);
+    setFormData({
+      firma: kreditor.name || "",
+      ansprechpartner: kreditor.kurzbezeichnung || "",
+      strasse: kreditor.strasse || "",
+      plz: kreditor.plz || "",
+      ort: kreditor.ort || "",
+      telefon: kreditor.telefon || "",
+      email: kreditor.email || "",
+      ustid: kreditor.ustIdNr || "",
+      iban: kreditor.iban || "",
+      zahlungsziel: kreditor.zahlungsziel?.toString() || "",
+      standardSachkonto: kreditor.standardSachkonto || "",
+    });
+    setFormNotizen(kreditor.notizen || "");
+    setDialogOpen(true);
+  }, []);
+
+  // Debitor bearbeiten
+  const openEditDebitorDialog = useCallback((debitor: any) => {
+    setEditItem({
+      id: debitor.id.toString(),
+      typ: "debitor",
+      name: debitor.name,
+      kontonummer: debitor.kontonummer,
+      details: {},
+      notizen: debitor.notizen || "",
+      erstelltAm: debitor.createdAt,
+      aktualisiertAm: debitor.updatedAt,
+    });
+    setFormKontonummer(debitor.kontonummer);
+    setFormData({
+      firma: debitor.name || "",
+      ansprechpartner: debitor.kurzbezeichnung || "",
+      strasse: debitor.strasse || "",
+      plz: debitor.plz || "",
+      ort: debitor.ort || "",
+      telefon: debitor.telefon || "",
+      email: debitor.email || "",
+      ustid: debitor.ustIdNr || "",
+      kreditlimit: debitor.kreditlimit || "",
+      zahlungsziel: debitor.zahlungsziel?.toString() || "",
+    });
+    setFormNotizen(debitor.notizen || "");
+    setDialogOpen(true);
+  }, []);
 
   // Sachkonto bearbeiten
   const openEditSachkontoDialog = useCallback((sachkonto: any) => {
@@ -462,6 +678,24 @@ export default function Stammdaten() {
     setFormNotizen(sachkonto.notizen || "");
     setDialogOpen(true);
   }, []);
+
+  // Gefilterte Kreditoren
+  const gefilterteKreditoren = kreditorenList?.filter(k => {
+    if (!suchbegriff) return true;
+    const searchLower = suchbegriff.toLowerCase();
+    return k.kontonummer.toLowerCase().includes(searchLower) ||
+           k.name.toLowerCase().includes(searchLower) ||
+           (k.ort?.toLowerCase().includes(searchLower) ?? false);
+  }) || [];
+
+  // Gefilterte Debitoren
+  const gefilterteDebitoren = debitorenList?.filter(d => {
+    if (!suchbegriff) return true;
+    const searchLower = suchbegriff.toLowerCase();
+    return d.kontonummer.toLowerCase().includes(searchLower) ||
+           d.name.toLowerCase().includes(searchLower) ||
+           (d.ort?.toLowerCase().includes(searchLower) ?? false);
+  }) || [];
 
   // Gefilterte Sachkonten
   const gefilterteSachkonten = sachkontenList?.filter(s => {
@@ -504,10 +738,17 @@ export default function Stammdaten() {
             <TabsList className="inline-flex h-auto p-1 bg-muted/50">
               {STAMMDATEN_TYPEN.map((typ) => {
                 const TabIcon = typ.icon;
-                // Für Sachkonten: Zähle aus der Datenbank, sonst aus LocalStorage
-                const count = typ.value === "sachkonto" 
-                  ? (sachkontenList?.length || 0)
-                  : stammdaten.filter(s => s.typ === typ.value).length;
+                // Für Datenbank-Typen: Zähle aus der Datenbank, sonst aus LocalStorage
+                let count = 0;
+                if (typ.value === "sachkonto") {
+                  count = sachkontenList?.length || 0;
+                } else if (typ.value === "kreditor") {
+                  count = kreditorenList?.length || 0;
+                } else if (typ.value === "debitor") {
+                  count = debitorenList?.length || 0;
+                } else {
+                  count = stammdaten.filter(s => s.typ === typ.value).length;
+                }
                 return (
                   <TabsTrigger 
                     key={typ.value} 
@@ -545,8 +786,184 @@ export default function Stammdaten() {
           {/* Inhalt für jeden Tab */}
           {STAMMDATEN_TYPEN.map((typ) => (
             <TabsContent key={typ.value} value={typ.value} className="mt-0">
-              {/* Spezielle Anzeige für Sachkonten */}
-              {typ.value === "sachkonto" ? (
+              {/* Spezielle Anzeige für Kreditoren */}
+              {typ.value === "kreditor" ? (
+                !selectedUnternehmenId ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50 text-blue-600" />
+                      <p className="font-medium">Kein Unternehmen ausgewählt</p>
+                      <p className="text-sm">Bitte wählen Sie zuerst ein Unternehmen aus</p>
+                    </div>
+                  </Card>
+                ) : gefilterteKreditoren.length === 0 ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50 text-blue-600" />
+                      <p className="font-medium">Keine Kreditoren vorhanden</p>
+                      <p className="text-sm">Legen Sie einen neuen Kreditor an</p>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {gefilterteKreditoren.map((kreditor) => (
+                      <Card key={kreditor.id} className="flex flex-col">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <Building2 className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-base line-clamp-1">{kreditor.name}</CardTitle>
+                                <CardDescription className="text-sm font-mono">
+                                  {kreditor.kontonummer}
+                                </CardDescription>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => openEditKreditorDialog(kreditor)}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteKreditor(kreditor.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 pt-0">
+                          <div className="space-y-1 text-sm">
+                            {kreditor.ort && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Ort:</span>
+                                <span className="font-medium">{kreditor.plz} {kreditor.ort}</span>
+                              </div>
+                            )}
+                            {kreditor.email && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">E-Mail:</span>
+                                <span className="font-medium truncate max-w-[150px]">{kreditor.email}</span>
+                              </div>
+                            )}
+                            {kreditor.standardSachkonto && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Sachkonto:</span>
+                                <span className="font-medium font-mono">{kreditor.standardSachkonto}</span>
+                              </div>
+                            )}
+                          </div>
+                          {kreditor.notizen && (
+                            <>
+                              <Separator className="my-3" />
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {kreditor.notizen}
+                              </p>
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : typ.value === "debitor" ? (
+                !selectedUnternehmenId ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <Users className="w-12 h-12 mx-auto mb-4 opacity-50 text-green-600" />
+                      <p className="font-medium">Kein Unternehmen ausgewählt</p>
+                      <p className="text-sm">Bitte wählen Sie zuerst ein Unternehmen aus</p>
+                    </div>
+                  </Card>
+                ) : gefilterteDebitoren.length === 0 ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <Users className="w-12 h-12 mx-auto mb-4 opacity-50 text-green-600" />
+                      <p className="font-medium">Keine Debitoren vorhanden</p>
+                      <p className="text-sm">Legen Sie einen neuen Debitor an</p>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {gefilterteDebitoren.map((debitor) => (
+                      <Card key={debitor.id} className="flex flex-col">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                                <Users className="w-5 h-5 text-green-600" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-base line-clamp-1">{debitor.name}</CardTitle>
+                                <CardDescription className="text-sm font-mono">
+                                  {debitor.kontonummer}
+                                </CardDescription>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => openEditDebitorDialog(debitor)}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteDebitor(debitor.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 pt-0">
+                          <div className="space-y-1 text-sm">
+                            {debitor.ort && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Ort:</span>
+                                <span className="font-medium">{debitor.plz} {debitor.ort}</span>
+                              </div>
+                            )}
+                            {debitor.email && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">E-Mail:</span>
+                                <span className="font-medium truncate max-w-[150px]">{debitor.email}</span>
+                              </div>
+                            )}
+                            {debitor.kreditlimit && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Kreditlimit:</span>
+                                <span className="font-medium">{debitor.kreditlimit} €</span>
+                              </div>
+                            )}
+                          </div>
+                          {debitor.notizen && (
+                            <>
+                              <Separator className="my-3" />
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {debitor.notizen}
+                              </p>
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : typ.value === "sachkonto" ? (
                 !selectedUnternehmenId ? (
                   <Card className="p-12">
                     <div className="text-center text-muted-foreground">
