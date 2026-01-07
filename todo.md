@@ -230,3 +230,8 @@
 - [x] Kreditoren aus BWA extrahiert (183 Einträge)
 - [x] Alle Debitoren in Datenbank importiert
 - [x] Alle Kreditoren in Datenbank importiert
+
+
+## Alpenland - Steuerberater Stammdaten Import (07.01.2026)
+- [x] Kreditoren-Stammdaten vom Steuerberater importiert (442 aktualisiert mit Adresse, USt-ID, IBAN)
+- [x] Debitoren-Stammdaten vom Steuerberater importiert (171 aktualisiert, 329 neu eingefügt)
