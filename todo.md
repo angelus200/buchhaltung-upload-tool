@@ -223,3 +223,10 @@
 - [x] Kreditoren aus Blatt 14 extrahieren (71101xx - 72301xx)
 - [x] Kreditoren aus Blatt 15 extrahieren (72301xx - 80001xx)
 - [x] Alle 194 Kreditoren in Datenbank importiert
+
+
+## Angelus Managementberatung und Service KG - Stammdaten Import
+- [x] Debitoren aus BWA extrahiert (24 Einträge)
+- [x] Kreditoren aus BWA extrahiert (183 Einträge)
+- [x] Alle Debitoren in Datenbank importiert
+- [x] Alle Kreditoren in Datenbank importiert

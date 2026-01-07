@@ -1,0 +1,30 @@
+{
+  "firma": "Angelus Managementberatung und Service KG",
+  "unternehmenId": 90002,
+  "debitoren": [
+    {"kontonummer": "1000001", "name": "Fadl, Youssef"},
+    {"kontonummer": "1000002", "name": "ascodo akademie gmbh"},
+    {"kontonummer": "1000003", "name": "Clever Business AG"},
+    {"kontonummer": "1000004", "name": "Linnea Sofie Huebers"},
+    {"kontonummer": "1000006", "name": "Shayna Holdings Ltd."},
+    {"kontonummer": "1000007", "name": "commercehelden GmbH"},
+    {"kontonummer": "1000008", "name": "Arche Estates Korlátolt Felelösségü Társ"},
+    {"kontonummer": "1000009", "name": "Gabriele Braeker"},
+    {"kontonummer": "1010000", "name": "Alpenland Heizungswasser KG"},
+    {"kontonummer": "1010001", "name": "Alpenland Wassertechnik KG"},
+    {"kontonummer": "1010002", "name": "CIWPS Ltd."},
+    {"kontonummer": "1010003", "name": "Aquartus Gmbh"},
+    {"kontonummer": "1010006", "name": "Accord Management GmbH"},
+    {"kontonummer": "1010007", "name": "Trademark24-7 AG (CH)"},
+    {"kontonummer": "1010008", "name": "Marketplace24-7 GmbH"},
+    {"kontonummer": "1010102", "name": "Biehl, Paul"},
+    {"kontonummer": "1020002", "name": "VentureNet Market AG"},
+    {"kontonummer": "1040100", "name": "Garmantzky GmbH"},
+    {"kontonummer": "1060100", "name": "Gold & Silber Schweiz AG Betriebsstätte"},
+    {"kontonummer": "1060200", "name": "Germania Home and Living KG"},
+    {"kontonummer": "1100100", "name": "Kratofil, Stefan"},
+    {"kontonummer": "1120000", "name": "Markus Meyer"},
+    {"kontonummer": "1180100", "name": "Shayna Holdings Limited"},
+    {"kontonummer": "1200000", "name": "Universal Reserve Petroleum"}
+  ]
+}
