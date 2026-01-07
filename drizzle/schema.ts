@@ -28,6 +28,73 @@ export type InsertUser = typeof users.$inferInsert;
 /**
  * Unternehmen/Mandanten - Zentrale Verwaltung für Unternehmensgruppen
  */
+// Unterstützte Länder
+export const LAENDER = ["DE", "AT", "CH", "UK", "CY"] as const;
+export type Land = typeof LAENDER[number];
+
+// Länder-Konfiguration
+export const LAENDER_CONFIG: Record<Land, {
+  name: string;
+  waehrung: string;
+  waehrungSymbol: string;
+  kontenrahmen: string[];
+  defaultKontenrahmen: string;
+  ustSaetze: number[];
+  steuernummerFormat: string;
+  ustIdFormat: string;
+}> = {
+  DE: {
+    name: "Deutschland",
+    waehrung: "EUR",
+    waehrungSymbol: "€",
+    kontenrahmen: ["SKR03", "SKR04"],
+    defaultKontenrahmen: "SKR03",
+    ustSaetze: [0, 7, 19],
+    steuernummerFormat: "XXX/XXX/XXXXX",
+    ustIdFormat: "DE XXXXXXXXX",
+  },
+  AT: {
+    name: "Österreich",
+    waehrung: "EUR",
+    waehrungSymbol: "€",
+    kontenrahmen: ["OeKR", "RLG"],
+    defaultKontenrahmen: "OeKR",
+    ustSaetze: [0, 10, 13, 20],
+    steuernummerFormat: "XX-XXX/XXXX",
+    ustIdFormat: "ATU XXXXXXXX",
+  },
+  CH: {
+    name: "Schweiz",
+    waehrung: "CHF",
+    waehrungSymbol: "CHF",
+    kontenrahmen: ["KMU", "OR"],
+    defaultKontenrahmen: "KMU",
+    ustSaetze: [0, 2.6, 3.8, 8.1],
+    steuernummerFormat: "CHE-XXX.XXX.XXX",
+    ustIdFormat: "CHE-XXX.XXX.XXX MWST",
+  },
+  UK: {
+    name: "United Kingdom",
+    waehrung: "GBP",
+    waehrungSymbol: "£",
+    kontenrahmen: ["UK_GAAP", "IFRS"],
+    defaultKontenrahmen: "UK_GAAP",
+    ustSaetze: [0, 5, 20],
+    steuernummerFormat: "UTR: XXXXXXXXXX",
+    ustIdFormat: "GB XXX XXXX XX",
+  },
+  CY: {
+    name: "Zypern",
+    waehrung: "EUR",
+    waehrungSymbol: "€",
+    kontenrahmen: ["CY_GAAP", "IFRS"],
+    defaultKontenrahmen: "CY_GAAP",
+    ustSaetze: [0, 5, 9, 19],
+    steuernummerFormat: "XXXXXXXX X",
+    ustIdFormat: "CY XXXXXXXX X",
+  },
+};
+
 export const unternehmen = mysqlTable("unternehmen", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
@@ -38,11 +105,21 @@ export const unternehmen = mysqlTable("unternehmen", {
   strasse: varchar("strasse", { length: 255 }),
   plz: varchar("plz", { length: 10 }),
   ort: varchar("ort", { length: 100 }),
+  // Internationalisierung
+  landCode: mysqlEnum("landCode", ["DE", "AT", "CH", "UK", "CY"]).default("DE").notNull(),
   land: varchar("land", { length: 100 }).default("Deutschland"),
+  waehrung: mysqlEnum("waehrung", ["EUR", "CHF", "GBP"]).default("EUR").notNull(),
   telefon: varchar("telefon", { length: 50 }),
   email: varchar("email", { length: 320 }),
   website: varchar("website", { length: 255 }),
-  kontenrahmen: mysqlEnum("kontenrahmen", ["SKR03", "SKR04"]).default("SKR03").notNull(),
+  // Erweiterte Kontenrahmen für alle Länder
+  kontenrahmen: mysqlEnum("kontenrahmen", [
+    "SKR03", "SKR04",           // Deutschland
+    "OeKR", "RLG",              // Österreich
+    "KMU", "OR",                // Schweiz
+    "UK_GAAP", "IFRS",          // UK & International
+    "CY_GAAP"                   // Zypern
+  ]).default("SKR03").notNull(),
   wirtschaftsjahrBeginn: int("wirtschaftsjahrBeginn").default(1).notNull(),
   beraternummer: varchar("beraternummer", { length: 20 }),
   mandantennummer: varchar("mandantennummer", { length: 20 }),

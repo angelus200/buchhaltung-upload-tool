@@ -125,3 +125,17 @@
 - [x] Automatischen E-Mail-Versand bei Einladungserstellung implementiert
 - [x] Erfolgs-/Fehlermeldung für E-Mail-Versand im UI anzeigen
 - [x] Hinweis wenn E-Mail-Versand nicht konfiguriert ist
+
+
+## Bug-Fix: Einladung für nicht-registrierte Benutzer
+- [x] Problem analysieren: Einladung funktioniert nur für bereits registrierte Benutzer
+- [x] Einladungsflow korrigieren sodass auch neue Benutzer eingeladen werden können
+- [x] Nach OAuth-Registrierung automatisch Einladung annehmen (E-Mail-Prüfung entfernt)
+
+
+## Internationale Unternehmen (DE, AT, CH, UK, CY)
+- [x] Länderauswahl im Unternehmen-Formular hinzufügen
+- [x] Länderspezifische Kontenrahmen (SKR03/04 für DE, ÖKR für AT, KMU für CH, UK GAAP, CY)
+- [x] Währungsunterstützung (EUR, CHF, GBP)
+- [x] Länderspezifische Rechtsformen pro Land
+- [x] Datenbank-Schema um landCode und waehrung erweitert

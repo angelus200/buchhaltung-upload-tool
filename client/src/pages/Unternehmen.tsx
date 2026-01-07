@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,10 +27,12 @@ import {
   Calendar,
   Palette,
   ImageIcon,
-  X
+  X,
+  Flag
 } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { LAENDER_CONFIG, type Land, type Waehrung } from "../../../shared/laender";
 
 interface UnternehmenFormData {
   name: string;
@@ -41,11 +43,13 @@ interface UnternehmenFormData {
   strasse: string;
   plz: string;
   ort: string;
+  landCode: Land;
   land: string;
+  waehrung: Waehrung;
   telefon: string;
   email: string;
   website: string;
-  kontenrahmen: "SKR03" | "SKR04";
+  kontenrahmen: string;
   wirtschaftsjahrBeginn: number;
   beraternummer: string;
   mandantennummer: string;
@@ -106,7 +110,9 @@ function createEmptyFormData(): UnternehmenFormData {
     strasse: "",
     plz: "",
     ort: "",
+    landCode: "DE",
     land: "Deutschland",
+    waehrung: "EUR",
     telefon: "",
     email: "",
     website: "",
@@ -184,6 +190,7 @@ export default function Unternehmen() {
     }
     createMutation.mutate({
       ...formData,
+      kontenrahmen: formData.kontenrahmen as "SKR03" | "SKR04" | "OeKR" | "RLG" | "KMU" | "OR" | "UK_GAAP" | "IFRS" | "CY_GAAP",
       logoUrl: logoPreview || undefined,
     });
   };
@@ -250,7 +257,9 @@ export default function Unternehmen() {
       strasse: u.strasse || "",
       plz: u.plz || "",
       ort: u.ort || "",
+      landCode: (u.landCode as Land) || "DE",
       land: u.land || "Deutschland",
+      waehrung: (u.waehrung as Waehrung) || "EUR",
       telefon: u.telefon || "",
       email: u.email || "",
       website: u.website || "",
@@ -286,7 +295,7 @@ export default function Unternehmen() {
       telefon: formData.telefon || undefined,
       email: formData.email || undefined,
       website: formData.website || undefined,
-      kontenrahmen: formData.kontenrahmen,
+      kontenrahmen: formData.kontenrahmen as "SKR03" | "SKR04" | "OeKR" | "RLG" | "KMU" | "OR" | "UK_GAAP" | "IFRS" | "CY_GAAP",
       wirtschaftsjahrBeginn: formData.wirtschaftsjahrBeginn,
       beraternummer: formData.beraternummer || undefined,
       mandantennummer: formData.mandantennummer || undefined,
@@ -426,6 +435,61 @@ export default function Unternehmen() {
 
                 <Separator />
 
+                {/* Land & Währung */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                    <Flag className="w-4 h-4 text-teal-600" />
+                    Land & Währung
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="landCode">Land *</Label>
+                      <Select
+                        value={formData.landCode}
+                        onValueChange={(value: Land) => {
+                          const config = LAENDER_CONFIG[value];
+                          setFormData({ 
+                            ...formData, 
+                            landCode: value,
+                            land: config.name,
+                            waehrung: config.waehrung as Waehrung,
+                            kontenrahmen: config.defaultKontenrahmen,
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(LAENDER_CONFIG).map(([code, config]) => (
+                            <SelectItem key={code} value={code}>
+                              {config.flagge} {config.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="waehrung">Währung</Label>
+                      <Select
+                        value={formData.waehrung}
+                        onValueChange={(value: Waehrung) => setFormData({ ...formData, waehrung: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="EUR">€ EUR (Euro)</SelectItem>
+                          <SelectItem value="CHF">CHF (Schweizer Franken)</SelectItem>
+                          <SelectItem value="GBP">£ GBP (Britisches Pfund)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
                 {/* Grunddaten */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
@@ -452,7 +516,7 @@ export default function Unternehmen() {
                           <SelectValue placeholder="Auswählen" />
                         </SelectTrigger>
                         <SelectContent>
-                          {RECHTSFORMEN.map((rf) => (
+                          {LAENDER_CONFIG[formData.landCode].rechtsformen.map((rf) => (
                             <SelectItem key={rf} value={rf}>{rf}</SelectItem>
                           ))}
                         </SelectContent>
@@ -592,14 +656,17 @@ export default function Unternehmen() {
                       <Label htmlFor="kontenrahmen">Kontenrahmen *</Label>
                       <Select
                         value={formData.kontenrahmen}
-                        onValueChange={(value: "SKR03" | "SKR04") => setFormData({ ...formData, kontenrahmen: value })}
+                        onValueChange={(value) => setFormData({ ...formData, kontenrahmen: value })}
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="SKR03">SKR 03 (Prozessgliederung)</SelectItem>
-                          <SelectItem value="SKR04">SKR 04 (Abschlussgliederung)</SelectItem>
+                          {LAENDER_CONFIG[formData.landCode].kontenrahmen.map((kr) => (
+                            <SelectItem key={kr.value} value={kr.value}>
+                              {kr.label} - {kr.beschreibung}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

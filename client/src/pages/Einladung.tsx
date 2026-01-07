@@ -235,8 +235,8 @@ export default function Einladung() {
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
                 <strong>Hinweis:</strong> Sie sind mit <strong>{user.email}</strong> angemeldet, 
-                aber die Einladung ist für <strong>{invite.email}</strong>. 
-                Bitte melden Sie sich mit der richtigen E-Mail-Adresse an.
+                aber die Einladung wurde an <strong>{invite.email}</strong> gesendet. 
+                Sie können die Einladung trotzdem annehmen.
               </p>
             </div>
           )}

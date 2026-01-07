@@ -311,13 +311,9 @@ export const einladungenRouter = router({
         });
       }
 
-      // Prüfen ob E-Mail übereinstimmt
-      if (ctx.user.email?.toLowerCase() !== invite.email.toLowerCase()) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Diese Einladung ist für eine andere E-Mail-Adresse bestimmt",
-        });
-      }
+      // Hinweis: E-Mail-Prüfung wurde entfernt, damit Benutzer sich mit jeder E-Mail registrieren können
+      // Die UI zeigt eine Warnung an, wenn die E-Mails nicht übereinstimmen
+      const emailMismatch = ctx.user.email?.toLowerCase() !== invite.email.toLowerCase();
 
       // Prüfen ob bereits Mitglied
       const existingMemberships = await db
@@ -363,6 +359,9 @@ export const einladungenRouter = router({
         success: true,
         unternehmensname: companies[0]?.name || "Unbekannt",
         rolle: invite.rolle,
+        emailMismatch,
+        originalEmail: invite.email,
+        userEmail: ctx.user.email,
       };
     }),
 
