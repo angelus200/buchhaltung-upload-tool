@@ -352,3 +352,9 @@
 - [x] Sortierung nach Betrag (höchster/niedrigster)
 - [x] Gruppierung nach Steuerart (USt, ESt, KSt, etc.) mit kompakter Ansicht
 - [x] Unit-Tests für Sortierung und Gruppierung erstellt (15 Tests)
+
+
+## Zusätzliche Gruppierungsoptionen
+- [x] Gruppierung nach Steuerjahr hinzugefügt (absteigend sortiert, "Ohne Steuerjahr" separat)
+- [x] Gruppierung nach Dokumententyp hinzugefügt (Bescheid, Einspruch, Mahnung, etc.)
+- [x] Unit-Tests aktualisiert (7 neue Tests, 239 gesamt)

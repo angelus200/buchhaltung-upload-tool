@@ -113,11 +113,12 @@ describe("Finanzamt Dokumente Sortierung", () => {
 
 describe("Finanzamt Dokumente Gruppierung", () => {
   const testDokumente = [
-    { id: 1, betreff: "USt Q1", steuerart: "USt" },
-    { id: 2, betreff: "USt Q2", steuerart: "USt" },
-    { id: 3, betreff: "ESt 2023", steuerart: "ESt" },
-    { id: 4, betreff: "KSt 2023", steuerart: "KSt" },
-    { id: 5, betreff: "USt Q3", steuerart: "USt" },
+    { id: 1, betreff: "USt Q1", steuerart: "USt", steuerjahr: 2024, dokumentTyp: "bescheid" },
+    { id: 2, betreff: "USt Q2", steuerart: "USt", steuerjahr: 2024, dokumentTyp: "bescheid" },
+    { id: 3, betreff: "ESt 2023", steuerart: "ESt", steuerjahr: 2023, dokumentTyp: "einspruch" },
+    { id: 4, betreff: "KSt 2023", steuerart: "KSt", steuerjahr: 2023, dokumentTyp: "mahnung" },
+    { id: 5, betreff: "USt Q3", steuerart: "USt", steuerjahr: 2024, dokumentTyp: "bescheid" },
+    { id: 6, betreff: "Ohne Jahr", steuerart: "USt", steuerjahr: null, dokumentTyp: "schriftverkehr" },
   ];
 
   const STEUERARTEN = [
@@ -138,7 +139,7 @@ describe("Finanzamt Dokumente Gruppierung", () => {
       expect(gruppiert.length).toBe(3); // USt, ESt, KSt
       
       const ustGruppe = gruppiert.find(g => g.steuerart === "USt");
-      expect(ustGruppe?.dokumente.length).toBe(3);
+      expect(ustGruppe?.dokumente.length).toBe(4); // 3 mit Jahr + 1 ohne Jahr
       
       const estGruppe = gruppiert.find(g => g.steuerart === "ESt");
       expect(estGruppe?.dokumente.length).toBe(1);
@@ -168,6 +169,76 @@ describe("Finanzamt Dokumente Gruppierung", () => {
 
       const ustGruppe = gruppiert.find(g => g.steuerart === "USt");
       expect(ustGruppe?.label).toBe("Umsatzsteuer");
+    });
+  });
+
+  describe("Gruppierung nach Steuerjahr", () => {
+    it("sollte Dokumente nach Steuerjahr gruppieren", () => {
+      const jahre = Array.from(new Set(testDokumente.map(d => d.steuerjahr).filter(Boolean))) as number[];
+      jahre.sort((a, b) => b - a);
+      
+      expect(jahre).toContain(2024);
+      expect(jahre).toContain(2023);
+      expect(jahre.length).toBe(2);
+    });
+
+    it("sollte Steuerjahre absteigend sortieren (neuestes zuerst)", () => {
+      const jahre = Array.from(new Set(testDokumente.map(d => d.steuerjahr).filter(Boolean))) as number[];
+      jahre.sort((a, b) => b - a);
+      
+      expect(jahre[0]).toBe(2024);
+      expect(jahre[1]).toBe(2023);
+    });
+
+    it("sollte Dokumente ohne Steuerjahr separat gruppieren", () => {
+      const ohneJahr = testDokumente.filter(d => !d.steuerjahr);
+      expect(ohneJahr.length).toBe(1);
+      expect(ohneJahr[0].betreff).toBe("Ohne Jahr");
+    });
+
+    it("sollte korrekte Anzahl pro Jahr haben", () => {
+      const jahr2024 = testDokumente.filter(d => d.steuerjahr === 2024);
+      const jahr2023 = testDokumente.filter(d => d.steuerjahr === 2023);
+      
+      expect(jahr2024.length).toBe(3);
+      expect(jahr2023.length).toBe(2);
+    });
+  });
+
+  describe("Gruppierung nach Dokumententyp", () => {
+    const DOKUMENT_TYPEN = [
+      { value: "bescheid", label: "Bescheid" },
+      { value: "einspruch", label: "Einspruch" },
+      { value: "mahnung", label: "Mahnung" },
+      { value: "schriftverkehr", label: "Schriftverkehr" },
+    ];
+
+    it("sollte Dokumente nach Dokumententyp gruppieren", () => {
+      const gruppiert = DOKUMENT_TYPEN.map(t => ({
+        key: t.value,
+        label: t.label,
+        dokumente: testDokumente.filter(d => d.dokumentTyp === t.value)
+      })).filter(g => g.dokumente.length > 0);
+
+      expect(gruppiert.length).toBe(4); // bescheid, einspruch, mahnung, schriftverkehr
+    });
+
+    it("sollte Bescheide korrekt gruppieren", () => {
+      const bescheide = testDokumente.filter(d => d.dokumentTyp === "bescheid");
+      expect(bescheide.length).toBe(3);
+    });
+
+    it("sollte leere Dokumententypen ausfiltern", () => {
+      const gruppiert = DOKUMENT_TYPEN.map(t => ({
+        key: t.value,
+        label: t.label,
+        dokumente: testDokumente.filter(d => d.dokumentTyp === t.value)
+      })).filter(g => g.dokumente.length > 0);
+
+      // Alle Gruppen sollten mindestens ein Dokument haben
+      gruppiert.forEach(g => {
+        expect(g.dokumente.length).toBeGreaterThan(0);
+      });
     });
   });
 });

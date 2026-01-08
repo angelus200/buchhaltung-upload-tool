@@ -442,14 +442,37 @@ export default function Finanzamt() {
     }
   });
 
-  // Gruppierte Dokumente nach Steuerart
-  const gruppierteDokumente = gruppierung === "steuerart" 
-    ? STEUERARTEN.map(s => ({
-        steuerart: s.value,
+  // Gruppierte Dokumente
+  const gruppierteDokumente = (() => {
+    if (gruppierung === "steuerart") {
+      return STEUERARTEN.map(s => ({
+        key: s.value,
         label: s.label,
         dokumente: filteredDokumente.filter(d => d.steuerart === s.value)
-      })).filter(g => g.dokumente.length > 0)
-    : null;
+      })).filter(g => g.dokumente.length > 0);
+    } else if (gruppierung === "steuerjahr") {
+      // Alle einzigartigen Steuerjahre sammeln und absteigend sortieren
+      const jahre = Array.from(new Set(filteredDokumente.map(d => d.steuerjahr).filter(Boolean))) as number[];
+      jahre.sort((a, b) => b - a);
+      const ohneJahr = filteredDokumente.filter(d => !d.steuerjahr);
+      const result = jahre.map(jahr => ({
+        key: String(jahr),
+        label: `Steuerjahr ${jahr}`,
+        dokumente: filteredDokumente.filter(d => d.steuerjahr === jahr)
+      }));
+      if (ohneJahr.length > 0) {
+        result.push({ key: "ohne", label: "Ohne Steuerjahr", dokumente: ohneJahr });
+      }
+      return result;
+    } else if (gruppierung === "dokumenttyp") {
+      return DOKUMENT_TYPEN.map(t => ({
+        key: t.value,
+        label: t.label,
+        dokumente: filteredDokumente.filter(d => d.dokumentTyp === t.value)
+      })).filter(g => g.dokumente.length > 0);
+    }
+    return null;
+  })();
 
   // Prüfe ob Frist überfällig
   const isFristUeberfaellig = (frist: Date | string | null, status: string) => {
@@ -880,6 +903,8 @@ export default function Finanzamt() {
                       <SelectContent>
                         <SelectItem value="keine">Keine Gruppierung</SelectItem>
                         <SelectItem value="steuerart">Nach Steuerart</SelectItem>
+                        <SelectItem value="steuerjahr">Nach Steuerjahr</SelectItem>
+                        <SelectItem value="dokumenttyp">Nach Dokumententyp</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -899,7 +924,7 @@ export default function Finanzamt() {
               ) : gruppierteDokumente ? (
                 // Gruppierte Ansicht nach Steuerart
                 gruppierteDokumente.map((gruppe) => (
-                  <div key={gruppe.steuerart} className="mb-6">
+                  <div key={gruppe.key} className="mb-6">
                     <div className="flex items-center gap-2 mb-3">
                       <Euro className="w-5 h-5 text-primary" />
                       <h3 className="text-lg font-semibold">{gruppe.label}</h3>
