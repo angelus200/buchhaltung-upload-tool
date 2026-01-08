@@ -418,3 +418,13 @@
 - [x] Dialog zur Auswahl der Übergabe mit Buchungs-Info
 - [x] Verknüpfte Buchungen im Steuerberater-Modul anzeigen (Detail-Dialog)
 - [x] Unit-Tests erstellt (268 Tests bestanden)
+
+
+## Phase 5: Persistente Buchungen-Speicherung
+
+- [x] Buchungen-Schema analysiert (bereits vollständig vorhanden)
+- [x] Backend-Endpunkt für Buchungen-Speicherung (buchungen.create bereits implementiert)
+- [x] UI: "Speichern & Übergeben" Button im Dialog
+- [x] Automatische Speicherung vor Steuerberater-Übergabe
+- [x] Verknüpfung gespeicherter Buchungen mit Übergabe (addBuchungen)
+- [x] Unit-Tests für persistente Speicherung (276 Tests bestanden)

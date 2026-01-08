@@ -281,6 +281,9 @@ export default function Home() {
     { enabled: !!selectedUnternehmenId }
   );
 
+  // Mutation für Buchung in Datenbank speichern
+  const createBuchungMutation = trpc.buchungen.create.useMutation();
+
   // Mutation für Buchung zu Übergabe hinzufügen
   const addBuchungToUebergabeMutation = trpc.steuerberater.addBuchungen.useMutation({
     onSuccess: (data) => {
@@ -1315,30 +1318,59 @@ export default function Home() {
                 setSelectedUebergabeId(null);
               }}>Abbrechen</Button>
               <Button 
-                onClick={() => {
-                  if (stbBuchungId && selectedUebergabeId) {
-                    // Wir müssen die Buchung erst in der Datenbank speichern
-                    // Für jetzt: Lokale Buchung als übergeben markieren
-                    // TODO: Buchung in DB speichern und dann zur Übergabe hinzufügen
+                onClick={async () => {
+                  if (stbBuchungId && selectedUebergabeId && selectedUnternehmenId) {
                     const buchung = buchungen.find(b => b.id === stbBuchungId);
                     if (buchung) {
-                      // Markiere lokal als übergeben
-                      setBuchungen(prev => prev.map(b => 
-                        b.id === stbBuchungId 
-                          ? { ...b, anSteuerberaterUebergeben: true, steuerberaterUebergabeId: selectedUebergabeId }
-                          : b
-                      ));
-                      toast.success(`Buchung "${buchung.geschaeftspartner}" zur Übergabe hinzugefügt`);
+                      try {
+                        // 1. Buchung in der Datenbank speichern
+                        toast.info("Buchung wird gespeichert...");
+                        const result = await createBuchungMutation.mutateAsync({
+                          unternehmenId: selectedUnternehmenId,
+                          buchungsart: buchung.buchungsart,
+                          belegdatum: buchung.belegdatum,
+                          belegnummer: buchung.belegnummer,
+                          geschaeftspartnerTyp: buchung.geschaeftspartnerTyp,
+                          geschaeftspartner: buchung.geschaeftspartner,
+                          geschaeftspartnerKonto: buchung.geschaeftspartnerKonto,
+                          sachkonto: buchung.sachkonto,
+                          nettobetrag: buchung.nettobetrag.replace(",", "."),
+                          steuersatz: buchung.steuersatz,
+                          bruttobetrag: buchung.bruttobetrag.replace(",", "."),
+                          buchungstext: buchung.buchungstext || undefined,
+                        });
+                        
+                        // 2. Buchung zur Übergabe hinzufügen
+                        await addBuchungToUebergabeMutation.mutateAsync({
+                          uebergabeId: selectedUebergabeId,
+                          buchungIds: [result.id],
+                        });
+                        
+                        // 3. Lokale Buchung als übergeben markieren
+                        setBuchungen(prev => prev.map(b => 
+                          b.id === stbBuchungId 
+                            ? { ...b, anSteuerberaterUebergeben: true, steuerberaterUebergabeId: selectedUebergabeId }
+                            : b
+                        ));
+                        
+                        toast.success(`Buchung "${buchung.geschaeftspartner}" gespeichert und zur Übergabe hinzugefügt`);
+                        setStbDialogOpen(false);
+                        setStbBuchungId(null);
+                        setSelectedUebergabeId(null);
+                      } catch (error: any) {
+                        toast.error(`Fehler: ${error.message}`);
+                      }
                     }
-                    setStbDialogOpen(false);
-                    setStbBuchungId(null);
-                    setSelectedUebergabeId(null);
                   }
                 }}
-                disabled={!selectedUebergabeId}
+                disabled={!selectedUebergabeId || !selectedUnternehmenId || createBuchungMutation.isPending || addBuchungToUebergabeMutation.isPending}
                 className="bg-teal-600 hover:bg-teal-700"
               >
-                Zur Übergabe hinzufügen
+                {(createBuchungMutation.isPending || addBuchungToUebergabeMutation.isPending) ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Speichern...</>
+                ) : (
+                  "Speichern & Übergeben"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

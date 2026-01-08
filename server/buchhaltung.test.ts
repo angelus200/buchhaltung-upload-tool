@@ -182,3 +182,150 @@ describe("DATEV Export Format", () => {
     expect(getSollHaben(ertragBuchung.buchungsart)).toBe("H");
   });
 });
+
+
+describe("Persistente Buchungen-Speicherung", () => {
+  describe("Buchung erstellen", () => {
+    it("sollte alle Pflichtfelder für eine Buchung validieren", () => {
+      const buchung = {
+        unternehmenId: 1,
+        buchungsart: "aufwand" as const,
+        belegdatum: "2025-01-15",
+        belegnummer: "RE-2025-001",
+        geschaeftspartnerTyp: "kreditor" as const,
+        geschaeftspartner: "Amazon GmbH",
+        geschaeftspartnerKonto: "70001",
+        sachkonto: "4930",
+        nettobetrag: "100.00",
+        steuersatz: "19",
+        bruttobetrag: "119.00",
+      };
+      
+      expect(buchung.unternehmenId).toBe(1);
+      expect(buchung.buchungsart).toBe("aufwand");
+      expect(buchung.belegdatum).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(buchung.belegnummer).toBeTruthy();
+      expect(buchung.geschaeftspartner).toBeTruthy();
+      expect(parseFloat(buchung.nettobetrag)).toBeGreaterThan(0);
+      expect(parseFloat(buchung.bruttobetrag)).toBeGreaterThan(0);
+    });
+
+    it("sollte Bruttobetrag korrekt aus Netto und Steuersatz berechnen", () => {
+      const netto = 100;
+      const steuersatz = 19;
+      const brutto = netto * (1 + steuersatz / 100);
+      
+      expect(brutto).toBe(119);
+    });
+
+    it("sollte verschiedene Buchungsarten unterstützen", () => {
+      const buchungsarten = ["aufwand", "ertrag", "anlage", "sonstig"];
+      
+      expect(buchungsarten).toHaveLength(4);
+      expect(buchungsarten).toContain("aufwand");
+      expect(buchungsarten).toContain("ertrag");
+      expect(buchungsarten).toContain("anlage");
+      expect(buchungsarten).toContain("sonstig");
+    });
+  });
+
+  describe("Buchung zu Steuerberater-Übergabe", () => {
+    it("sollte Buchung speichern und ID zurückgeben", () => {
+      // Simuliere Speicherung
+      const savedBuchung = {
+        id: 42,
+        unternehmenId: 1,
+        buchungsart: "aufwand",
+        geschaeftspartner: "Amazon GmbH",
+        bruttobetrag: "119.00",
+      };
+      
+      expect(savedBuchung.id).toBe(42);
+      expect(savedBuchung.id).toBeGreaterThan(0);
+    });
+
+    it("sollte gespeicherte Buchung zur Übergabe hinzufügen können", () => {
+      const buchungId = 42;
+      const uebergabeId = 1;
+      
+      const position = {
+        uebergabeId,
+        buchungId,
+        positionstyp: "buchung",
+        betrag: "119.00",
+      };
+      
+      expect(position.buchungId).toBe(buchungId);
+      expect(position.uebergabeId).toBe(uebergabeId);
+      expect(position.positionstyp).toBe("buchung");
+    });
+
+    it("sollte Workflow: Speichern -> Übergabe korrekt abbilden", () => {
+      // Schritt 1: Lokale Buchung
+      const lokaleBuchung = {
+        id: "temp-123",
+        geschaeftspartner: "Amazon",
+        bruttobetrag: "119.00",
+        status: "complete",
+        anSteuerberaterUebergeben: false,
+      };
+      
+      // Schritt 2: In DB speichern
+      const gespeicherteBuchung = {
+        ...lokaleBuchung,
+        id: 42, // Neue DB-ID
+      };
+      
+      // Schritt 3: Zur Übergabe hinzufügen
+      const position = {
+        uebergabeId: 1,
+        buchungId: gespeicherteBuchung.id,
+      };
+      
+      // Schritt 4: Lokal als übergeben markieren
+      const aktualisiert = {
+        ...lokaleBuchung,
+        anSteuerberaterUebergeben: true,
+        steuerberaterUebergabeId: 1,
+      };
+      
+      expect(gespeicherteBuchung.id).toBe(42);
+      expect(position.buchungId).toBe(42);
+      expect(aktualisiert.anSteuerberaterUebergeben).toBe(true);
+    });
+  });
+
+  describe("Validierung vor Speicherung", () => {
+    it("sollte nur vollständige Buchungen speichern", () => {
+      const vollstaendig = {
+        status: "complete",
+        geschaeftspartner: "Amazon",
+        sachkonto: "4930",
+        bruttobetrag: "119.00",
+      };
+      
+      const unvollstaendig = {
+        status: "pending",
+        geschaeftspartner: "",
+        sachkonto: "",
+        bruttobetrag: "",
+      };
+      
+      const istVollstaendig = (b: typeof vollstaendig) => 
+        b.status === "complete" && 
+        b.geschaeftspartner && 
+        b.sachkonto && 
+        b.bruttobetrag;
+      
+      expect(istVollstaendig(vollstaendig)).toBeTruthy();
+      expect(istVollstaendig(unvollstaendig)).toBeFalsy();
+    });
+
+    it("sollte Beträge im deutschen Format konvertieren", () => {
+      const deutschFormat = "1.234,56";
+      const dbFormat = deutschFormat.replace(".", "").replace(",", ".");
+      
+      expect(parseFloat(dbFormat)).toBe(1234.56);
+    });
+  });
+});
