@@ -1,0 +1,2 @@
+ALTER TABLE `stb_ueb_pos` ADD `finanzamtDokumentId` int;--> statement-breakpoint
+ALTER TABLE `stb_ueb_pos` ADD CONSTRAINT `stb_ueb_pos_finanzamtDokumentId_finanzamt_dokumente_id_fk` FOREIGN KEY (`finanzamtDokumentId`) REFERENCES `finanzamt_dokumente`(`id`) ON DELETE no action ON UPDATE no action;

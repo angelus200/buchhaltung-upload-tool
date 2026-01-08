@@ -398,3 +398,13 @@
 - [x] SelectItem value="" auf value="alle" geändert
 - [x] Filter-Logik angepasst um "alle" als leeren Filter zu behandeln
 - [x] Seite getestet - funktioniert
+
+
+## Phase 3: Finanzamt-Steuerberater Integration
+- [x] Backend-Endpunkt für Finanzamt-Dokument zu Übergabe hinzufügen (addFinanzamtDokument, getFinanzamtDokumente)
+- [x] "An Steuerberater senden" Button auf Finanzamt-Seite (teal-farbig)
+- [x] Dialog zur Auswahl der Übergabe oder neue Übergabe erstellen
+- [x] Verknüpfte Finanzamt-Dokumente in Übergabe-Detail anzeigen (teal-farbige Markierung)
+- [x] Separate Anzeige verknüpfter Finanzamt-Dokumente im Detail-Dialog
+- [x] Unit-Tests erstellt (10 Tests)
+- [x] 261 Unit-Tests bestanden

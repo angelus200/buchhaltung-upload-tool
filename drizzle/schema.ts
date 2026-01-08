@@ -766,6 +766,8 @@ export const steuerberaterUebergabePositionen = mysqlTable("stb_ueb_pos", {
   uebergabeId: int("uebergabeId").references(() => steuerberaterUebergaben.id).notNull(),
   /** Buchung (optional) */
   buchungId: int("buchungId").references(() => buchungen.id),
+  /** Finanzamt-Dokument (optional) */
+  finanzamtDokumentId: int("finanzamtDokumentId").references(() => finanzamtDokumente.id),
   /** Positionstyp */
   positionstyp: mysqlEnum("positionstyp", [
     "buchung",            // Einzelne Buchung

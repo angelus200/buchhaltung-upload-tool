@@ -136,6 +136,8 @@ export default function Finanzamt() {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [selectedDokumentId, setSelectedDokumentId] = useState<number | null>(null);
   const [versionDialogOpen, setVersionDialogOpen] = useState(false);
+  const [steuerberaterDialogOpen, setSteuerberaterDialogOpen] = useState(false);
+  const [selectedUebergabeId, setSelectedUebergabeId] = useState<number | null>(null);
   const [neueVersion, setNeueVersion] = useState({
     versionTyp: "antwort" as const,
     betreff: "",
@@ -161,6 +163,12 @@ export default function Finanzamt() {
 
   // Statistiken laden
   const { data: statistiken } = trpc.finanzamt.statistiken.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId }
+  );
+
+  // Steuerberater-Übergaben laden
+  const { data: uebergaben } = trpc.steuerberater.list.useQuery(
     { unternehmenId: selectedUnternehmenId! },
     { enabled: !!selectedUnternehmenId }
   );
@@ -236,6 +244,19 @@ export default function Finanzamt() {
     onError: (error) => {
       setOcrLoading(false);
       toast.error(`OCR-Fehler: ${error.message}`);
+    },
+  });
+
+  // Steuerberater-Übergabe Mutation
+  const addToSteuerberaterMutation = trpc.steuerberater.addFinanzamtDokument.useMutation({
+    onSuccess: () => {
+      toast.success("Dokument zur Steuerberater-Übergabe hinzugefügt");
+      setSteuerberaterDialogOpen(false);
+      setSelectedDokumentId(null);
+      setSelectedUebergabeId(null);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
     },
   });
 
@@ -1114,6 +1135,20 @@ export default function Finanzamt() {
                               Version
                             </Button>
                             
+                            {/* An Steuerberater senden Button */}
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedDokumentId(dok.id);
+                                setSteuerberaterDialogOpen(true);
+                              }}
+                              className="text-xs text-teal-600 border-teal-200 hover:bg-teal-50"
+                            >
+                              <Building2 className="w-3 h-3 mr-1" />
+                              An StB
+                            </Button>
+                            
                             <Button 
                               variant="ghost" 
                               size="icon"
@@ -1278,6 +1313,68 @@ export default function Finanzamt() {
                   <Plus className="w-4 h-4 mr-2" />
                 )}
                 Version hinzufügen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Steuerberater-Übergabe Dialog */}
+        <Dialog open={steuerberaterDialogOpen} onOpenChange={setSteuerberaterDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>An Steuerberater senden</DialogTitle>
+              <DialogDescription>
+                Wählen Sie eine bestehende Übergabe aus oder erstellen Sie eine neue.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Übergabe auswählen</Label>
+                <Select 
+                  value={selectedUebergabeId?.toString() || ""} 
+                  onValueChange={(v) => setSelectedUebergabeId(v ? parseInt(v) : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Übergabe wählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uebergaben?.map((u: any) => (
+                      <SelectItem key={u.id} value={u.id.toString()}>
+                        {u.bezeichnung} ({new Date(u.uebergabedatum).toLocaleDateString("de-DE")})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {uebergaben?.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Keine Übergaben vorhanden. Erstellen Sie zuerst eine Übergabe im Steuerberater-Modul.
+                </p>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSteuerberaterDialogOpen(false)}>Abbrechen</Button>
+              <Button 
+                onClick={() => {
+                  if (selectedDokumentId && selectedUebergabeId) {
+                    addToSteuerberaterMutation.mutate({
+                      uebergabeId: selectedUebergabeId,
+                      finanzamtDokumentId: selectedDokumentId,
+                    });
+                  }
+                }}
+                disabled={!selectedUebergabeId || addToSteuerberaterMutation.isPending}
+                className="bg-teal-600 hover:bg-teal-700"
+              >
+                {addToSteuerberaterMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Building2 className="w-4 h-4 mr-2" />
+                )}
+                Zur Übergabe hinzufügen
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -1256,11 +1256,23 @@ export default function Steuerberater() {
                         </tr>
                       </thead>
                       <tbody>
-                        {uebergabeDetail.positionen.map((pos) => (
+                        {uebergabeDetail.positionen.map((pos: any) => (
                           <tr key={pos.id} className="border-t">
-                            <td className="p-2">{pos.buchung ? formatDate(pos.buchung.belegdatum) : "-"}</td>
-                            <td className="p-2">{pos.buchung?.belegnummer || "-"}</td>
-                            <td className="p-2">{pos.buchung?.geschaeftspartner || pos.beschreibung || "-"}</td>
+                            <td className="p-2">
+                              {pos.finanzamtDokument ? (
+                                <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
+                                  FA-Dok
+                                </Badge>
+                              ) : pos.buchung ? formatDate(pos.buchung.belegdatum) : "-"}
+                            </td>
+                            <td className="p-2">
+                              {pos.finanzamtDokument ? pos.finanzamtDokument.aktenzeichen || "-" : pos.buchung?.belegnummer || "-"}
+                            </td>
+                            <td className="p-2">
+                              {pos.finanzamtDokument ? (
+                                <span className="text-teal-700">{pos.finanzamtDokument.betreff}</span>
+                              ) : pos.buchung?.geschaeftspartner || pos.beschreibung || "-"}
+                            </td>
                             <td className="p-2 text-right">{formatCurrency(pos.betrag)}</td>
                           </tr>
                         ))}
@@ -1268,9 +1280,39 @@ export default function Steuerberater() {
                     </table>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Keine Buchungen zugeordnet</p>
+                  <p className="text-sm text-muted-foreground">Keine Buchungen oder Finanzamt-Dokumente zugeordnet</p>
                 )}
               </div>
+              
+              {/* Finanzamt-Dokumente separat anzeigen */}
+              {uebergabeDetail.positionen?.some((pos: any) => pos.finanzamtDokument) && (
+                <div className="mt-4 p-3 bg-teal-50 rounded-lg border border-teal-200">
+                  <div className="flex items-center gap-2 text-teal-800 font-medium text-sm mb-2">
+                    <FileText className="w-4 h-4" />
+                    Verknüpfte Finanzamt-Dokumente
+                  </div>
+                  <div className="space-y-2">
+                    {uebergabeDetail.positionen
+                      .filter((pos: any) => pos.finanzamtDokument)
+                      .map((pos: any) => (
+                        <div key={pos.id} className="flex items-center justify-between text-sm bg-white p-2 rounded border">
+                          <div>
+                            <span className="font-medium">{pos.finanzamtDokument.betreff}</span>
+                            {pos.finanzamtDokument.aktenzeichen && (
+                              <span className="text-muted-foreground ml-2">({pos.finanzamtDokument.aktenzeichen})</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{pos.finanzamtDokument.dokumentTyp}</Badge>
+                            {pos.finanzamtDokument.steuerart && (
+                              <Badge variant="secondary">{pos.finanzamtDokument.steuerart}</Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>

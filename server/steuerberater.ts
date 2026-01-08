@@ -7,7 +7,8 @@ import {
   steuerberaterRechnungen,
   steuerberaterRechnungPositionen,
   buchungen,
-  users
+  users,
+  finanzamtDokumente
 } from "../drizzle/schema";
 import { eq, and, desc, gte, lte, sql, count, sum } from "drizzle-orm";
 
@@ -825,6 +826,85 @@ export const steuerberaterRouter = router({
         offenerBetrag,
         kostenAktuellesJahr,
       };
+    }),
+
+  // Finanzamt-Dokument zu Übergabe hinzufügen
+  addFinanzamtDokument: protectedProcedure
+    .input(z.object({
+      uebergabeId: z.number(),
+      finanzamtDokumentId: z.number(),
+      beschreibung: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      // Finanzamt-Dokument laden für Betrag
+      const [dokument] = await db
+        .select()
+        .from(finanzamtDokumente)
+        .where(eq(finanzamtDokumente.id, input.finanzamtDokumentId));
+      
+      if (!dokument) throw new Error("Finanzamt-Dokument nicht gefunden");
+      
+      await db.insert(steuerberaterUebergabePositionen).values({
+        uebergabeId: input.uebergabeId,
+        finanzamtDokumentId: input.finanzamtDokumentId,
+        positionstyp: "finanzamt",
+        beschreibung: input.beschreibung || `${dokument.dokumentTyp}: ${dokument.betreff}`,
+        betrag: dokument.betrag || null,
+        dateiUrl: dokument.dateiUrl || null,
+        dateiName: dokument.dateiName || null,
+      });
+      
+      return { success: true };
+    }),
+
+  // Offene Finanzamt-Dokumente für Steuerberater-Übergabe abrufen
+  offeneFinanzamtDokumente: protectedProcedure
+    .input(z.object({ unternehmenId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      // Alle Finanzamt-Dokumente die noch nicht in einer Übergabe sind
+      const alleDokumente = await db
+        .select()
+        .from(finanzamtDokumente)
+        .where(eq(finanzamtDokumente.unternehmenId, input.unternehmenId))
+        .orderBy(desc(finanzamtDokumente.eingangsdatum));
+      
+      // Bereits übergebene Dokumente
+      const uebergebeneDokumente = await db
+        .select({ finanzamtDokumentId: steuerberaterUebergabePositionen.finanzamtDokumentId })
+        .from(steuerberaterUebergabePositionen)
+        .where(sql`${steuerberaterUebergabePositionen.finanzamtDokumentId} IS NOT NULL`);
+      
+      const uebergebeneIds = new Set(uebergebeneDokumente.map(d => d.finanzamtDokumentId));
+      
+      return alleDokumente.filter(d => !uebergebeneIds.has(d.id));
+    }),
+
+  // Finanzamt-Dokumente einer Übergabe abrufen
+  finanzamtDokumenteByUebergabe: protectedProcedure
+    .input(z.object({ uebergabeId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      const positionen = await db
+        .select({
+          position: steuerberaterUebergabePositionen,
+          dokument: finanzamtDokumente,
+        })
+        .from(steuerberaterUebergabePositionen)
+        .leftJoin(finanzamtDokumente, eq(steuerberaterUebergabePositionen.finanzamtDokumentId, finanzamtDokumente.id))
+        .where(and(
+          eq(steuerberaterUebergabePositionen.uebergabeId, input.uebergabeId),
+          eq(steuerberaterUebergabePositionen.positionstyp, "finanzamt")
+        ));
+      
+      return positionen;
     }),
 
   // CSV-Export für Übergabe-Protokoll
