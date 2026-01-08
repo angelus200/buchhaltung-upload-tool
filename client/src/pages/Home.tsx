@@ -216,6 +216,24 @@ export default function Home() {
     { enabled: !!selectedUnternehmenId }
   );
 
+  // Lade offene Aufgaben für Dashboard-Widget
+  const { data: offeneAufgaben } = trpc.aufgaben.list.useQuery(
+    { unternehmenId: selectedUnternehmenId!, status: "offen" },
+    { enabled: !!selectedUnternehmenId }
+  );
+
+  // Lade Aufgaben-Statistiken für Dashboard
+  const { data: aufgabenStats } = trpc.aufgaben.statistiken.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId }
+  );
+
+  // Lade Finanzamt-Statistiken für Dashboard
+  const { data: finanzamtStats } = trpc.finanzamt.statistiken.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId }
+  );
+
   // Aktualisiere selectedUnternehmenId wenn sich LocalStorage ändert
   useEffect(() => {
     const handleStorageChange = () => {
@@ -638,6 +656,76 @@ export default function Home() {
       </div>
 
       <main className="container py-8">
+        {/* Dashboard-Widgets für offene Aufgaben und Finanzamt-Fristen */}
+        {selectedUnternehmenId && ((aufgabenStats?.ueberfaellig || 0) > 0 || (finanzamtStats?.ueberfaelligeFristen || 0) > 0 || (offeneAufgaben?.length || 0) > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {/* Offene Aufgaben Widget */}
+            <Link href="/aufgaben">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-amber-500">
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Offene Aufgaben</p>
+                      <p className="text-2xl font-bold">{aufgabenStats?.offen || 0}</p>
+                      {(aufgabenStats?.ueberfaellig || 0) > 0 && (
+                        <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                          <AlertCircle className="w-3 h-3" />
+                          {aufgabenStats?.ueberfaellig} überfällig
+                        </p>
+                      )}
+                    </div>
+                    <div className="p-3 rounded-full bg-amber-100">
+                      <Bell className="w-6 h-6 text-amber-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Finanzamt-Fristen Widget */}
+            <Link href="/finanzamt">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Finanzamt-Fristen</p>
+                      <p className="text-2xl font-bold">{finanzamtStats?.ueberfaelligeFristen || 0}</p>
+                      {(finanzamtStats?.ueberfaelligeFristen || 0) > 0 && (
+                        <p className="text-xs text-blue-600 mt-1">offene Fristen</p>
+                      )}
+                    </div>
+                    <div className="p-3 rounded-full bg-blue-100">
+                      <Building2 className="w-6 h-6 text-blue-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Dringende Aufgaben Widget */}
+            {offeneAufgaben && offeneAufgaben.filter((a: any) => a.prioritaet === "dringend" || a.prioritaet === "hoch").length > 0 && (
+              <Link href="/aufgaben">
+                <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-red-500">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Dringend/Hoch</p>
+                        <p className="text-2xl font-bold">
+                          {offeneAufgaben.filter((a: any) => a.prioritaet === "dringend" || a.prioritaet === "hoch").length}
+                        </p>
+                        <p className="text-xs text-red-600 mt-1">hohe Priorität</p>
+                      </div>
+                      <div className="p-3 rounded-full bg-red-100">
+                        <AlertCircle className="w-6 h-6 text-red-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+          </div>
+        )}
+
         {/* Upload Zone */}
         <Card className="mb-8">
           <CardHeader>

@@ -65,6 +65,7 @@ interface NeueAufgabeForm {
   prioritaet: string;
   faelligkeitsdatum: string;
   notizen: string;
+  zugewiesenAn: string;
 }
 
 export default function Aufgaben() {
@@ -113,6 +114,7 @@ export default function Aufgaben() {
     prioritaet: "normal",
     faelligkeitsdatum: "",
     notizen: "",
+    zugewiesenAn: "",
   });
 
   // Aufgaben laden
@@ -128,6 +130,12 @@ export default function Aufgaben() {
 
   // Statistiken laden
   const { data: statistiken } = trpc.aufgaben.statistiken.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId }
+  );
+
+  // Benutzer für Zuweisung laden
+  const { data: benutzerListe } = trpc.benutzer.listByUnternehmen.useQuery(
     { unternehmenId: selectedUnternehmenId! },
     { enabled: !!selectedUnternehmenId }
   );
@@ -187,6 +195,7 @@ export default function Aufgaben() {
       prioritaet: "normal",
       faelligkeitsdatum: "",
       notizen: "",
+      zugewiesenAn: "",
     });
   };
 
@@ -205,6 +214,7 @@ export default function Aufgaben() {
       prioritaet: neueAufgabe.prioritaet as any,
       faelligkeitsdatum: neueAufgabe.faelligkeitsdatum || undefined,
       notizen: neueAufgabe.notizen || undefined,
+      zugewiesenAn: neueAufgabe.zugewiesenAn ? parseInt(neueAufgabe.zugewiesenAn) : undefined,
     });
   };
 
@@ -347,6 +357,29 @@ export default function Aufgaben() {
                       value={neueAufgabe.faelligkeitsdatum}
                       onChange={(e) => setNeueAufgabe({...neueAufgabe, faelligkeitsdatum: e.target.value})}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Zuweisen an</Label>
+                    <Select 
+                      value={neueAufgabe.zugewiesenAn} 
+                      onValueChange={(v) => setNeueAufgabe({...neueAufgabe, zugewiesenAn: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Nicht zugewiesen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Nicht zugewiesen</SelectItem>
+                        {benutzerListe?.map((b) => (
+                          <SelectItem key={b.oderId} value={b.oderId.toString()}>
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4" />
+                              {b.name || b.email}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
@@ -561,6 +594,16 @@ export default function Aufgaben() {
                                 }`}>
                                   <Calendar className="w-3 h-3" />
                                   {new Date(aufgabe.faelligkeitsdatum).toLocaleDateString('de-DE')}
+                                </span>
+                              )}
+
+                              {/* Zugewiesene Person */}
+                              {aufgabe.zugewiesenAn && (
+                                <span className="text-xs flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                  <User className="w-3 h-3" />
+                                  {benutzerListe?.find(b => b.oderId === aufgabe.zugewiesenAn)?.name || 
+                                   benutzerListe?.find(b => b.oderId === aufgabe.zugewiesenAn)?.email || 
+                                   "Zugewiesen"}
                                 </span>
                               )}
                             </div>

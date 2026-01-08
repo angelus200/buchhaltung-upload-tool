@@ -279,3 +279,23 @@
 - [x] Integration mit Finanzamt-Modul (automatische Aufgaben bei Fristen)
 - [x] Navigation in AppHeader integriert
 - [x] Unit-Tests erstellt
+
+
+## Datei-Upload für Finanzamt-Dokumente
+- [x] Datei-Upload-Komponente in Finanzamt-Dialog integrieren
+- [x] Dateien zu S3 hochladen und URL speichern (Backend vorbereitet)
+- [x] Datei-Vorschau und Download in Dokumenten-Liste
+- [ ] Mehrere Dateien pro Dokument ermöglichen (später)
+
+## Aufgaben-Zuweisung an Teammitglieder
+- [x] Benutzer-Dropdown für Zuweisung in Aufgaben-Dialog
+- [x] Zugewiesene Person in Aufgaben-Liste anzeigen
+- [x] Filter "Meine Aufgaben" bereits im Backend (nurMeine Parameter)
+- [ ] E-Mail-Benachrichtigung bei Zuweisung (später)
+
+## Dashboard-Integration
+- [x] Offene Aufgaben Widget auf Startseite
+- [x] Überfällige Fristen Widget auf Startseite
+- [x] Finanzamt-Fristen Widget auf Startseite
+- [x] Dringende Aufgaben Widget auf Startseite
+- [x] Klickbare Widgets mit Navigation zu Aufgaben/Finanzamt

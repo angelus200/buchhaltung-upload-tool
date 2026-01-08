@@ -73,6 +73,8 @@ interface NeuesDokumentForm {
   frist: string;
   betrag: string;
   zahlungsfrist: string;
+  dateiUrl: string;
+  dateiName: string;
 }
 
 export default function Finanzamt() {
@@ -123,7 +125,10 @@ export default function Finanzamt() {
     frist: "",
     betrag: "",
     zahlungsfrist: "",
+    dateiUrl: "",
+    dateiName: "",
   });
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   // Unternehmen laden
   const { data: unternehmenList } = trpc.unternehmen.list.useQuery();
@@ -184,7 +189,39 @@ export default function Finanzamt() {
       frist: "",
       betrag: "",
       zahlungsfrist: "",
+      dateiUrl: "",
+      dateiName: "",
     });
+  };
+
+  // Datei-Upload Handler
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFile(true);
+    try {
+      // Konvertiere zu Base64 für einfachen Upload
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        setNeuesDokument(prev => ({
+          ...prev,
+          dateiUrl: base64,
+          dateiName: file.name,
+        }));
+        setUploadingFile(false);
+        toast.success(`Datei "${file.name}" hochgeladen`);
+      };
+      reader.onerror = () => {
+        toast.error("Fehler beim Hochladen der Datei");
+        setUploadingFile(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      toast.error("Fehler beim Hochladen");
+      setUploadingFile(false);
+    }
   };
 
   const handleCreate = () => {
@@ -206,6 +243,8 @@ export default function Finanzamt() {
       frist: neuesDokument.frist || undefined,
       betrag: neuesDokument.betrag ? parseFloat(neuesDokument.betrag.replace(",", ".")) : undefined,
       zahlungsfrist: neuesDokument.zahlungsfrist || undefined,
+      dateiUrl: neuesDokument.dateiUrl || undefined,
+      dateiName: neuesDokument.dateiName || undefined,
     });
   };
 
@@ -384,6 +423,37 @@ export default function Finanzamt() {
                     onChange={(e) => setNeuesDokument({...neuesDokument, beschreibung: e.target.value})}
                     rows={3}
                   />
+                </div>
+
+                {/* Datei-Upload */}
+                <div className="space-y-2 col-span-2">
+                  <Label>Dokument anhängen</Label>
+                  <div className="flex items-center gap-4">
+                    <Input 
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      onChange={handleFileUpload}
+                      disabled={uploadingFile}
+                      className="flex-1"
+                    />
+                    {uploadingFile && (
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                  {neuesDokument.dateiName && (
+                    <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{neuesDokument.dateiName}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="ml-auto h-6 px-2"
+                        onClick={() => setNeuesDokument({...neuesDokument, dateiUrl: "", dateiName: ""})}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -607,6 +677,20 @@ export default function Finanzamt() {
                                   </span>
                                 )}
                               </div>
+
+                              {/* Datei-Anzeige */}
+                              {dok.dateiName && dok.dateiUrl && (
+                                <div className="mt-3 flex items-center gap-2">
+                                  <a 
+                                    href={dok.dateiUrl} 
+                                    download={dok.dateiName}
+                                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-md hover:bg-blue-100 transition-colors"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                    {dok.dateiName}
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           </div>
 
