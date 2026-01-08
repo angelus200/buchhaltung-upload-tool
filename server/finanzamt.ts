@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { finanzamtDokumente, aufgaben, type FinanzamtDokument } from "../drizzle/schema";
+import { finanzamtDokumente, aufgaben, finanzamtDokumentVersionen, type FinanzamtDokument, type FinanzamtDokumentVersion } from "../drizzle/schema";
 import { eq, and, desc, asc, or, sql } from "drizzle-orm";
 import { storagePut } from "./storage";
 
@@ -301,6 +301,199 @@ export const finanzamtRouter = router({
         key: result.key,
         dateiName: input.dateiName,
       };
+    }),
+
+  // ============================================
+  // DOKUMENTEN-VERSIONIERUNG
+  // ============================================
+
+  // Versionen eines Dokuments abrufen
+  versionen: protectedProcedure
+    .input(z.object({ dokumentId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      return db
+        .select()
+        .from(finanzamtDokumentVersionen)
+        .where(eq(finanzamtDokumentVersionen.dokumentId, input.dokumentId))
+        .orderBy(asc(finanzamtDokumentVersionen.version));
+    }),
+
+  // Neue Version hinzufügen
+  addVersion: protectedProcedure
+    .input(
+      z.object({
+        dokumentId: z.number(),
+        versionTyp: z.enum(["original", "einspruch", "antwort", "ergaenzung", "korrektur", "anlage"]),
+        betreff: z.string().optional(),
+        beschreibung: z.string().optional(),
+        datum: z.string(),
+        dateiUrl: z.string().optional(),
+        dateiName: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Datenbank nicht verfügbar");
+
+      // Nächste Versionsnummer ermitteln
+      const existingVersions = await db
+        .select()
+        .from(finanzamtDokumentVersionen)
+        .where(eq(finanzamtDokumentVersionen.dokumentId, input.dokumentId));
+
+      const nextVersion = existingVersions.length + 1;
+
+      const [result] = await db.insert(finanzamtDokumentVersionen).values({
+        dokumentId: input.dokumentId,
+        version: nextVersion,
+        versionTyp: input.versionTyp,
+        betreff: input.betreff || null,
+        beschreibung: input.beschreibung || null,
+        datum: new Date(input.datum),
+        dateiUrl: input.dateiUrl || null,
+        dateiName: input.dateiName || null,
+        erstelltVon: ctx.user?.id || null,
+      });
+
+      return { id: result.insertId, version: nextVersion };
+    }),
+
+  // Version löschen
+  deleteVersion: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Datenbank nicht verfügbar");
+
+      await db
+        .delete(finanzamtDokumentVersionen)
+        .where(eq(finanzamtDokumentVersionen.id, input.id));
+
+      return { success: true };
+    }),
+
+  // ============================================
+  // OCR FÜR FINANZAMT-DOKUMENTE
+  // ============================================
+
+  // OCR-Analyse eines Dokuments
+  ocrAnalyse: protectedProcedure
+    .input(
+      z.object({
+        dateiBase64: z.string(),
+        contentType: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // Verwende Vision AI für OCR
+      const apiKey = process.env.BUILT_IN_FORGE_API_KEY;
+      const apiUrl = process.env.BUILT_IN_FORGE_API_URL;
+
+      if (!apiKey || !apiUrl) {
+        throw new Error("Vision AI nicht konfiguriert");
+      }
+
+      const prompt = `Analysiere dieses Finanzamt-Dokument und extrahiere folgende Informationen im JSON-Format:
+{
+  "dokumentTyp": "bescheid" | "einspruch" | "mahnung" | "anfrage" | "pruefung" | "schriftverkehr" | "sonstiges",
+  "steuerart": "USt" | "ESt" | "KSt" | "GewSt" | "LSt" | "KapESt" | "sonstige" | null,
+  "aktenzeichen": "Steuernummer oder Aktenzeichen" | null,
+  "steuerjahr": Jahr als Zahl | null,
+  "betreff": "Kurzer Betreff/Titel des Dokuments",
+  "betrag": Betrag als Zahl (ohne Währungssymbol) | null,
+  "frist": "YYYY-MM-DD" | null,
+  "zahlungsfrist": "YYYY-MM-DD" | null,
+  "eingangsdatum": "YYYY-MM-DD" | null,
+  "zusammenfassung": "Kurze Zusammenfassung des Dokumentinhalts"
+}
+
+Gib NUR das JSON zurück, keine weiteren Erklärungen.`;
+
+      try {
+        const response = await fetch(`${apiUrl}/v1/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: prompt },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: input.dateiBase64,
+                    },
+                  },
+                ],
+              },
+            ],
+            max_tokens: 1000,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Vision AI Fehler: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "{}";
+
+        // Extrahiere JSON aus der Antwort
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          return {
+            dokumentTyp: null,
+            steuerart: null,
+            aktenzeichen: null,
+            steuerjahr: null,
+            betreff: null,
+            betrag: null,
+            frist: null,
+            zahlungsfrist: null,
+            eingangsdatum: null,
+            zusammenfassung: null,
+            rohtext: content,
+          };
+        }
+
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          dokumentTyp: parsed.dokumentTyp || null,
+          steuerart: parsed.steuerart || null,
+          aktenzeichen: parsed.aktenzeichen || null,
+          steuerjahr: parsed.steuerjahr || null,
+          betreff: parsed.betreff || null,
+          betrag: parsed.betrag || null,
+          frist: parsed.frist || null,
+          zahlungsfrist: parsed.zahlungsfrist || null,
+          eingangsdatum: parsed.eingangsdatum || null,
+          zusammenfassung: parsed.zusammenfassung || null,
+          rohtext: null,
+        };
+      } catch (error) {
+        console.error("OCR-Fehler:", error);
+        return {
+          dokumentTyp: null,
+          steuerart: null,
+          aktenzeichen: null,
+          steuerjahr: null,
+          betreff: null,
+          betrag: null,
+          frist: null,
+          zahlungsfrist: null,
+          eingangsdatum: null,
+          zusammenfassung: null,
+          fehler: error instanceof Error ? error.message : "Unbekannter Fehler",
+        };
+      }
     }),
 });
 

@@ -663,3 +663,38 @@ export const aufgaben = mysqlTable("aufgaben", {
 
 export type Aufgabe = typeof aufgaben.$inferSelect;
 export type InsertAufgabe = typeof aufgaben.$inferInsert;
+
+
+/**
+ * Finanzamt-Dokument-Versionen (für Versionierung und Dokumentenkette)
+ */
+export const finanzamtDokumentVersionen = mysqlTable("fa_dok_versionen", {
+  id: int("id").autoincrement().primaryKey(),
+  dokumentId: int("dokumentId").references(() => finanzamtDokumente.id).notNull(),
+  /** Versionsnummer (1, 2, 3, ...) */
+  version: int("version").notNull(),
+  /** Typ der Version */
+  versionTyp: mysqlEnum("versionTyp", [
+    "original",           // Originaldokument
+    "einspruch",          // Einspruch zu diesem Dokument
+    "antwort",            // Antwort vom Finanzamt
+    "ergaenzung",         // Ergänzung/Nachtrag
+    "korrektur",          // Korrigierte Version
+    "anlage"              // Anlage/Anhang
+  ]).default("original").notNull(),
+  /** Betreff dieser Version */
+  betreff: varchar("betreff", { length: 500 }),
+  /** Beschreibung/Notizen */
+  beschreibung: text("beschreibung"),
+  /** Datum dieser Version */
+  datum: date("datum").notNull(),
+  /** Datei-URL */
+  dateiUrl: text("dateiUrl"),
+  dateiName: varchar("dateiName", { length: 255 }),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FinanzamtDokumentVersion = typeof finanzamtDokumentVersionen.$inferSelect;
+export type InsertFinanzamtDokumentVersion = typeof finanzamtDokumentVersionen.$inferInsert;

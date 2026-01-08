@@ -321,3 +321,24 @@
 - [x] Drag & Drop Zone im Dialog implementieren
 - [x] Visuelles Feedback beim Ziehen (Farbwechsel, Icon)
 - [ ] Mehrere Dateien unterstützen (optional - später)
+
+## Dokumenten-Versionierung
+
+- [x] Datenbank-Schema für Dokumenten-Versionen erstellt (finanzamt_dok_versionen)
+- [x] Backend-Endpunkte für Versionierung (versionen, addVersion, deleteVersion)
+- [x] UI für Versionshistorie in Dokumenten-Ansicht (Dialog mit bestehenden Versionen)
+- [x] Verknüpfung zwischen Bescheid → Einspruch → Antwort (Versionstypen)
+- [x] Versionstypen: Original, Einspruch, Antwort, Ergänzung, Korrektur, Anlage
+- [x] Datei-Upload für jede Version
+- [x] Unit-Tests für Versionierung erstellt
+
+## OCR für Finanzamt-Dokumente
+- [x] OCR-Endpunkt für Finanzamt-Dokumente erstellt (ocrAnalyse mit Vision AI)
+- [x] Automatische Extraktion von Aktenzeichen
+- [x] Automatische Extraktion von Beträgen
+- [x] Automatische Extraktion von Fristen und Zahlungsfristen
+- [x] Automatische Extraktion von Steuerart und Steuerjahr
+- [x] Automatische Extraktion von Betreff und Zusammenfassung
+- [x] UI für OCR-Ergebnisse im Upload-Dialog (blauer OCR-Button)
+- [x] Automatische Übernahme erkannter Daten ins Formular
+- [x] Unit-Tests für OCR erstellt

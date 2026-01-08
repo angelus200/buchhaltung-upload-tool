@@ -131,6 +131,17 @@ export default function Finanzamt() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [selectedDokumentId, setSelectedDokumentId] = useState<number | null>(null);
+  const [versionDialogOpen, setVersionDialogOpen] = useState(false);
+  const [neueVersion, setNeueVersion] = useState({
+    versionTyp: "antwort" as const,
+    betreff: "",
+    beschreibung: "",
+    datum: new Date().toISOString().split("T")[0],
+    dateiUrl: "",
+    dateiName: "",
+  });
 
   // Unternehmen laden
   const { data: unternehmenList } = trpc.unternehmen.list.useQuery();
@@ -193,6 +204,62 @@ export default function Finanzamt() {
     onError: (error) => {
       toast.error(`Upload fehlgeschlagen: ${error.message}`);
       setUploadingFile(false);
+    },
+  });
+
+  // OCR-Analyse Mutation
+  const ocrMutation = trpc.finanzamt.ocrAnalyse.useMutation({
+    onSuccess: (data) => {
+      setOcrLoading(false);
+      if (data.fehler) {
+        toast.error(`OCR-Fehler: ${data.fehler}`);
+        return;
+      }
+      // Übernehme erkannte Daten ins Formular
+      setNeuesDokument(prev => ({
+        ...prev,
+        dokumentTyp: data.dokumentTyp || prev.dokumentTyp,
+        steuerart: data.steuerart || prev.steuerart,
+        aktenzeichen: data.aktenzeichen || prev.aktenzeichen,
+        steuerjahr: data.steuerjahr?.toString() || prev.steuerjahr,
+        betreff: data.betreff || prev.betreff,
+        betrag: data.betrag?.toString() || prev.betrag,
+        frist: data.frist || prev.frist,
+        zahlungsfrist: data.zahlungsfrist || prev.zahlungsfrist,
+        eingangsdatum: data.eingangsdatum || prev.eingangsdatum,
+        beschreibung: data.zusammenfassung || prev.beschreibung,
+      }));
+      toast.success("Dokument analysiert - Daten übernommen");
+    },
+    onError: (error) => {
+      setOcrLoading(false);
+      toast.error(`OCR-Fehler: ${error.message}`);
+    },
+  });
+
+  // Versionen laden
+  const { data: versionen, refetch: refetchVersionen } = trpc.finanzamt.versionen.useQuery(
+    { dokumentId: selectedDokumentId! },
+    { enabled: !!selectedDokumentId }
+  );
+
+  // Version hinzufügen Mutation
+  const addVersionMutation = trpc.finanzamt.addVersion.useMutation({
+    onSuccess: () => {
+      toast.success("Version hinzugefügt");
+      refetchVersionen();
+      setVersionDialogOpen(false);
+      setNeueVersion({
+        versionTyp: "antwort",
+        betreff: "",
+        beschreibung: "",
+        datum: new Date().toISOString().split("T")[0],
+        dateiUrl: "",
+        dateiName: "",
+      });
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
     },
   });
 
@@ -271,6 +338,27 @@ export default function Finanzamt() {
       setDragActive(true);
     } else if (e.type === "dragleave") {
       setDragActive(false);
+    }
+  };
+
+  // OCR-Analyse starten
+  const startOcrAnalyse = () => {
+    if (!neuesDokument.dateiUrl) {
+      toast.error("Bitte zuerst eine Datei hochladen");
+      return;
+    }
+    setOcrLoading(true);
+    // Verwende die bereits hochgeladene Base64-Datei oder lade sie neu
+    // Da wir die URL haben, müssen wir die Datei erneut als Base64 senden
+    // Für OCR verwenden wir die previewUrl oder laden die Datei neu
+    if (previewUrl) {
+      ocrMutation.mutate({
+        dateiBase64: previewUrl,
+        contentType: neuesDokument.dateiName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+      });
+    } else {
+      toast.error("Keine Vorschau verfügbar für OCR");
+      setOcrLoading(false);
     }
   };
 
@@ -555,6 +643,26 @@ export default function Finanzamt() {
                       <div className="flex items-center gap-2 p-3 bg-green-50">
                         <CheckCircle2 className="w-4 h-4 text-green-600" />
                         <span className="text-sm text-green-700 font-medium flex-1">{neuesDokument.dateiName}</span>
+                        {/* OCR-Button */}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startOcrAnalyse();
+                          }}
+                          disabled={ocrLoading}
+                        >
+                          {ocrLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Search className="w-3 h-3 mr-1" />
+                              OCR
+                            </>
+                          )}
+                        </Button>
                         <Button 
                           variant="ghost" 
                           size="sm" 
@@ -568,6 +676,12 @@ export default function Finanzamt() {
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
+                      {/* OCR-Hinweis */}
+                      {!ocrLoading && (
+                        <div className="px-3 pb-2 text-xs text-muted-foreground">
+                          Klicken Sie auf "OCR" um Aktenzeichen, Beträge und Fristen automatisch zu erkennen
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -825,6 +939,20 @@ export default function Finanzamt() {
                               </SelectContent>
                             </Select>
                             
+                            {/* Versionierung-Button */}
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedDokumentId(dok.id);
+                                setVersionDialogOpen(true);
+                              }}
+                              className="text-xs"
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Version
+                            </Button>
+                            
                             <Button 
                               variant="ghost" 
                               size="icon"
@@ -842,6 +970,157 @@ export default function Finanzamt() {
             </div>
           </>
         )}
+
+        {/* Versionierung Dialog */}
+        <Dialog open={versionDialogOpen} onOpenChange={setVersionDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Neue Version hinzufügen</DialogTitle>
+              <DialogDescription>
+                Fügen Sie eine neue Version zu diesem Dokument hinzu (z.B. Einspruch, Antwort, Ergänzung)
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Bestehende Versionen anzeigen */}
+            {versionen && versionen.length > 0 && (
+              <div className="mb-4">
+                <Label className="text-sm font-medium mb-2 block">Bisherige Versionen:</Label>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {versionen.map((v: any) => (
+                    <div key={v.id} className="flex items-center gap-2 text-sm p-2 bg-muted rounded">
+                      <Badge variant="outline" className="text-xs">
+                        V{v.version}
+                      </Badge>
+                      <span className="capitalize">{v.versionTyp.replace('_', ' ')}</span>
+                      <span className="text-muted-foreground">-</span>
+                      <span>{new Date(v.datum).toLocaleDateString('de-DE')}</span>
+                      {v.dateiName && (
+                        <a href={v.dateiUrl} download={v.dateiName} className="text-blue-600 hover:underline ml-auto">
+                          <Download className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <Label>Versionstyp</Label>
+                <Select 
+                  value={neueVersion.versionTyp} 
+                  onValueChange={(v: any) => setNeueVersion({...neueVersion, versionTyp: v})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="einspruch">Einspruch</SelectItem>
+                    <SelectItem value="antwort">Antwort vom Finanzamt</SelectItem>
+                    <SelectItem value="ergaenzung">Ergänzung/Nachtrag</SelectItem>
+                    <SelectItem value="korrektur">Korrigierte Version</SelectItem>
+                    <SelectItem value="anlage">Anlage/Anhang</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Betreff</Label>
+                <Input 
+                  placeholder="z.B. Einspruch gegen Bescheid vom..."
+                  value={neueVersion.betreff}
+                  onChange={(e) => setNeueVersion({...neueVersion, betreff: e.target.value})}
+                />
+              </div>
+
+              <div>
+                <Label>Datum</Label>
+                <Input 
+                  type="date"
+                  value={neueVersion.datum}
+                  onChange={(e) => setNeueVersion({...neueVersion, datum: e.target.value})}
+                />
+              </div>
+
+              <div>
+                <Label>Beschreibung</Label>
+                <Textarea 
+                  placeholder="Weitere Details..."
+                  value={neueVersion.beschreibung}
+                  onChange={(e) => setNeueVersion({...neueVersion, beschreibung: e.target.value})}
+                  rows={2}
+                />
+              </div>
+
+              {/* Datei-Upload für Version */}
+              <div>
+                <Label>Dokument anhängen</Label>
+                <Input 
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file && selectedUnternehmenId) {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const base64 = reader.result as string;
+                        uploadMutation.mutate({
+                          unternehmenId: selectedUnternehmenId,
+                          dateiName: file.name,
+                          dateiBase64: base64,
+                          contentType: file.type,
+                        }, {
+                          onSuccess: (data) => {
+                            setNeueVersion(prev => ({
+                              ...prev,
+                              dateiUrl: data.url,
+                              dateiName: data.dateiName,
+                            }));
+                          }
+                        });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                {neueVersion.dateiName && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+                    <CheckCircle2 className="w-4 h-4" />
+                    {neueVersion.dateiName}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setVersionDialogOpen(false)}>Abbrechen</Button>
+              <Button 
+                onClick={() => {
+                  if (selectedDokumentId) {
+                    addVersionMutation.mutate({
+                      dokumentId: selectedDokumentId,
+                      versionTyp: neueVersion.versionTyp,
+                      betreff: neueVersion.betreff || undefined,
+                      beschreibung: neueVersion.beschreibung || undefined,
+                      datum: neueVersion.datum,
+                      dateiUrl: neueVersion.dateiUrl || undefined,
+                      dateiName: neueVersion.dateiName || undefined,
+                    });
+                  }
+                }}
+                disabled={addVersionMutation.isPending}
+              >
+                {addVersionMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4 mr-2" />
+                )}
+                Version hinzufügen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
