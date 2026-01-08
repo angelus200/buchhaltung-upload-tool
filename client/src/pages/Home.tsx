@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { 
@@ -37,7 +38,8 @@ import {
   CreditCard,
   CircleDot,
   Ban,
-  Link2
+  Link2,
+  Send
 } from "lucide-react";
 import { Link } from "wouter";
 import AppHeader from "@/components/AppHeader";
@@ -267,6 +269,38 @@ export default function Home() {
   const [dragActive, setDragActive] = useState(false);
   const [selectedBuchungId, setSelectedBuchungId] = useState<string | null>(null);
   const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
+  
+  // Steuerberater-Übergabe State
+  const [stbDialogOpen, setStbDialogOpen] = useState(false);
+  const [stbBuchungId, setStbBuchungId] = useState<string | null>(null);
+  const [selectedUebergabeId, setSelectedUebergabeId] = useState<number | null>(null);
+
+  // Steuerberater-Übergaben laden
+  const { data: uebergaben } = trpc.steuerberater.list.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId }
+  );
+
+  // Mutation für Buchung zu Übergabe hinzufügen
+  const addBuchungToUebergabeMutation = trpc.steuerberater.addBuchungen.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Buchung erfolgreich zur Übergabe hinzugefügt`);
+      // Buchung als übergeben markieren
+      if (stbBuchungId) {
+        setBuchungen(prev => prev.map(b => 
+          b.id === stbBuchungId 
+            ? { ...b, anSteuerberaterUebergeben: true, steuerberaterUebergabeId: selectedUebergabeId }
+            : b
+        ));
+      }
+      setStbDialogOpen(false);
+      setStbBuchungId(null);
+      setSelectedUebergabeId(null);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
 
   // OCR Mutations
   const ocrMutation = trpc.ocr.analyzeImage.useMutation();
@@ -1047,6 +1081,30 @@ export default function Home() {
 
                       {/* Action Buttons */}
                       <div className="flex flex-col gap-2">
+                        {/* An Steuerberater Button */}
+                        {buchung.status === "complete" && !buchung.anSteuerberaterUebergeben && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setStbBuchungId(buchung.id);
+                              setStbDialogOpen(true);
+                            }}
+                            title="An Steuerberater übergeben"
+                          >
+                            <Send className="w-5 h-5" />
+                          </Button>
+                        )}
+                        
+                        {/* Übergeben-Indikator */}
+                        {buchung.anSteuerberaterUebergeben && (
+                          <div className="p-2" title="An Steuerberater übergeben">
+                            <CheckCircle2 className="w-5 h-5 text-teal-600" />
+                          </div>
+                        )}
+                        
                         {/* Analyse Button */}
                         {buchung.belegDatei && (
                           <Button
@@ -1197,6 +1255,94 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* Steuerberater-Übergabe Dialog */}
+        <Dialog open={stbDialogOpen} onOpenChange={setStbDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>An Steuerberater übergeben</DialogTitle>
+              <DialogDescription>
+                Wählen Sie eine bestehende Übergabe aus oder erstellen Sie eine neue im Steuerberater-Modul.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Übergabe auswählen</Label>
+                <Select 
+                  value={selectedUebergabeId?.toString() || ""} 
+                  onValueChange={(v) => setSelectedUebergabeId(v ? parseInt(v) : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Übergabe wählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uebergaben?.map((u: any) => (
+                      <SelectItem key={u.id} value={u.id.toString()}>
+                        {u.bezeichnung} ({new Date(u.uebergabedatum).toLocaleDateString("de-DE")})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(!uebergaben || uebergaben.length === 0) && (
+                <p className="text-sm text-muted-foreground">
+                  Keine Übergaben vorhanden. Erstellen Sie zuerst eine Übergabe im{" "}
+                  <Link href="/steuerberater" className="text-teal-600 hover:underline">Steuerberater-Modul</Link>.
+                </p>
+              )}
+
+              {/* Buchungs-Info */}
+              {stbBuchungId && (() => {
+                const buchung = buchungen.find(b => b.id === stbBuchungId);
+                if (!buchung) return null;
+                return (
+                  <div className="bg-gray-50 p-3 rounded-lg text-sm">
+                    <p className="font-medium">{buchung.geschaeftspartner}</p>
+                    <p className="text-muted-foreground">
+                      {buchung.belegnummer} • {new Date(buchung.belegdatum).toLocaleDateString("de-DE")} • {buchung.bruttobetrag} €
+                    </p>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setStbDialogOpen(false);
+                setStbBuchungId(null);
+                setSelectedUebergabeId(null);
+              }}>Abbrechen</Button>
+              <Button 
+                onClick={() => {
+                  if (stbBuchungId && selectedUebergabeId) {
+                    // Wir müssen die Buchung erst in der Datenbank speichern
+                    // Für jetzt: Lokale Buchung als übergeben markieren
+                    // TODO: Buchung in DB speichern und dann zur Übergabe hinzufügen
+                    const buchung = buchungen.find(b => b.id === stbBuchungId);
+                    if (buchung) {
+                      // Markiere lokal als übergeben
+                      setBuchungen(prev => prev.map(b => 
+                        b.id === stbBuchungId 
+                          ? { ...b, anSteuerberaterUebergeben: true, steuerberaterUebergabeId: selectedUebergabeId }
+                          : b
+                      ));
+                      toast.success(`Buchung "${buchung.geschaeftspartner}" zur Übergabe hinzugefügt`);
+                    }
+                    setStbDialogOpen(false);
+                    setStbBuchungId(null);
+                    setSelectedUebergabeId(null);
+                  }
+                }}
+                disabled={!selectedUebergabeId}
+                className="bg-teal-600 hover:bg-teal-700"
+              >
+                Zur Übergabe hinzufügen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

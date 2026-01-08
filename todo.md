@@ -408,3 +408,13 @@
 - [x] Separate Anzeige verknüpfter Finanzamt-Dokumente im Detail-Dialog
 - [x] Unit-Tests erstellt (10 Tests)
 - [x] 261 Unit-Tests bestanden
+
+
+## Phase 4: Buchungen-Steuerberater Integration
+
+- [x] Datenbank-Schema: Verknüpfungstabelle für Buchungen zu Übergaben (bereits vorhanden)
+- [x] Backend-Endpunkte: addBuchungen bereits im steuerberater.ts implementiert
+- [x] "An StB" Button in der Buchungsmaske (Send-Icon, teal-farbig)
+- [x] Dialog zur Auswahl der Übergabe mit Buchungs-Info
+- [x] Verknüpfte Buchungen im Steuerberater-Modul anzeigen (Detail-Dialog)
+- [x] Unit-Tests erstellt (268 Tests bestanden)

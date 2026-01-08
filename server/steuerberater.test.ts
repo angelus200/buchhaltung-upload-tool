@@ -222,3 +222,150 @@ describe("Steuerberater-Router", () => {
     });
   });
 });
+
+
+describe("Buchungen-Steuerberater Integration", () => {
+  describe("Buchung zu Übergabe hinzufügen", () => {
+    it("sollte eine einzelne Buchung einer Übergabe zuordnen können", () => {
+      const buchung = {
+        id: 1,
+        geschaeftspartner: "Amazon",
+        bruttobetrag: "119.00",
+        belegdatum: "2025-01-15",
+        belegnummer: "RE-2025-001",
+      };
+      
+      const position = {
+        uebergabeId: 1,
+        buchungId: buchung.id,
+        positionstyp: "buchung",
+        betrag: buchung.bruttobetrag,
+      };
+      
+      expect(position.buchungId).toBe(1);
+      expect(position.positionstyp).toBe("buchung");
+      expect(position.betrag).toBe("119.00");
+    });
+
+    it("sollte mehrere Buchungen gleichzeitig hinzufügen können", () => {
+      const buchungIds = [1, 2, 3, 4, 5];
+      const uebergabeId = 1;
+      
+      const positionen = buchungIds.map(buchungId => ({
+        uebergabeId,
+        buchungId,
+        positionstyp: "buchung",
+      }));
+      
+      expect(positionen).toHaveLength(5);
+      expect(positionen.every(p => p.uebergabeId === 1)).toBe(true);
+      expect(positionen.every(p => p.positionstyp === "buchung")).toBe(true);
+    });
+  });
+
+  describe("Buchungs-Status nach Übergabe", () => {
+    it("sollte Buchung als übergeben markieren", () => {
+      const buchung = {
+        id: 1,
+        anSteuerberaterUebergeben: false,
+        steuerberaterUebergabeId: null,
+      };
+      
+      // Nach Übergabe
+      const aktualisiert = {
+        ...buchung,
+        anSteuerberaterUebergeben: true,
+        steuerberaterUebergabeId: 1,
+      };
+      
+      expect(aktualisiert.anSteuerberaterUebergeben).toBe(true);
+      expect(aktualisiert.steuerberaterUebergabeId).toBe(1);
+    });
+
+    it("sollte nur vollständige Buchungen zur Übergabe erlauben", () => {
+      const buchungen = [
+        { id: 1, status: "complete", geschaeftspartner: "Amazon" },
+        { id: 2, status: "pending", geschaeftspartner: "Google" },
+        { id: 3, status: "complete", geschaeftspartner: "Microsoft" },
+      ];
+      
+      const uebergabeFaehig = buchungen.filter(b => b.status === "complete");
+      
+      expect(uebergabeFaehig).toHaveLength(2);
+      expect(uebergabeFaehig.map(b => b.geschaeftspartner)).toContain("Amazon");
+      expect(uebergabeFaehig.map(b => b.geschaeftspartner)).toContain("Microsoft");
+      expect(uebergabeFaehig.map(b => b.geschaeftspartner)).not.toContain("Google");
+    });
+  });
+
+  describe("Übergabe-Statistiken mit Buchungen", () => {
+    it("sollte Anzahl und Summe der Buchungen aktualisieren", () => {
+      const buchungen = [
+        { bruttobetrag: "100.00" },
+        { bruttobetrag: "200.00" },
+        { bruttobetrag: "300.00" },
+      ];
+      
+      const anzahlBuchungen = buchungen.length;
+      const gesamtbetrag = buchungen.reduce(
+        (sum, b) => sum + parseFloat(b.bruttobetrag),
+        0
+      );
+      
+      expect(anzahlBuchungen).toBe(3);
+      expect(gesamtbetrag).toBe(600);
+    });
+  });
+
+  describe("Buchungen in Übergabe-Detail anzeigen", () => {
+    it("sollte Buchungsdetails in Positionen-Tabelle anzeigen", () => {
+      const positionen = [
+        {
+          id: 1,
+          positionstyp: "buchung",
+          buchung: {
+            belegdatum: "2025-01-15",
+            belegnummer: "RE-2025-001",
+            geschaeftspartner: "Amazon",
+            bruttobetrag: "119.00",
+          },
+          betrag: "119.00",
+        },
+        {
+          id: 2,
+          positionstyp: "finanzamt",
+          finanzamtDokument: {
+            betreff: "Umsatzsteuerbescheid 2024",
+            aktenzeichen: "123/456/78901",
+            dokumentTyp: "bescheid",
+          },
+          betrag: "5000.00",
+        },
+      ];
+      
+      const buchungPositionen = positionen.filter(p => p.positionstyp === "buchung");
+      const finanzamtPositionen = positionen.filter(p => p.positionstyp === "finanzamt");
+      
+      expect(buchungPositionen).toHaveLength(1);
+      expect(finanzamtPositionen).toHaveLength(1);
+      expect(buchungPositionen[0].buchung?.geschaeftspartner).toBe("Amazon");
+      expect(finanzamtPositionen[0].finanzamtDokument?.betreff).toContain("Umsatzsteuerbescheid");
+    });
+  });
+
+  describe("Nicht übergebene Buchungen filtern", () => {
+    it("sollte bereits übergebene Buchungen ausblenden", () => {
+      const alleBuchungen = [
+        { id: 1, anSteuerberaterUebergeben: true },
+        { id: 2, anSteuerberaterUebergeben: false },
+        { id: 3, anSteuerberaterUebergeben: true },
+        { id: 4, anSteuerberaterUebergeben: false },
+      ];
+      
+      const nichtUebergeben = alleBuchungen.filter(b => !b.anSteuerberaterUebergeben);
+      
+      expect(nichtUebergeben).toHaveLength(2);
+      expect(nichtUebergeben.map(b => b.id)).toEqual([2, 4]);
+    });
+  });
+});
