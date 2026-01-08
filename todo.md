@@ -299,3 +299,9 @@
 - [x] Finanzamt-Fristen Widget auf Startseite
 - [x] Dringende Aufgaben Widget auf Startseite
 - [x] Klickbare Widgets mit Navigation zu Aufgaben/Finanzamt
+
+
+## Bug-Fix: Datei-Upload Finanzamt funktioniert nicht
+- [x] Problem analysiert: dateiUrl Spalte war TEXT (65KB max), zu klein für Base64-PDFs
+- [x] Spalte auf MEDIUMTEXT geändert (16MB max)
+- [x] Upload-Funktion getestet und funktioniert
