@@ -391,3 +391,10 @@
 - [ ] Aufwands-Analyse Dashboard (Kosten pro Buchung, Fehlerquote, vermeidbare Kosten)
 - [ ] Jahresvergleich der Steuerberater-Kosten
 - [ ] Empfehlungen zur Kostenreduktion
+
+
+## Bug-Fix: Steuerberater-Seite Fehler in publizierter Version
+- [x] Fehler analysiert: SelectItem mit leerem value-String verursachte Fehler
+- [x] SelectItem value="" auf value="alle" geändert
+- [x] Filter-Logik angepasst um "alle" als leeren Filter zu behandeln
+- [x] Seite getestet - funktioniert

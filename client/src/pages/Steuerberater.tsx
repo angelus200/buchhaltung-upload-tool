@@ -109,7 +109,7 @@ export default function Steuerberater() {
   // Queries
   const { data: unternehmen } = trpc.unternehmen.list.useQuery();
   const { data: uebergaben, refetch: refetchUebergaben } = trpc.steuerberater.list.useQuery(
-    { unternehmenId: selectedUnternehmenId!, status: filterStatus || undefined },
+    { unternehmenId: selectedUnternehmenId!, status: filterStatus === "alle" ? undefined : filterStatus || undefined },
     { enabled: !!selectedUnternehmenId }
   );
   const { data: statistiken } = trpc.steuerberater.statistiken.useQuery(
@@ -554,7 +554,7 @@ export default function Steuerberater() {
                     <SelectValue placeholder="Alle Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Alle Status</SelectItem>
+                    <SelectItem value="alle">Alle Status</SelectItem>
                     {STATUS_OPTIONEN.map((s) => (
                       <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                     ))}
