@@ -113,6 +113,8 @@ export default function Finanzamt() {
   const [filterStatus, setFilterStatus] = useState<string>("alle");
   const [filterSteuerart, setFilterSteuerart] = useState<string>("alle");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortierung, setSortierung] = useState<string>("datum_desc");
+  const [gruppierung, setGruppierung] = useState<string>("keine");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [neuesDokument, setNeuesDokument] = useState<NeuesDokumentForm>({
     dokumentTyp: "bescheid",
@@ -408,7 +410,7 @@ export default function Finanzamt() {
   };
 
   // Gefilterte Dokumente
-  const filteredDokumente = dokumente?.filter(d => {
+  const filteredDokumente = (dokumente?.filter(d => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return d.betreff.toLowerCase().includes(query) || 
@@ -416,7 +418,38 @@ export default function Finanzamt() {
              d.beschreibung?.toLowerCase().includes(query);
     }
     return true;
-  }) || [];
+  }) || []).sort((a, b) => {
+    // Sortierung anwenden
+    switch (sortierung) {
+      case "datum_desc":
+        return new Date(b.eingangsdatum).getTime() - new Date(a.eingangsdatum).getTime();
+      case "datum_asc":
+        return new Date(a.eingangsdatum).getTime() - new Date(b.eingangsdatum).getTime();
+      case "aktenzeichen_asc":
+        return (a.aktenzeichen || "").localeCompare(b.aktenzeichen || "");
+      case "aktenzeichen_desc":
+        return (b.aktenzeichen || "").localeCompare(a.aktenzeichen || "");
+      case "steuerjahr_desc":
+        return (b.steuerjahr || 0) - (a.steuerjahr || 0);
+      case "steuerjahr_asc":
+        return (a.steuerjahr || 0) - (b.steuerjahr || 0);
+      case "betrag_desc":
+        return parseFloat(b.betrag || "0") - parseFloat(a.betrag || "0");
+      case "betrag_asc":
+        return parseFloat(a.betrag || "0") - parseFloat(b.betrag || "0");
+      default:
+        return 0;
+    }
+  });
+
+  // Gruppierte Dokumente nach Steuerart
+  const gruppierteDokumente = gruppierung === "steuerart" 
+    ? STEUERARTEN.map(s => ({
+        steuerart: s.value,
+        label: s.label,
+        dokumente: filteredDokumente.filter(d => d.steuerart === s.value)
+      })).filter(g => g.dokumente.length > 0)
+    : null;
 
   // Prüfe ob Frist überfällig
   const isFristUeberfaellig = (frist: Date | string | null, status: string) => {
@@ -816,6 +849,41 @@ export default function Finanzamt() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Sortierung und Gruppierung */}
+                <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Sortieren:</span>
+                    <Select value={sortierung} onValueChange={setSortierung}>
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="datum_desc">Datum (neueste zuerst)</SelectItem>
+                        <SelectItem value="datum_asc">Datum (älteste zuerst)</SelectItem>
+                        <SelectItem value="aktenzeichen_asc">Aktenzeichen (A-Z)</SelectItem>
+                        <SelectItem value="aktenzeichen_desc">Aktenzeichen (Z-A)</SelectItem>
+                        <SelectItem value="steuerjahr_desc">Steuerjahr (neuestes)</SelectItem>
+                        <SelectItem value="steuerjahr_asc">Steuerjahr (ältestes)</SelectItem>
+                        <SelectItem value="betrag_desc">Betrag (höchster)</SelectItem>
+                        <SelectItem value="betrag_asc">Betrag (niedrigster)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Gruppieren:</span>
+                    <Select value={gruppierung} onValueChange={setGruppierung}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="keine">Keine Gruppierung</SelectItem>
+                        <SelectItem value="steuerart">Nach Steuerart</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -828,7 +896,68 @@ export default function Finanzamt() {
                     <p className="text-muted-foreground">Keine Dokumente gefunden</p>
                   </CardContent>
                 </Card>
+              ) : gruppierteDokumente ? (
+                // Gruppierte Ansicht nach Steuerart
+                gruppierteDokumente.map((gruppe) => (
+                  <div key={gruppe.steuerart} className="mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Euro className="w-5 h-5 text-primary" />
+                      <h3 className="text-lg font-semibold">{gruppe.label}</h3>
+                      <Badge variant="secondary">{gruppe.dokumente.length}</Badge>
+                    </div>
+                    <div className="space-y-3 pl-7">
+                      {gruppe.dokumente.map((dok) => {
+                        const typInfo = DOKUMENT_TYPEN.find(t => t.value === dok.dokumentTyp);
+                        const statusInfo = STATUS_OPTIONEN.find(s => s.value === dok.status);
+                        const TypeIcon = typInfo?.icon || FileText;
+                        const ueberfaellig = isFristUeberfaellig(dok.frist, dok.status);
+
+                        return (
+                          <Card key={dok.id} className={`${ueberfaellig ? "border-red-300 bg-red-50/50" : ""}`}>
+                            <CardContent className="py-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <TypeIcon className={`w-5 h-5 ${
+                                    dok.dokumentTyp === "bescheid" ? "text-blue-600" :
+                                    dok.dokumentTyp === "einspruch" ? "text-purple-600" :
+                                    dok.dokumentTyp === "mahnung" ? "text-red-600" :
+                                    "text-gray-600"
+                                  }`} />
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{dok.betreff}</span>
+                                      {ueberfaellig && (
+                                        <Badge variant="destructive" className="text-xs">
+                                          <AlertTriangle className="w-3 h-3 mr-1" />
+                                          Überfällig
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {dok.aktenzeichen && <span>Az: {dok.aktenzeichen} • </span>}
+                                      {dok.steuerjahr && <span>Jahr {dok.steuerjahr} • </span>}
+                                      {new Date(dok.eingangsdatum).toLocaleDateString('de-DE')}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {dok.betrag && (
+                                    <span className="font-medium text-primary">
+                                      {parseFloat(dok.betrag).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                                    </span>
+                                  )}
+                                  <Badge className={statusInfo?.color}>{statusInfo?.label}</Badge>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
               ) : (
+                // Normale Liste
                 filteredDokumente.map((dok) => {
                   const typInfo = DOKUMENT_TYPEN.find(t => t.value === dok.dokumentTyp);
                   const statusInfo = STATUS_OPTIONEN.find(s => s.value === dok.status);

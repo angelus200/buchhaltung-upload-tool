@@ -342,3 +342,13 @@
 - [x] UI für OCR-Ergebnisse im Upload-Dialog (blauer OCR-Button)
 - [x] Automatische Übernahme erkannter Daten ins Formular
 - [x] Unit-Tests für OCR erstellt
+
+
+## Erweiterte Sortierung für Finanzamt-Dokumente
+- [x] Sortier-Dropdown im Filter-Bereich hinzugefügt
+- [x] Sortierung nach Datum (neueste/älteste zuerst)
+- [x] Sortierung nach Aktenzeichen (A-Z, Z-A)
+- [x] Sortierung nach Steuerjahr (neuestes/ältestes zuerst)
+- [x] Sortierung nach Betrag (höchster/niedrigster)
+- [x] Gruppierung nach Steuerart (USt, ESt, KSt, etc.) mit kompakter Ansicht
+- [x] Unit-Tests für Sortierung und Gruppierung erstellt (15 Tests)
