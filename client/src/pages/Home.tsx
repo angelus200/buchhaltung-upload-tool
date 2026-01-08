@@ -284,6 +284,9 @@ export default function Home() {
   // Mutation für Buchung in Datenbank speichern
   const createBuchungMutation = trpc.buchungen.create.useMutation();
 
+  // Mutation für Beleg-Upload zu S3
+  const uploadBelegMutation = trpc.buchungen.uploadBeleg.useMutation();
+
   // Mutation für Buchung zu Übergabe hinzufügen
   const addBuchungToUebergabeMutation = trpc.steuerberater.addBuchungen.useMutation({
     onSuccess: (data) => {
@@ -1323,7 +1326,28 @@ export default function Home() {
                     const buchung = buchungen.find(b => b.id === stbBuchungId);
                     if (buchung) {
                       try {
-                        // 1. Buchung in der Datenbank speichern
+                        let belegUrl: string | undefined = undefined;
+                        
+                        // 1. Falls Beleg vorhanden, zu S3 hochladen
+                        if (buchung.belegDatei) {
+                          toast.info("Beleg wird hochgeladen...");
+                          const base64 = await new Promise<string>((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result as string);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(buchung.belegDatei!);
+                          });
+                          
+                          const uploadResult = await uploadBelegMutation.mutateAsync({
+                            unternehmenId: selectedUnternehmenId,
+                            dateiName: buchung.belegDatei.name,
+                            dateiBase64: base64,
+                            contentType: buchung.belegDatei.type,
+                          });
+                          belegUrl = uploadResult.url;
+                        }
+                        
+                        // 2. Buchung in der Datenbank speichern
                         toast.info("Buchung wird gespeichert...");
                         const result = await createBuchungMutation.mutateAsync({
                           unternehmenId: selectedUnternehmenId,
@@ -1338,22 +1362,24 @@ export default function Home() {
                           steuersatz: buchung.steuersatz,
                           bruttobetrag: buchung.bruttobetrag.replace(",", "."),
                           buchungstext: buchung.buchungstext || undefined,
+                          belegUrl: belegUrl,
                         });
                         
-                        // 2. Buchung zur Übergabe hinzufügen
+                        // 3. Buchung zur Übergabe hinzufügen
                         await addBuchungToUebergabeMutation.mutateAsync({
                           uebergabeId: selectedUebergabeId,
                           buchungIds: [result.id],
                         });
                         
-                        // 3. Lokale Buchung als übergeben markieren
+                        // 4. Lokale Buchung als übergeben markieren
                         setBuchungen(prev => prev.map(b => 
                           b.id === stbBuchungId 
                             ? { ...b, anSteuerberaterUebergeben: true, steuerberaterUebergabeId: selectedUebergabeId }
                             : b
                         ));
                         
-                        toast.success(`Buchung "${buchung.geschaeftspartner}" gespeichert und zur Übergabe hinzugefügt`);
+                        const belegInfo = belegUrl ? " (inkl. Beleg)" : "";
+                        toast.success(`Buchung "${buchung.geschaeftspartner}" gespeichert und zur Übergabe hinzugefügt${belegInfo}`);
                         setStbDialogOpen(false);
                         setStbBuchungId(null);
                         setSelectedUebergabeId(null);
@@ -1363,10 +1389,10 @@ export default function Home() {
                     }
                   }
                 }}
-                disabled={!selectedUebergabeId || !selectedUnternehmenId || createBuchungMutation.isPending || addBuchungToUebergabeMutation.isPending}
+                disabled={!selectedUebergabeId || !selectedUnternehmenId || createBuchungMutation.isPending || addBuchungToUebergabeMutation.isPending || uploadBelegMutation.isPending}
                 className="bg-teal-600 hover:bg-teal-700"
               >
-                {(createBuchungMutation.isPending || addBuchungToUebergabeMutation.isPending) ? (
+                {(createBuchungMutation.isPending || addBuchungToUebergabeMutation.isPending || uploadBelegMutation.isPending) ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Speichern...</>
                 ) : (
                   "Speichern & Übergeben"

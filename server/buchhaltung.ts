@@ -2,6 +2,7 @@ import { eq, desc, and, or, gte, lte } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
+import { storagePut } from "./storage";
 import {
   unternehmen,
   userUnternehmen,
@@ -528,6 +529,36 @@ export const buchungenRouter = router({
       const csv = [header, columns, ...rows].join("\n");
 
       return { csv, count: filteredBuchungen.length };
+    }),
+
+  // Beleg-Datei zu S3 hochladen
+  uploadBeleg: protectedProcedure
+    .input(
+      z.object({
+        unternehmenId: z.number(),
+        dateiName: z.string(),
+        dateiBase64: z.string(), // Base64-kodierte Datei
+        contentType: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // Generiere eindeutigen Pfad
+      const timestamp = Date.now();
+      const safeName = input.dateiName.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const path = `belege/${input.unternehmenId}/${timestamp}_${safeName}`;
+
+      // Konvertiere Base64 zu Buffer
+      const base64Data = input.dateiBase64.replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+
+      // Upload zu S3
+      const result = await storagePut(path, buffer, input.contentType);
+
+      return {
+        url: result.url,
+        key: result.key,
+        dateiName: input.dateiName,
+      };
     }),
 });
 

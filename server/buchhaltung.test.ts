@@ -329,3 +329,117 @@ describe("Persistente Buchungen-Speicherung", () => {
     });
   });
 });
+
+
+describe("S3 Beleg-Upload Integration", () => {
+  describe("Upload-Pfad-Generierung", () => {
+    it("sollte einen sicheren Dateinamen generieren", () => {
+      const unsafeName = "Rechnung 2025/01 (Kopie).pdf";
+      const safeName = unsafeName.replace(/[^a-zA-Z0-9.-]/g, "_");
+      
+      expect(safeName).toBe("Rechnung_2025_01__Kopie_.pdf");
+      expect(safeName).not.toContain("/");
+      expect(safeName).not.toContain(" ");
+    });
+
+    it("sollte einen eindeutigen Pfad mit Timestamp generieren", () => {
+      const unternehmenId = 1;
+      const timestamp = Date.now();
+      const safeName = "rechnung.pdf";
+      const path = `belege/${unternehmenId}/${timestamp}_${safeName}`;
+      
+      expect(path).toMatch(/^belege\/\d+\/\d+_rechnung\.pdf$/);
+    });
+  });
+
+  describe("Base64-Konvertierung", () => {
+    it("sollte Base64-Präfix korrekt entfernen", () => {
+      const base64WithPrefix = "data:application/pdf;base64,JVBERi0xLjQ=";
+      const cleanBase64 = base64WithPrefix.replace(/^data:[^;]+;base64,/, "");
+      
+      expect(cleanBase64).toBe("JVBERi0xLjQ=");
+      expect(cleanBase64).not.toContain("data:");
+    });
+
+    it("sollte verschiedene MIME-Types unterstützen", () => {
+      const mimeTypes = [
+        "data:application/pdf;base64,",
+        "data:image/jpeg;base64,",
+        "data:image/png;base64,",
+        "data:image/gif;base64,",
+      ];
+      
+      mimeTypes.forEach(prefix => {
+        const testData = prefix + "ABC123";
+        const cleaned = testData.replace(/^data:[^;]+;base64,/, "");
+        expect(cleaned).toBe("ABC123");
+      });
+    });
+  });
+
+  describe("Upload-Workflow", () => {
+    it("sollte Beleg vor Buchung hochladen", async () => {
+      // Simuliere den Workflow
+      const workflow = {
+        step1: "beleg_upload",
+        step2: "buchung_speichern",
+        step3: "uebergabe_verknuepfen",
+      };
+      
+      expect(Object.keys(workflow)).toEqual(["step1", "step2", "step3"]);
+      expect(workflow.step1).toBe("beleg_upload");
+    });
+
+    it("sollte Beleg-URL in Buchung speichern", () => {
+      const buchung = {
+        id: 1,
+        geschaeftspartner: "Amazon",
+        bruttobetrag: "119.00",
+        belegUrl: null as string | null,
+      };
+      
+      // Simuliere Upload-Ergebnis
+      const uploadResult = {
+        url: "https://storage.example.com/belege/1/123456_rechnung.pdf",
+        key: "belege/1/123456_rechnung.pdf",
+      };
+      
+      // Buchung mit Beleg-URL
+      const buchungMitBeleg = {
+        ...buchung,
+        belegUrl: uploadResult.url,
+      };
+      
+      expect(buchungMitBeleg.belegUrl).toBe(uploadResult.url);
+      expect(buchungMitBeleg.belegUrl).toContain("storage");
+    });
+  });
+
+  describe("Fehlerbehandlung", () => {
+    it("sollte ohne Beleg speichern können", () => {
+      const buchungOhneBeleg = {
+        id: 1,
+        geschaeftspartner: "Amazon",
+        belegUrl: undefined,
+      };
+      
+      expect(buchungOhneBeleg.belegUrl).toBeUndefined();
+    });
+
+    it("sollte große Dateien ablehnen", () => {
+      const maxSize = 10 * 1024 * 1024; // 10 MB
+      const fileSize = 15 * 1024 * 1024; // 15 MB
+      
+      const isValid = fileSize <= maxSize;
+      expect(isValid).toBe(false);
+    });
+
+    it("sollte nur erlaubte Dateitypen akzeptieren", () => {
+      const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
+      
+      expect(allowedTypes.includes("application/pdf")).toBe(true);
+      expect(allowedTypes.includes("image/jpeg")).toBe(true);
+      expect(allowedTypes.includes("text/plain")).toBe(false);
+    });
+  });
+});

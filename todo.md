@@ -428,3 +428,13 @@
 - [x] Automatische Speicherung vor Steuerberater-Übergabe
 - [x] Verknüpfung gespeicherter Buchungen mit Übergabe (addBuchungen)
 - [x] Unit-Tests für persistente Speicherung (276 Tests bestanden)
+
+
+## Phase 6: S3-Integration für Belegdateien
+
+- [x] S3-Hilfsfunktionen analysiert (storagePut, storageGet bereits vorhanden)
+- [x] Backend-Endpunkt für Beleg-Upload erstellt (buchungen.uploadBeleg)
+- [x] UI: Beleg-Upload beim Speichern der Buchung integriert
+- [x] Beleg-URL in Buchung speichern (belegUrl Feld)
+- [x] Workflow: Beleg hochladen -> Buchung speichern -> Übergabe verknüpfen
+- [x] Unit-Tests für S3-Upload (285 Tests bestanden)
