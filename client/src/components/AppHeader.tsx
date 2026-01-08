@@ -25,7 +25,9 @@ import {
   Calendar,
   LogOut,
   User,
-  Settings
+  Settings,
+  Landmark,
+  ListTodo
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -286,6 +288,28 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               >
                 <StickyNote className="w-3.5 h-3.5" />
                 Notizen
+              </Button>
+            </Link>
+            <Link href="/finanzamt">
+              <Button 
+                variant={isActive("/finanzamt") ? "default" : "ghost"} 
+                size="sm" 
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/finanzamt") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <Landmark className="w-3.5 h-3.5" />
+                Finanzamt
+              </Button>
+            </Link>
+            <Link href="/aufgaben">
+              <Button 
+                variant={isActive("/aufgaben") ? "default" : "ghost"} 
+                size="sm" 
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/aufgaben") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <ListTodo className="w-3.5 h-3.5" />
+                Aufgaben
               </Button>
             </Link>
             <Link href="/unternehmen">

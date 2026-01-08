@@ -536,3 +536,130 @@ export const sachkonten = mysqlTable("sachkonten", {
 
 export type Sachkonto = typeof sachkonten.$inferSelect;
 export type InsertSachkonto = typeof sachkonten.$inferInsert;
+
+
+/**
+ * Finanzamt-Dokumente (Schriftverkehr, Bescheide, Einsprüche)
+ */
+export const finanzamtDokumente = mysqlTable("finanzamt_dokumente", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Dokumenttyp */
+  dokumentTyp: mysqlEnum("dokumentTyp", [
+    "schriftverkehr",   // Allgemeiner Schriftverkehr
+    "bescheid",         // Steuerbescheid
+    "einspruch",        // Einspruch gegen Bescheid
+    "mahnung",          // Mahnung vom Finanzamt
+    "anfrage",          // Anfrage/Auskunftsersuchen
+    "pruefung",         // Betriebsprüfung
+    "sonstiges"         // Sonstiges
+  ]).default("schriftverkehr").notNull(),
+  /** Steuerart */
+  steuerart: mysqlEnum("steuerart", [
+    "USt",              // Umsatzsteuer
+    "ESt",              // Einkommensteuer
+    "KSt",              // Körperschaftsteuer
+    "GewSt",            // Gewerbesteuer
+    "LSt",              // Lohnsteuer
+    "KapESt",           // Kapitalertragsteuer
+    "sonstige"          // Sonstige
+  ]),
+  /** Betroffener Zeitraum */
+  zeitraumVon: date("zeitraumVon"),
+  zeitraumBis: date("zeitraumBis"),
+  /** Jahr für Bescheide */
+  steuerjahr: int("steuerjahr"),
+  /** Aktenzeichen/Steuernummer */
+  aktenzeichen: varchar("aktenzeichen", { length: 50 }),
+  /** Betreff/Titel */
+  betreff: varchar("betreff", { length: 500 }).notNull(),
+  /** Beschreibung/Inhalt */
+  beschreibung: text("beschreibung"),
+  /** Eingangsdatum */
+  eingangsdatum: date("eingangsdatum").notNull(),
+  /** Frist (z.B. für Einspruch) */
+  frist: date("frist"),
+  /** Betrag (bei Bescheiden) */
+  betrag: decimal("betrag", { precision: 15, scale: 2 }),
+  /** Zahlungsfrist */
+  zahlungsfrist: date("zahlungsfrist"),
+  /** Status */
+  status: mysqlEnum("status", [
+    "neu",              // Neu eingegangen
+    "in_bearbeitung",   // In Bearbeitung
+    "einspruch",        // Einspruch eingelegt
+    "erledigt",         // Erledigt/Abgeschlossen
+    "archiviert"        // Archiviert
+  ]).default("neu").notNull(),
+  /** Bezug auf anderen Bescheid (für Einsprüche) */
+  bezugDokumentId: int("bezugDokumentId"),
+  /** Datei-URL */
+  dateiUrl: text("dateiUrl"),
+  dateiName: varchar("dateiName", { length: 255 }),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type FinanzamtDokument = typeof finanzamtDokumente.$inferSelect;
+export type InsertFinanzamtDokument = typeof finanzamtDokumente.$inferInsert;
+
+/**
+ * Aufgaben/To-Dos
+ */
+export const aufgaben = mysqlTable("aufgaben", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Titel der Aufgabe */
+  titel: varchar("titel", { length: 500 }).notNull(),
+  /** Beschreibung */
+  beschreibung: text("beschreibung"),
+  /** Kategorie */
+  kategorie: mysqlEnum("kategorie", [
+    "finanzamt",        // Finanzamt-bezogen
+    "buchhaltung",      // Buchhaltung
+    "steuern",          // Steuern allgemein
+    "personal",         // Personal/HR
+    "allgemein",        // Allgemeine Aufgaben
+    "frist",            // Fristgebundene Aufgaben
+    "zahlung",          // Zahlungsaufgaben
+    "pruefung"          // Prüfungen
+  ]).default("allgemein").notNull(),
+  /** Priorität */
+  prioritaet: mysqlEnum("prioritaet", [
+    "niedrig",
+    "normal",
+    "hoch",
+    "dringend"
+  ]).default("normal").notNull(),
+  /** Status */
+  status: mysqlEnum("status", [
+    "offen",
+    "in_bearbeitung",
+    "wartend",
+    "erledigt",
+    "storniert"
+  ]).default("offen").notNull(),
+  /** Fälligkeitsdatum */
+  faelligkeitsdatum: date("faelligkeitsdatum"),
+  /** Erinnerungsdatum */
+  erinnerungsdatum: date("erinnerungsdatum"),
+  /** Zugewiesen an */
+  zugewiesenAn: int("zugewiesenAn").references(() => users.id),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  /** Bezug zu Finanzamt-Dokument */
+  finanzamtDokumentId: int("finanzamtDokumentId").references(() => finanzamtDokumente.id),
+  /** Erledigungsdatum */
+  erledigtAm: date("erledigtAm"),
+  /** Erledigt von */
+  erledigtVon: int("erledigtVon").references(() => users.id),
+  /** Notizen */
+  notizen: text("notizen"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Aufgabe = typeof aufgaben.$inferSelect;
+export type InsertAufgabe = typeof aufgaben.$inferInsert;

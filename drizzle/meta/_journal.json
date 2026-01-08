@@ -85,6 +85,13 @@
       "when": 1767791847606,
       "tag": "0011_bored_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1767871825398,
+      "tag": "0012_left_warpath",
+      "breakpoints": true
     }
   ]
 }

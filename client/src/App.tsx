@@ -18,6 +18,8 @@ import Stammdaten from "./pages/Stammdaten";
 import Kennzahlen from "./pages/Kennzahlen";
 import Zahlungen from "./pages/Zahlungen";
 import Kalender from "./pages/Kalender";
+import Finanzamt from "./pages/Finanzamt";
+import Aufgaben from "./pages/Aufgaben";
 
 function Router() {
   return (
@@ -43,6 +45,8 @@ function Router() {
       <Route path={"/benachrichtigungen"} component={Benachrichtigungen} />
       <Route path={"/einladung/:token"} component={Einladung} />
       <Route path={"/benutzerverwaltung"} component={Benutzerverwaltung} />
+      <Route path={"/finanzamt"} component={Finanzamt} />
+      <Route path={"/aufgaben"} component={Aufgaben} />
       
       {/* Fallback */}
       <Route path={"/404"} component={NotFound} />

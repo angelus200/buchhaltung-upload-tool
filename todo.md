@@ -256,3 +256,26 @@
 - [x] UI für Zahlungsstatus und Fälligkeit in Buchungskarte
 - [x] Überfällig-Warnung bei offenen Rechnungen
 - [x] Automatisches Zahlungsdatum bei Status "bezahlt"
+
+
+## Finanzamtskommunikation Modul
+- [x] Datenbank-Schema für Finanzamt-Dokumente (Schriftverkehr, Bescheide, Einsprüche, Mahnungen, Anfragen, Prüfungen)
+- [x] Backend-Router für CRUD-Operationen
+- [x] Finanzamt-Seite mit Dokumenten-Upload und Kategorisierung
+- [x] Bescheide-Verwaltung mit Fristen und Steuerarten (USt, ESt, KSt, GewSt, LSt, KapESt)
+- [x] Einsprüche-Tracking mit Status (neu, in Bearbeitung, Einspruch, erledigt, archiviert)
+- [x] Automatische To-Do-Erstellung bei Fristen und Zahlungsfristen
+- [x] Statistik-Dashboard für Finanzamt-Dokumente
+- [x] Unit-Tests erstellt
+
+## Interne Aufgaben und To-Dos Modul
+- [x] Datenbank-Schema für Aufgaben
+- [x] Backend-Router für Aufgaben-CRUD
+- [x] Aufgaben-Seite mit Liste und Filterung
+- [x] Aufgaben-Erstellung mit Fälligkeit und Priorität (niedrig, normal, hoch, dringend)
+- [x] Kategorien: Finanzamt, Buchhaltung, Steuern, Personal, Allgemein, Frist, Zahlung, Prüfung
+- [x] Status-Tracking (offen, in Bearbeitung, wartend, erledigt, storniert)
+- [x] CSV-Export für Aufgaben
+- [x] Integration mit Finanzamt-Modul (automatische Aufgaben bei Fristen)
+- [x] Navigation in AppHeader integriert
+- [x] Unit-Tests erstellt
