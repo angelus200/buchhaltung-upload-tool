@@ -33,15 +33,15 @@ import {
 import AppHeader from "@/components/AppHeader";
 import { trpc } from "@/lib/trpc";
 
-// Dokumenttypen
+// Dokumenttypen mit Farben
 const DOKUMENT_TYPEN = [
-  { value: "schriftverkehr", label: "Schriftverkehr", icon: Mail },
-  { value: "bescheid", label: "Bescheid", icon: FileText },
-  { value: "einspruch", label: "Einspruch", icon: Gavel },
-  { value: "mahnung", label: "Mahnung", icon: AlertTriangle },
-  { value: "anfrage", label: "Anfrage", icon: Search },
-  { value: "pruefung", label: "Betriebsprüfung", icon: FileWarning },
-  { value: "sonstiges", label: "Sonstiges", icon: FileText },
+  { value: "schriftverkehr", label: "Schriftverkehr", icon: Mail, color: "text-gray-600", bgColor: "bg-gray-100" },
+  { value: "bescheid", label: "Bescheid", icon: FileText, color: "text-blue-600", bgColor: "bg-blue-100" },
+  { value: "einspruch", label: "Einspruch", icon: Gavel, color: "text-purple-600", bgColor: "bg-purple-100" },
+  { value: "mahnung", label: "Mahnung", icon: AlertTriangle, color: "text-red-600", bgColor: "bg-red-100" },
+  { value: "anfrage", label: "Anfrage", icon: Search, color: "text-amber-600", bgColor: "bg-amber-100" },
+  { value: "pruefung", label: "Betriebsprüfung", icon: FileWarning, color: "text-orange-600", bgColor: "bg-orange-100" },
+  { value: "sonstiges", label: "Sonstiges", icon: FileText, color: "text-slate-600", bgColor: "bg-slate-100" },
 ];
 
 const STEUERARTEN = [
@@ -923,10 +923,19 @@ export default function Finanzamt() {
                 </Card>
               ) : gruppierteDokumente ? (
                 // Gruppierte Ansicht nach Steuerart
-                gruppierteDokumente.map((gruppe) => (
+                gruppierteDokumente.map((gruppe) => {
+                  // Finde passendes Icon und Farbe für die Gruppe
+                  const gruppenTypInfo = DOKUMENT_TYPEN.find(t => t.value === gruppe.key);
+                  const GruppenIcon = gruppenTypInfo?.icon || (gruppierung === "steuerjahr" ? Calendar : Euro);
+                  const gruppenColor = gruppenTypInfo?.color || "text-primary";
+                  const gruppenBgColor = gruppenTypInfo?.bgColor || "bg-primary/10";
+                  
+                  return (
                   <div key={gruppe.key} className="mb-6">
                     <div className="flex items-center gap-2 mb-3">
-                      <Euro className="w-5 h-5 text-primary" />
+                      <div className={`p-1.5 rounded ${gruppenBgColor}`}>
+                        <GruppenIcon className={`w-5 h-5 ${gruppenColor}`} />
+                      </div>
                       <h3 className="text-lg font-semibold">{gruppe.label}</h3>
                       <Badge variant="secondary">{gruppe.dokumente.length}</Badge>
                     </div>
@@ -942,12 +951,9 @@ export default function Finanzamt() {
                             <CardContent className="py-4">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                  <TypeIcon className={`w-5 h-5 ${
-                                    dok.dokumentTyp === "bescheid" ? "text-blue-600" :
-                                    dok.dokumentTyp === "einspruch" ? "text-purple-600" :
-                                    dok.dokumentTyp === "mahnung" ? "text-red-600" :
-                                    "text-gray-600"
-                                  }`} />
+                                  <div className={`p-1.5 rounded ${typInfo?.bgColor || "bg-gray-100"}`}>
+                                    <TypeIcon className={`w-4 h-4 ${typInfo?.color || "text-gray-600"}`} />
+                                  </div>
                                   <div>
                                     <div className="flex items-center gap-2">
                                       <span className="font-medium">{dok.betreff}</span>
@@ -980,7 +986,7 @@ export default function Finanzamt() {
                       })}
                     </div>
                   </div>
-                ))
+                );})
               ) : (
                 // Normale Liste
                 filteredDokumente.map((dok) => {

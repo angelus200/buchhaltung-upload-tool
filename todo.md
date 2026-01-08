@@ -358,3 +358,10 @@
 - [x] Gruppierung nach Steuerjahr hinzugefügt (absteigend sortiert, "Ohne Steuerjahr" separat)
 - [x] Gruppierung nach Dokumententyp hinzugefügt (Bescheid, Einspruch, Mahnung, etc.)
 - [x] Unit-Tests aktualisiert (7 neue Tests, 239 gesamt)
+
+
+## Farbige Icons für Dokumententypen
+- [x] Farbige Icons für jeden Dokumententyp in gruppierter Ansicht
+- [x] Bescheid (blau), Einspruch (lila), Mahnung (rot), Schriftverkehr (grau), Anfrage (amber), Betriebsprüfung (orange)
+- [x] Farbige Hintergrund-Badges für bessere Sichtbarkeit
+- [x] Gruppen-Icons passen sich dem Gruppierungstyp an
