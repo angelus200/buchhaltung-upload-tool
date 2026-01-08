@@ -378,3 +378,16 @@
 - [x] Navigation in AppHeader integriert
 - [x] Unit-Tests erstellt (12 Tests)
 - [ ] Navigation in AppHeader integrieren
+
+
+## Steuerberater-Aufwands-Kontrolle (Phase 2)
+- [ ] Datenbank-Schema für Steuerberater-Rechnungen erstellen (stb_rechnungen)
+- [ ] Datenbank-Schema für Leistungspositionen erstellen (stb_rechnung_positionen)
+- [ ] Kategorisierung: Notwendig vs. Vermeidbar (Nachfragen, Korrekturen, fehlende Belege)
+- [ ] Backend-Router für Rechnungen CRUD
+- [ ] Backend-Router für Aufwands-Analyse und Kennzahlen
+- [ ] Rechnungs-Erfassung UI auf Steuerberater-Seite
+- [ ] Leistungspositionen mit Kategorisierung erfassen
+- [ ] Aufwands-Analyse Dashboard (Kosten pro Buchung, Fehlerquote, vermeidbare Kosten)
+- [ ] Jahresvergleich der Steuerberater-Kosten
+- [ ] Empfehlungen zur Kostenreduktion

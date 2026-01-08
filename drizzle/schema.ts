@@ -785,3 +785,94 @@ export const steuerberaterUebergabePositionen = mysqlTable("stb_ueb_pos", {
 
 export type SteuerberaterUebergabePosition = typeof steuerberaterUebergabePositionen.$inferSelect;
 export type InsertSteuerberaterUebergabePosition = typeof steuerberaterUebergabePositionen.$inferInsert;
+
+
+/**
+ * Steuerberater-Rechnungen - Erfassung der Steuerberater-Abrechnungen
+ */
+export const steuerberaterRechnungen = mysqlTable("stb_rechnungen", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unternehmen */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Rechnungsnummer */
+  rechnungsnummer: varchar("rechnungsnummer", { length: 100 }).notNull(),
+  /** Rechnungsdatum */
+  rechnungsdatum: date("rechnungsdatum").notNull(),
+  /** Leistungszeitraum von */
+  zeitraumVon: date("zeitraumVon"),
+  /** Leistungszeitraum bis */
+  zeitraumBis: date("zeitraumBis"),
+  /** Nettobetrag */
+  nettobetrag: decimal("nettobetrag", { precision: 15, scale: 2 }).notNull(),
+  /** Steuersatz */
+  steuersatz: decimal("steuersatz", { precision: 5, scale: 2 }).default("19.00"),
+  /** Bruttobetrag */
+  bruttobetrag: decimal("bruttobetrag", { precision: 15, scale: 2 }).notNull(),
+  /** Status */
+  status: mysqlEnum("status", [
+    "offen",              // Noch nicht bezahlt
+    "bezahlt",            // Bezahlt
+    "storniert"           // Storniert
+  ]).default("offen").notNull(),
+  /** Zahlungsdatum */
+  zahlungsdatum: date("zahlungsdatum"),
+  /** Beschreibung/Notizen */
+  beschreibung: text("beschreibung"),
+  /** Datei-URL (Rechnung als PDF) */
+  dateiUrl: text("dateiUrl"),
+  dateiName: varchar("dateiName", { length: 255 }),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SteuerberaterRechnung = typeof steuerberaterRechnungen.$inferSelect;
+export type InsertSteuerberaterRechnung = typeof steuerberaterRechnungen.$inferInsert;
+
+/**
+ * Steuerberater-Rechnungspositionen - Einzelne Leistungen auf einer Rechnung
+ */
+export const steuerberaterRechnungPositionen = mysqlTable("stb_rech_pos", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Rechnung */
+  rechnungId: int("rechnungId").references(() => steuerberaterRechnungen.id).notNull(),
+  /** Positionsnummer */
+  positionsnummer: int("positionsnummer").default(1),
+  /** Leistungsbeschreibung */
+  beschreibung: varchar("beschreibung", { length: 500 }).notNull(),
+  /** Leistungskategorie */
+  kategorie: mysqlEnum("kategorie", [
+    "jahresabschluss",        // Jahresabschluss
+    "steuererklaerung",       // Steuererklärung
+    "buchhaltung",            // Laufende Buchhaltung
+    "lohnabrechnung",         // Lohnabrechnung
+    "beratung",               // Steuerberatung
+    "finanzamt",              // Finanzamt-Kommunikation
+    "pruefung",               // Betriebsprüfung
+    "sonstig"                 // Sonstige Leistungen
+  ]).default("sonstig").notNull(),
+  /** Bewertung: Notwendig oder Vermeidbar */
+  bewertung: mysqlEnum("bewertung", [
+    "notwendig",              // Notwendige Standardleistung
+    "vermeidbar_nachfrage",   // Vermeidbar: Nachfrage wegen fehlender Unterlagen
+    "vermeidbar_korrektur",   // Vermeidbar: Korrektur wegen Fehler
+    "vermeidbar_beleg",       // Vermeidbar: Fehlender Beleg nachgefordert
+    "vermeidbar_info",        // Vermeidbar: Fehlende Information nachgefordert
+    "unklar"                  // Noch nicht bewertet
+  ]).default("unklar").notNull(),
+  /** Ursache für vermeidbare Kosten */
+  vermeidbarUrsache: text("vermeidbarUrsache"),
+  /** Menge/Anzahl */
+  menge: decimal("menge", { precision: 10, scale: 2 }).default("1.00"),
+  /** Einzelpreis */
+  einzelpreis: decimal("einzelpreis", { precision: 15, scale: 2 }).notNull(),
+  /** Gesamtpreis (Menge x Einzelpreis) */
+  gesamtpreis: decimal("gesamtpreis", { precision: 15, scale: 2 }).notNull(),
+  /** Verknüpfte Übergabe (optional) */
+  uebergabeId: int("uebergabeId").references(() => steuerberaterUebergaben.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SteuerberaterRechnungPosition = typeof steuerberaterRechnungPositionen.$inferSelect;
+export type InsertSteuerberaterRechnungPosition = typeof steuerberaterRechnungPositionen.$inferInsert;
