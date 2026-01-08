@@ -305,3 +305,19 @@
 - [x] Problem analysiert: dateiUrl Spalte war TEXT (65KB max), zu klein für Base64-PDFs
 - [x] Spalte auf MEDIUMTEXT geändert (16MB max)
 - [x] Upload-Funktion getestet und funktioniert
+
+
+## S3-Storage für Finanzamt-Dateien
+- [x] S3-Upload-Endpunkt für Finanzamt-Dateien erstellen (uploadDatei Mutation)
+- [x] Frontend auf S3-Upload umstellen
+- [x] Datei-URL statt Base64 in Datenbank speichern
+
+## PDF-Vorschau im Finanzamt-Dialog
+- [x] PDF-Vorschau-Komponente im Dialog integrieren (iframe)
+- [x] Vorschau für Bilder (JPG, PNG, GIF, WebP) hinzufügen
+- [x] Vorschau beim Hochladen anzeigen
+
+## Drag & Drop für Finanzamt-Dateien
+- [x] Drag & Drop Zone im Dialog implementieren
+- [x] Visuelles Feedback beim Ziehen (Farbwechsel, Icon)
+- [ ] Mehrere Dateien unterstützen (optional - später)

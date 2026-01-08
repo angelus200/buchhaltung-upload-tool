@@ -129,6 +129,8 @@ export default function Finanzamt() {
     dateiName: "",
   });
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // Unternehmen laden
   const { data: unternehmenList } = trpc.unternehmen.list.useQuery();
@@ -177,6 +179,23 @@ export default function Finanzamt() {
     },
   });
 
+  const uploadMutation = trpc.finanzamt.uploadDatei.useMutation({
+    onSuccess: (data) => {
+      setNeuesDokument(prev => ({
+        ...prev,
+        dateiUrl: data.url,
+        dateiName: data.dateiName,
+      }));
+      setPreviewUrl(data.url);
+      setUploadingFile(false);
+      toast.success(`Datei "${data.dateiName}" hochgeladen`);
+    },
+    onError: (error) => {
+      toast.error(`Upload fehlgeschlagen: ${error.message}`);
+      setUploadingFile(false);
+    },
+  });
+
   const resetForm = () => {
     setNeuesDokument({
       dokumentTyp: "bescheid",
@@ -192,35 +211,77 @@ export default function Finanzamt() {
       dateiUrl: "",
       dateiName: "",
     });
+    setPreviewUrl(null);
+    setDragActive(false);
   };
 
-  // Datei-Upload Handler
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Datei verarbeiten (für Input und Drag&Drop)
+  const processFile = async (file: File) => {
+    if (!selectedUnternehmenId) {
+      toast.error("Bitte zuerst ein Unternehmen auswählen");
+      return;
+    }
 
     setUploadingFile(true);
+    
+    // Lokale Vorschau für Bilder und PDFs
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf";
+    
+    if (isImage) {
+      const localUrl = URL.createObjectURL(file);
+      setPreviewUrl(localUrl);
+    }
+
     try {
-      // Konvertiere zu Base64 für einfachen Upload
+      // Konvertiere zu Base64 für S3-Upload
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = reader.result as string;
-        setNeuesDokument(prev => ({
-          ...prev,
-          dateiUrl: base64,
+        uploadMutation.mutate({
+          unternehmenId: selectedUnternehmenId,
           dateiName: file.name,
-        }));
-        setUploadingFile(false);
-        toast.success(`Datei "${file.name}" hochgeladen`);
+          dateiBase64: base64,
+          contentType: file.type,
+        });
       };
       reader.onerror = () => {
-        toast.error("Fehler beim Hochladen der Datei");
+        toast.error("Fehler beim Lesen der Datei");
         setUploadingFile(false);
       };
       reader.readAsDataURL(file);
     } catch (error) {
       toast.error("Fehler beim Hochladen");
       setUploadingFile(false);
+    }
+  };
+
+  // Datei-Upload Handler (Input)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
+  };
+
+  // Drag & Drop Handler
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      await processFile(files[0]);
     }
   };
 
@@ -425,33 +486,88 @@ export default function Finanzamt() {
                   />
                 </div>
 
-                {/* Datei-Upload */}
+                {/* Datei-Upload mit Drag & Drop */}
                 <div className="space-y-2 col-span-2">
                   <Label>Dokument anhängen</Label>
-                  <div className="flex items-center gap-4">
-                    <Input 
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer
+                      ${dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
+                      ${uploadingFile ? 'opacity-50 pointer-events-none' : ''}`}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    onClick={() => document.getElementById('file-input')?.click()}
+                  >
+                    <input 
+                      id="file-input"
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                       onChange={handleFileUpload}
                       disabled={uploadingFile}
-                      className="flex-1"
+                      className="hidden"
                     />
-                    {uploadingFile && (
-                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    {uploadingFile ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">Wird hochgeladen...</p>
+                      </div>
+                    ) : dragActive ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="w-8 h-8 text-primary" />
+                        <p className="text-sm font-medium text-primary">Datei hier ablegen</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="w-8 h-8 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          Datei hierher ziehen oder <span className="text-primary font-medium">klicken</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">PDF, JPG, PNG, DOC (max. 10MB)</p>
+                      </div>
                     )}
                   </div>
+
+                  {/* Vorschau und hochgeladene Datei */}
                   {neuesDokument.dateiName && (
-                    <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>{neuesDokument.dateiName}</span>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="ml-auto h-6 px-2"
-                        onClick={() => setNeuesDokument({...neuesDokument, dateiUrl: "", dateiName: ""})}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
+                    <div className="mt-3 border rounded-lg overflow-hidden">
+                      {/* Vorschau für Bilder */}
+                      {previewUrl && (neuesDokument.dateiName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) && (
+                        <div className="bg-gray-100 p-2">
+                          <img 
+                            src={previewUrl} 
+                            alt="Vorschau" 
+                            className="max-h-40 mx-auto object-contain rounded"
+                          />
+                        </div>
+                      )}
+                      {/* Vorschau für PDFs */}
+                      {previewUrl && neuesDokument.dateiName.endsWith('.pdf') && (
+                        <div className="bg-gray-100">
+                          <iframe 
+                            src={previewUrl} 
+                            className="w-full h-48 border-0"
+                            title="PDF Vorschau"
+                          />
+                        </div>
+                      )}
+                      {/* Datei-Info */}
+                      <div className="flex items-center gap-2 p-3 bg-green-50">
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <span className="text-sm text-green-700 font-medium flex-1">{neuesDokument.dateiName}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNeuesDokument({...neuesDokument, dateiUrl: "", dateiName: ""});
+                            setPreviewUrl(null);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>

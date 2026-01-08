@@ -3,6 +3,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { finanzamtDokumente, aufgaben, type FinanzamtDokument } from "../drizzle/schema";
 import { eq, and, desc, asc, or, sql } from "drizzle-orm";
+import { storagePut } from "./storage";
 
 // ============================================
 // FINANZAMT-DOKUMENTE ROUTER
@@ -269,6 +270,36 @@ export const finanzamtRouter = router({
         ).length,
         bescheide: alle.filter((d: FinanzamtDokument) => d.dokumentTyp === "bescheid").length,
         einsprueche: alle.filter((d: FinanzamtDokument) => d.dokumentTyp === "einspruch").length,
+      };
+    }),
+
+  // Datei zu S3 hochladen
+  uploadDatei: protectedProcedure
+    .input(
+      z.object({
+        unternehmenId: z.number(),
+        dateiName: z.string(),
+        dateiBase64: z.string(), // Base64-kodierte Datei
+        contentType: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // Generiere eindeutigen Pfad
+      const timestamp = Date.now();
+      const safeName = input.dateiName.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const path = `finanzamt/${input.unternehmenId}/${timestamp}_${safeName}`;
+
+      // Konvertiere Base64 zu Buffer
+      const base64Data = input.dateiBase64.replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+
+      // Upload zu S3
+      const result = await storagePut(path, buffer, input.contentType);
+
+      return {
+        url: result.url,
+        key: result.key,
+        dateiName: input.dateiName,
       };
     }),
 });
