@@ -27,7 +27,8 @@ import {
   User,
   Settings,
   Landmark,
-  ListTodo
+  ListTodo,
+  Send
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -310,6 +311,17 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               >
                 <ListTodo className="w-3.5 h-3.5" />
                 Aufgaben
+              </Button>
+            </Link>
+            <Link href="/steuerberater">
+              <Button 
+                variant={isActive("/steuerberater") ? "default" : "ghost"} 
+                size="sm" 
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/steuerberater") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <Send className="w-3.5 h-3.5" />
+                Steuerberater
               </Button>
             </Link>
             <Link href="/unternehmen">

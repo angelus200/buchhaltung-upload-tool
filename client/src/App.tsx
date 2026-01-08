@@ -20,6 +20,7 @@ import Zahlungen from "./pages/Zahlungen";
 import Kalender from "./pages/Kalender";
 import Finanzamt from "./pages/Finanzamt";
 import Aufgaben from "./pages/Aufgaben";
+import Steuerberater from "./pages/Steuerberater";
 
 function Router() {
   return (
@@ -47,6 +48,7 @@ function Router() {
       <Route path={"/benutzerverwaltung"} component={Benutzerverwaltung} />
       <Route path={"/finanzamt"} component={Finanzamt} />
       <Route path={"/aufgaben"} component={Aufgaben} />
+      <Route path={"/steuerberater"} component={Steuerberater} />
       
       {/* Fallback */}
       <Route path={"/404"} component={NotFound} />

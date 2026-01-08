@@ -986,7 +986,8 @@ export default function Finanzamt() {
                       })}
                     </div>
                   </div>
-                );})
+                );
+                })
               ) : (
                 // Normale Liste
                 filteredDokumente.map((dok) => {

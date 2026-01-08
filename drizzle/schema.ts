@@ -698,3 +698,90 @@ export const finanzamtDokumentVersionen = mysqlTable("fa_dok_versionen", {
 
 export type FinanzamtDokumentVersion = typeof finanzamtDokumentVersionen.$inferSelect;
 export type InsertFinanzamtDokumentVersion = typeof finanzamtDokumentVersionen.$inferInsert;
+
+
+/**
+ * Steuerberater-Übergaben - Tracking welche Daten an den Steuerberater übergeben wurden
+ */
+export const steuerberaterUebergaben = mysqlTable("stb_uebergaben", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unternehmen */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Bezeichnung der Übergabe (z.B. "Monatsabschluss Januar 2025") */
+  bezeichnung: varchar("bezeichnung", { length: 255 }).notNull(),
+  /** Beschreibung/Notizen */
+  beschreibung: text("beschreibung"),
+  /** Übergabeart */
+  uebergabeart: mysqlEnum("uebergabeart", [
+    "datev_export",       // DATEV-Export
+    "email",              // Per E-Mail
+    "portal",             // Steuerberater-Portal
+    "persoenlich",        // Persönliche Übergabe
+    "post",               // Per Post
+    "cloud",              // Cloud-Speicher
+    "sonstig"             // Sonstige
+  ]).default("datev_export").notNull(),
+  /** Zeitraum von */
+  zeitraumVon: date("zeitraumVon"),
+  /** Zeitraum bis */
+  zeitraumBis: date("zeitraumBis"),
+  /** Übergabedatum */
+  uebergabedatum: date("uebergabedatum").notNull(),
+  /** Anzahl Buchungen */
+  anzahlBuchungen: int("anzahlBuchungen").default(0),
+  /** Anzahl Belege */
+  anzahlBelege: int("anzahlBelege").default(0),
+  /** Gesamtbetrag (Summe der Buchungen) */
+  gesamtbetrag: decimal("gesamtbetrag", { precision: 15, scale: 2 }),
+  /** Status der Übergabe */
+  status: mysqlEnum("status", [
+    "vorbereitet",        // Vorbereitet, noch nicht übergeben
+    "uebergeben",         // Übergeben
+    "bestaetigt",         // Vom Steuerberater bestätigt
+    "rueckfrage",         // Rückfrage vom Steuerberater
+    "abgeschlossen"       // Abgeschlossen
+  ]).default("vorbereitet").notNull(),
+  /** Bestätigungsdatum vom Steuerberater */
+  bestaetigtAm: timestamp("bestaetigtAm"),
+  /** Rückfragen/Anmerkungen vom Steuerberater */
+  rueckfragen: text("rueckfragen"),
+  /** Datei-URL (z.B. DATEV-Export-Datei) */
+  dateiUrl: text("dateiUrl"),
+  dateiName: varchar("dateiName", { length: 255 }),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SteuerberaterUebergabe = typeof steuerberaterUebergaben.$inferSelect;
+export type InsertSteuerberaterUebergabe = typeof steuerberaterUebergaben.$inferInsert;
+
+/**
+ * Steuerberater-Übergabe-Positionen - Einzelne Buchungen/Belege in einer Übergabe
+ */
+export const steuerberaterUebergabePositionen = mysqlTable("stb_ueb_pos", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Übergabe */
+  uebergabeId: int("uebergabeId").references(() => steuerberaterUebergaben.id).notNull(),
+  /** Buchung (optional) */
+  buchungId: int("buchungId").references(() => buchungen.id),
+  /** Positionstyp */
+  positionstyp: mysqlEnum("positionstyp", [
+    "buchung",            // Einzelne Buchung
+    "beleg",              // Beleg ohne Buchung
+    "dokument",           // Sonstiges Dokument
+    "finanzamt"           // Finanzamt-Dokument
+  ]).default("buchung").notNull(),
+  /** Beschreibung (falls keine Buchung verknüpft) */
+  beschreibung: varchar("beschreibung", { length: 500 }),
+  /** Betrag */
+  betrag: decimal("betrag", { precision: 15, scale: 2 }),
+  /** Datei-URL */
+  dateiUrl: text("dateiUrl"),
+  dateiName: varchar("dateiName", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SteuerberaterUebergabePosition = typeof steuerberaterUebergabePositionen.$inferSelect;
+export type InsertSteuerberaterUebergabePosition = typeof steuerberaterUebergabePositionen.$inferInsert;

@@ -71,6 +71,9 @@ interface Buchung {
   // Kreditor-Match
   kreditorId: number | null;
   kreditorMatch: "exact" | "partial" | "none";
+  // Steuerberater-Übergabe
+  anSteuerberaterUebergeben: boolean;
+  steuerberaterUebergabeId: number | null;
 }
 
 // Erweiterter Kontenrahmen SKR03
@@ -301,7 +304,9 @@ export default function Home() {
     faelligkeitsdatum: getDefaultFaelligkeit(),
     zahlungsdatum: "",
     kreditorId: null,
-    kreditorMatch: "none"
+    kreditorMatch: "none",
+    anSteuerberaterUebergeben: false,
+    steuerberaterUebergabeId: null
   }), [getDefaultFaelligkeit]);
 
   // OCR-Analyse für einen Beleg durchführen (Bilder und PDFs)

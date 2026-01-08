@@ -365,3 +365,16 @@
 - [x] Bescheid (blau), Einspruch (lila), Mahnung (rot), Schriftverkehr (grau), Anfrage (amber), Betriebsprüfung (orange)
 - [x] Farbige Hintergrund-Badges für bessere Sichtbarkeit
 - [x] Gruppen-Icons passen sich dem Gruppierungstyp an
+
+
+## Steuerberater-Datenübergabe-Tracking (Phase 1)
+- [x] Datenbank-Schema für Übergaben erstellt (stb_uebergaben, stb_uebergabe_positionen)
+- [x] Backend-Router für CRUD-Operationen (list, getById, create, update, delete, addPositionen, removePosition, statistiken, nichtUebergebeneBuchungen, exportProtokoll)
+- [x] Steuerberater-Seite mit Übergabe-Verwaltung erstellt
+- [x] Buchungen als "an Steuerberater übergeben" markieren (Interface erweitert)
+- [x] Übergabe-Historie mit Filterung nach Status
+- [x] Export-Funktion für Übergabe-Protokolle (CSV)
+- [x] Statistiken-Dashboard (Gesamt, Vorbereitet, Übergeben, Rückfragen, Abgeschlossen, Gesamtbetrag)
+- [x] Navigation in AppHeader integriert
+- [x] Unit-Tests erstellt (12 Tests)
+- [ ] Navigation in AppHeader integrieren
