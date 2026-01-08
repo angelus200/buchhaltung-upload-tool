@@ -438,3 +438,13 @@
 - [x] Beleg-URL in Buchung speichern (belegUrl Feld)
 - [x] Workflow: Beleg hochladen -> Buchung speichern -> Übergabe verknüpfen
 - [x] Unit-Tests für S3-Upload (285 Tests bestanden)
+
+
+## Phase 7: Beleg-Vorschau im Steuerberater-Modul
+
+- [x] Steuerberater-Detailansicht analysiert
+- [x] Backend: Buchungen mit Beleg-URLs werden bereits in getById geladen
+- [x] UI: Beleg-Vorschau (Bild-Icon für Bilder, PDF-Icon für PDFs)
+- [x] UI: Download-Link für jeden Beleg in Tabelle
+- [x] UI: Beleg-Galerie mit Thumbnails und Hover-Effekten
+- [x] Unit-Tests für Beleg-Vorschau (292 Tests bestanden)

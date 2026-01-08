@@ -26,7 +26,10 @@ import {
   Package,
   Filter,
   BarChart3,
-  RefreshCw
+  RefreshCw,
+  ExternalLink,
+  Image,
+  File
 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import { trpc } from "@/lib/trpc";
@@ -1245,7 +1248,7 @@ export default function Steuerberater() {
                   Enthaltene Buchungen ({uebergabeDetail.positionen?.length || 0})
                 </Label>
                 {uebergabeDetail.positionen && uebergabeDetail.positionen.length > 0 ? (
-                  <div className="max-h-64 overflow-y-auto border rounded-lg">
+                  <div className="max-h-80 overflow-y-auto border rounded-lg">
                     <table className="w-full text-sm">
                       <thead className="bg-muted sticky top-0">
                         <tr>
@@ -1253,6 +1256,7 @@ export default function Steuerberater() {
                           <th className="text-left p-2">Beleg-Nr.</th>
                           <th className="text-left p-2">Partner</th>
                           <th className="text-right p-2">Betrag</th>
+                          <th className="text-center p-2">Beleg</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1274,6 +1278,55 @@ export default function Steuerberater() {
                               ) : pos.buchung?.geschaeftspartner || pos.beschreibung || "-"}
                             </td>
                             <td className="p-2 text-right">{formatCurrency(pos.betrag)}</td>
+                            <td className="p-2 text-center">
+                              {pos.buchung?.belegUrl ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  {/* Beleg-Vorschau Icon basierend auf Dateityp */}
+                                  {pos.buchung.belegUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                    <a 
+                                      href={pos.buchung.belegUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="p-1 hover:bg-green-100 rounded transition-colors"
+                                      title="Bild-Vorschau öffnen"
+                                    >
+                                      <Image className="w-4 h-4 text-green-600" />
+                                    </a>
+                                  ) : (
+                                    <a 
+                                      href={pos.buchung.belegUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="p-1 hover:bg-blue-100 rounded transition-colors"
+                                      title="PDF öffnen"
+                                    >
+                                      <File className="w-4 h-4 text-blue-600" />
+                                    </a>
+                                  )}
+                                  {/* Download-Link */}
+                                  <a 
+                                    href={pos.buchung.belegUrl} 
+                                    download
+                                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                    title="Beleg herunterladen"
+                                  >
+                                    <Download className="w-4 h-4 text-gray-600" />
+                                  </a>
+                                </div>
+                              ) : pos.finanzamtDokument?.dateiUrl ? (
+                                <a 
+                                  href={pos.finanzamtDokument.dateiUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="p-1 hover:bg-teal-100 rounded transition-colors inline-flex"
+                                  title="Finanzamt-Dokument öffnen"
+                                >
+                                  <FileText className="w-4 h-4 text-teal-600" />
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">-</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1283,6 +1336,50 @@ export default function Steuerberater() {
                   <p className="text-sm text-muted-foreground">Keine Buchungen oder Finanzamt-Dokumente zugeordnet</p>
                 )}
               </div>
+              
+              {/* Beleg-Galerie für Buchungen mit Belegen */}
+              {uebergabeDetail.positionen?.some((pos: any) => pos.buchung?.belegUrl) && (
+                <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 text-green-800 font-medium text-sm mb-3">
+                    <Image className="w-4 h-4" />
+                    Beleg-Vorschau ({uebergabeDetail.positionen.filter((pos: any) => pos.buchung?.belegUrl).length} Belege)
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {uebergabeDetail.positionen
+                      .filter((pos: any) => pos.buchung?.belegUrl)
+                      .map((pos: any) => (
+                        <a 
+                          key={pos.id}
+                          href={pos.buchung.belegUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative bg-white rounded-lg border border-green-200 overflow-hidden hover:shadow-md transition-shadow"
+                        >
+                          {pos.buchung.belegUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                            <img 
+                              src={pos.buchung.belegUrl} 
+                              alt={`Beleg ${pos.buchung.belegnummer}`}
+                              className="w-full h-24 object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-24 flex items-center justify-center bg-gray-50">
+                              <FileText className="w-10 h-10 text-red-500" />
+                            </div>
+                          )}
+                          <div className="p-2 text-xs">
+                            <p className="font-medium truncate">{pos.buchung.belegnummer}</p>
+                            <p className="text-muted-foreground truncate">{pos.buchung.geschaeftspartner}</p>
+                          </div>
+                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="bg-white rounded-full p-1 shadow">
+                              <ExternalLink className="w-3 h-3 text-gray-600" />
+                            </div>
+                          </div>
+                        </a>
+                      ))}
+                  </div>
+                </div>
+              )}
               
               {/* Finanzamt-Dokumente separat anzeigen */}
               {uebergabeDetail.positionen?.some((pos: any) => pos.finanzamtDokument) && (

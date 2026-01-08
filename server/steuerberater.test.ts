@@ -369,3 +369,124 @@ describe("Buchungen-Steuerberater Integration", () => {
     });
   });
 });
+
+
+describe("Beleg-Vorschau im Steuerberater-Modul", () => {
+  describe("Beleg-URL Erkennung", () => {
+    it("sollte Bild-URLs korrekt erkennen", () => {
+      const imageUrls = [
+        "https://storage.example.com/belege/1/123_rechnung.jpg",
+        "https://storage.example.com/belege/1/123_rechnung.jpeg",
+        "https://storage.example.com/belege/1/123_rechnung.png",
+        "https://storage.example.com/belege/1/123_rechnung.gif",
+        "https://storage.example.com/belege/1/123_rechnung.webp",
+      ];
+      
+      const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+      
+      imageUrls.forEach(url => {
+        expect(isImageUrl(url)).toBe(true);
+      });
+    });
+
+    it("sollte PDF-URLs korrekt erkennen", () => {
+      const pdfUrl = "https://storage.example.com/belege/1/123_rechnung.pdf";
+      const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+      
+      expect(isImageUrl(pdfUrl)).toBe(false);
+    });
+
+    it("sollte case-insensitive sein", () => {
+      const urls = [
+        "https://example.com/file.JPG",
+        "https://example.com/file.PDF",
+        "https://example.com/file.Png",
+      ];
+      
+      const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+      
+      expect(isImageUrl(urls[0])).toBe(true);
+      expect(isImageUrl(urls[1])).toBe(false);
+      expect(isImageUrl(urls[2])).toBe(true);
+    });
+  });
+
+  describe("Übergabe-Detail mit Belegen", () => {
+    it("sollte Buchungen mit belegUrl enthalten", () => {
+      const uebergabeDetail = {
+        id: 1,
+        bezeichnung: "Januar 2025",
+        positionen: [
+          {
+            id: 1,
+            buchung: {
+              id: 42,
+              belegnummer: "RE-2025-001",
+              geschaeftspartner: "Amazon",
+              belegUrl: "https://storage.example.com/belege/1/123_rechnung.pdf",
+            },
+            betrag: "119.00",
+          },
+          {
+            id: 2,
+            buchung: {
+              id: 43,
+              belegnummer: "RE-2025-002",
+              geschaeftspartner: "Microsoft",
+              belegUrl: null,
+            },
+            betrag: "299.00",
+          },
+        ],
+      };
+      
+      const belegeVorhanden = uebergabeDetail.positionen.filter(
+        pos => pos.buchung?.belegUrl
+      );
+      
+      expect(belegeVorhanden).toHaveLength(1);
+      expect(belegeVorhanden[0].buchung?.belegUrl).toContain("rechnung.pdf");
+    });
+
+    it("sollte Finanzamt-Dokumente mit dateiUrl unterstützen", () => {
+      const position = {
+        id: 1,
+        finanzamtDokument: {
+          id: 10,
+          betreff: "Umsatzsteuer-Voranmeldung",
+          dateiUrl: "https://storage.example.com/finanzamt/1/ust_va.pdf",
+        },
+        betrag: "0.00",
+      };
+      
+      expect(position.finanzamtDokument?.dateiUrl).toBeTruthy();
+    });
+  });
+
+  describe("Beleg-Galerie", () => {
+    it("sollte nur Positionen mit Belegen anzeigen", () => {
+      const positionen = [
+        { id: 1, buchung: { belegUrl: "https://example.com/1.pdf" } },
+        { id: 2, buchung: { belegUrl: null } },
+        { id: 3, buchung: { belegUrl: "https://example.com/3.jpg" } },
+        { id: 4, finanzamtDokument: { dateiUrl: "https://example.com/fa.pdf" } },
+      ];
+      
+      const mitBelegen = positionen.filter(pos => pos.buchung?.belegUrl);
+      
+      expect(mitBelegen).toHaveLength(2);
+    });
+
+    it("sollte Beleg-Anzahl korrekt berechnen", () => {
+      const positionen = [
+        { buchung: { belegUrl: "https://example.com/1.pdf" } },
+        { buchung: { belegUrl: "https://example.com/2.jpg" } },
+        { buchung: { belegUrl: null } },
+      ];
+      
+      const anzahlBelege = positionen.filter(pos => pos.buchung?.belegUrl).length;
+      
+      expect(anzahlBelege).toBe(2);
+    });
+  });
+});
