@@ -1,9 +1,0 @@
-{
-  "query": "INSERT INTO sachkonten (unternehmenId, kontenrahmen, kontonummer, bezeichnung, kategorie, kontotyp, aktiv) VALUES \n(90001, 'SKR04', '6520', 'Kfz-Versicherung', 'Fahrzeugkosten', 'aufwand', true),\n(90001, 'SKR04', '6530', 'Laufende Fahrzeug-Betriebskosten', 'Fahrzeugkosten', 'aufwand', true),\n(90001, 'SKR04', '6540', 'Fahrzeug-Reparaturen', 'Fahrzeugkosten', 'aufwand', true),\n(90001, 'SKR04', '6550', 'Garagenmiete', 'Fahrzeugkosten', 'aufwand', true),\n(90001, 'SKR04', '6560', 'Mietleasing (dt. Leasing)', 'Fahrzeugkosten', 'aufwand', true),\n(90001, 'SKR04', '6595', 'Fremdfahrzeugkosten', 'Fahrzeugkosten', 'aufwand', true);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute INSERT INTO sachkonten (unternehmenId, kontenrahmen, kontonummer, bezeichnung, kategorie, kontotyp, aktiv) VALUES \n(90001, 'SKR04', '6520', 'Kfz-Versicherung', 'Fahrzeugkosten', 'aufwand', true),\n(90001, 'SKR04', '6530', 'Laufende Fahrzeug-Betriebskosten', 'Fahrzeugkosten', 'aufwand', true),\n(90001, 'SKR04', '6540', 'Fahrzeug-Reparaturen', 'Fahrzeugkosten', 'aufwand', true),\n(90001, 'SKR04', '6550', 'Garagenmiete', 'Fahrzeugkosten', 'aufwand', true),\n(90001, 'SKR04', '6560', 'Mietleasing (dt. Leasing)', 'Fahrzeugkosten', 'aufwand', true),\n(90001, 'SKR04', '6595', 'Fremdfahrzeugkosten', 'Fahrzeugkosten', 'aufwand', true);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 1525
-}

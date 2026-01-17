@@ -1,9 +1,0 @@
-{
-  "query": "INSERT INTO sachkonten (unternehmenId, kontenrahmen, kontonummer, bezeichnung, kategorie, kontotyp, aktiv) VALUES \n(90001, 'SKR04', '6859', 'Aufwand Abraum-/Abfallbeseitigung', 'Restliche Aufwendungen', 'aufwand', true),\n(90001, 'SKR04', '6880', 'Aufwendungen aus Währungsumrechnungen', 'Restliche Aufwendungen', 'aufwand', true),\n(90001, 'SKR04', '6895', 'Anlagenabgänge Sachanlagen (Buchverlust)', 'Restliche Aufwendungen', 'aufwand', true),\n(90001, 'SKR04', '7100', 'Sonstige Zinsen und ähnliche Erträge', 'Zinsen/Erträge', 'ertrag', true),\n(90001, 'SKR04', '7320', 'Zinsaufw. langfr. Verbindlichkeiten', 'Zinsen/Aufwand', 'aufwand', true),\n(90001, 'SKR04', '7685', 'Kfz-Steuer', 'Steuern', 'aufwand', true);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 45EyxYVJKxfKNgq.1ad1f92e0c93 --database a9gxiKPEnvhSyNwyoY3SX5 --execute INSERT INTO sachkonten (unternehmenId, kontenrahmen, kontonummer, bezeichnung, kategorie, kontotyp, aktiv) VALUES \n(90001, 'SKR04', '6859', 'Aufwand Abraum-/Abfallbeseitigung', 'Restliche Aufwendungen', 'aufwand', true),\n(90001, 'SKR04', '6880', 'Aufwendungen aus Währungsumrechnungen', 'Restliche Aufwendungen', 'aufwand', true),\n(90001, 'SKR04', '6895', 'Anlagenabgänge Sachanlagen (Buchverlust)', 'Restliche Aufwendungen', 'aufwand', true),\n(90001, 'SKR04', '7100', 'Sonstige Zinsen und ähnliche Erträge', 'Zinsen/Erträge', 'ertrag', true),\n(90001, 'SKR04', '7320', 'Zinsaufw. langfr. Verbindlichkeiten', 'Zinsen/Aufwand', 'aufwand', true),\n(90001, 'SKR04', '7685', 'Kfz-Steuer', 'Steuern', 'aufwand', true);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 1525
-}
