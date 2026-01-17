@@ -15,7 +15,7 @@ describe("Detaillierte Berechtigungen", () => {
 
     // Test-User erstellen
     const [user] = await db.insert(users).values({
-      openId: `test-berechtigungen-${Date.now()}`,
+      clerkId: `test-berechtigungen-${Date.now()}`,
       name: "Test Berechtigungen User",
       email: `test-berechtigungen-${Date.now()}@test.de`,
       role: "user",
@@ -195,7 +195,7 @@ describe("Berechtigungs-Validierung", () => {
 
     // Temporären User und Unternehmen erstellen
     const [user] = await db.insert(users).values({
-      openId: `test-validation-${Date.now()}`,
+      clerkId: `test-validation-${Date.now()}`,
       name: "Validation Test",
       email: `validation-${Date.now()}@test.de`,
       role: "user",
