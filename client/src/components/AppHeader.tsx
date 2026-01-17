@@ -33,7 +33,6 @@ import {
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 
 interface AppHeaderProps {
   title?: string;
@@ -117,7 +116,7 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
   const handleLogout = async () => {
     await logout();
     // Nach Logout zur Login-Seite weiterleiten
-    window.location.href = getLoginUrl();
+    window.location.href = "/login";
   };
 
   const isActive = (path: string) => location === path;
@@ -426,11 +425,11 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="gap-1.5 h-8 text-xs"
-                onClick={() => window.location.href = getLoginUrl()}
+                onClick={() => window.location.href = "/login"}
               >
                 <User className="w-3.5 h-3.5" />
                 Anmelden

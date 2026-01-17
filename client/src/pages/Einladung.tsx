@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 import { 
   Mail, 
   Building2, 
@@ -49,8 +48,9 @@ export default function Einladung() {
 
   const handleAccept = async () => {
     if (!user) {
-      // Direkt zum OAuth-Login weiterleiten mit Einladungs-URL als Rücksprung
-      window.location.href = getLoginUrl(`/einladung/${code}`);
+      // Direkt zum Login weiterleiten mit Einladungs-URL als Rücksprung
+      localStorage.setItem("auth_return_url", `/einladung/${code}`);
+      window.location.href = "/login";
       return;
     }
     setIsAccepting(true);

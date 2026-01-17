@@ -1,21 +1,20 @@
 import { trpc } from "@/lib/trpc";
+import { useClerk } from "@clerk/clerk-react";
 import { useCallback } from "react";
-import { getLoginUrl } from "@/const";
 
 export function useAuth() {
   const { data: user, isLoading, refetch } = trpc.auth.me.useQuery();
-  const logoutMutation = trpc.auth.logout.useMutation();
+  const clerk = useClerk();
 
   const login = useCallback(() => {
-    // Redirect to OAuth portal login
-    window.location.href = getLoginUrl();
+    // Clerk handles login redirect automatically
+    window.location.href = "/login";
   }, []);
 
   const logout = useCallback(async () => {
-    await logoutMutation.mutateAsync();
-    await refetch();
+    await clerk.signOut();
     window.location.href = "/login";
-  }, [logoutMutation, refetch]);
+  }, [clerk]);
 
   return {
     user,
