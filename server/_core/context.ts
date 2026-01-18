@@ -1,6 +1,6 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import { getAuth } from "@clerk/express";
+import { getAuth, clerkClient } from "@clerk/express";
 import * as db from "../db";
 
 export type TrpcContext = {
@@ -23,8 +23,14 @@ export async function createContext(
 
       // If user not in DB, create from Clerk data
       if (!user) {
+        // Fetch full user data from Clerk API
+        const clerkUser = await clerkClient.users.getUser(auth.userId);
+
         await db.upsertUser({
           clerkId: auth.userId,
+          email: clerkUser.emailAddresses[0]?.emailAddress ?? null,
+          name: clerkUser.fullName ?? clerkUser.firstName ?? null,
+          loginMethod: "clerk",
           lastSignedIn: new Date(),
         });
         user = await db.getUserByClerkId(auth.userId) ?? null;
