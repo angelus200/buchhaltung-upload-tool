@@ -87,6 +87,12 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
+      <Route path={"/unternehmen/:id/management"}>
+        <ProtectedRoute>
+          <UnternehmenManagement />
+        </ProtectedRoute>
+      </Route>
+
       <Route path={"/unternehmen"}>
         <ProtectedRoute>
           <Unternehmen />
