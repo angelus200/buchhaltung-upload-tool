@@ -51,6 +51,9 @@ export const appRouter = router({
 
   // Steuerberater-Übergaben
   steuerberater: steuerberaterRouter,
+
+  // DATEV Import/Export
+  datev: datevRouter,
 });
 
 export type AppRouter = typeof appRouter;

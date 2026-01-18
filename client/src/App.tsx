@@ -24,6 +24,7 @@ import Kalender from "./pages/Kalender";
 import Finanzamt from "./pages/Finanzamt";
 import Aufgaben from "./pages/Aufgaben";
 import Steuerberater from "./pages/Steuerberater";
+import DatevImport from "./pages/DatevImport";
 
 function Router() {
   return (
