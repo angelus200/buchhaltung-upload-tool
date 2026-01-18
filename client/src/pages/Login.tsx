@@ -1,19 +1,23 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { SignIn } from "@clerk/clerk-react";
+import { SignIn, SignUp } from "@clerk/clerk-react";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   FileText,
   Shield,
   Users,
   Building2,
-  CheckCircle2
+  CheckCircle2,
+  LogIn,
+  UserPlus
 } from "lucide-react";
 
 export default function Login() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
 
   // Wenn bereits eingeloggt, zum Dashboard weiterleiten
   useEffect(() => {
@@ -116,21 +120,50 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Rechte Seite: Clerk Login */}
+          {/* Rechte Seite: Clerk Auth mit Tabs */}
           <div className="flex justify-center">
             <div className="w-full max-w-md">
-              <SignIn
-                routing="path"
-                path="/login"
-                signUpUrl="/login"
-                afterSignInUrl="/dashboard"
-                appearance={{
-                  elements: {
-                    rootBox: "w-full",
-                    card: "shadow-xl",
-                  }
-                }}
-              />
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "signin" | "signup")} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="signin" className="gap-2">
+                    <LogIn className="w-4 h-4" />
+                    Anmelden
+                  </TabsTrigger>
+                  <TabsTrigger value="signup" className="gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    Registrieren
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="signin" className="mt-0">
+                  <SignIn
+                    routing="hash"
+                    afterSignInUrl="/dashboard"
+                    appearance={{
+                      elements: {
+                        rootBox: "w-full",
+                        card: "shadow-xl",
+                        footer: "hidden", // Hide default footer to avoid duplicate "Sign up" links
+                      }
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="signup" className="mt-0">
+                  <SignUp
+                    routing="hash"
+                    afterSignUpUrl="/dashboard"
+                    appearance={{
+                      elements: {
+                        rootBox: "w-full",
+                        card: "shadow-xl",
+                        footer: "hidden", // Hide default footer
+                      }
+                    }}
+                  />
+                </TabsContent>
+              </Tabs>
+
               <Card className="mt-4 shadow-xl">
                 <CardContent className="pt-6">
                   <div className="space-y-2 text-sm text-slate-600">
@@ -148,7 +181,7 @@ export default function Login() {
                     </div>
                   </div>
                   <p className="text-xs text-center text-slate-500 mt-4">
-                    Mit der Anmeldung akzeptieren Sie unsere Nutzungsbedingungen und Datenschutzrichtlinie.
+                    Mit der {activeTab === "signin" ? "Anmeldung" : "Registrierung"} akzeptieren Sie unsere Nutzungsbedingungen und Datenschutzrichtlinie.
                   </p>
                 </CardContent>
               </Card>
