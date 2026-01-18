@@ -8,10 +8,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import AppHeader from "@/components/AppHeader";
-import { 
-  Building2, 
-  Plus, 
-  Settings, 
+import {
+  Building2,
+  Plus,
+  Settings,
   ChevronRight,
   FileSpreadsheet,
   BarChart3,
@@ -28,9 +28,10 @@ import {
   Palette,
   ImageIcon,
   X,
-  Flag
+  Flag,
+  Users
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { LAENDER_CONFIG, type Land, type Waehrung } from "../../../shared/laender";
 
@@ -126,6 +127,7 @@ function createEmptyFormData(): UnternehmenFormData {
 }
 
 export default function Unternehmen() {
+  const [, setLocation] = useLocation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingUnternehmen, setEditingUnternehmen] = useState<number | null>(null);
@@ -806,16 +808,27 @@ export default function Unternehmen() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`text-xs px-2 py-1 rounded ${
-                        item.rolle === "admin" 
-                          ? "bg-amber-100 text-amber-700" 
+                        item.rolle === "admin"
+                          ? "bg-amber-100 text-amber-700"
                           : item.rolle === "buchhalter"
                           ? "bg-blue-100 text-blue-700"
                           : "bg-slate-100 text-slate-600"
                       }`}>
                         {item.rolle === "admin" ? "Administrator" : item.rolle === "buchhalter" ? "Buchhalter" : "Nur Lesen"}
                       </span>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocation(`/unternehmen/${item.unternehmen.id}/management`);
+                        }}
+                        title="Benutzer verwalten"
+                      >
+                        <Users className="w-4 h-4 text-slate-400 hover:text-teal-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
