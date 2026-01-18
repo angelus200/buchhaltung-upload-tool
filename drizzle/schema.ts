@@ -878,3 +878,162 @@ export const steuerberaterRechnungPositionen = mysqlTable("stb_rech_pos", {
 
 export type SteuerberaterRechnungPosition = typeof steuerberaterRechnungPositionen.$inferSelect;
 export type InsertSteuerberaterRechnungPosition = typeof steuerberaterRechnungPositionen.$inferInsert;
+
+/**
+ * Buchungsvorlagen - Templates für häufig wiederkehrende Buchungen
+ */
+export const buchungsvorlagen = mysqlTable("buchungsvorlagen", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unternehmen */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Vorlagenname */
+  name: varchar("name", { length: 255 }).notNull(),
+  /** Beschreibung */
+  beschreibung: text("beschreibung"),
+  /** Soll-Konto */
+  sollKonto: varchar("sollKonto", { length: 20 }).notNull(),
+  /** Haben-Konto */
+  habenKonto: varchar("habenKonto", { length: 20 }).notNull(),
+  /** Betrag (optional, kann bei Verwendung überschrieben werden) */
+  betrag: decimal("betrag", { precision: 15, scale: 2 }),
+  /** Buchungstext */
+  buchungstext: varchar("buchungstext", { length: 500 }).notNull(),
+  /** USt-Satz */
+  ustSatz: decimal("ustSatz", { precision: 5, scale: 2 }).default("0.00").notNull(),
+  /** Kategorie für Gruppierung */
+  kategorie: mysqlEnum("kategorie", [
+    "miete",
+    "gehalt",
+    "versicherung",
+    "telefon",
+    "internet",
+    "energie",
+    "fahrzeug",
+    "büromaterial",
+    "abschreibung",
+    "sonstig"
+  ]).default("sonstig").notNull(),
+  /** Geschäftspartner (optional) */
+  geschaeftspartner: varchar("geschaeftspartner", { length: 255 }),
+  /** Farbe für UI (optional) */
+  farbe: varchar("farbe", { length: 20 }),
+  /** Sortierung */
+  sortierung: int("sortierung").default(0),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Buchungsvorlage = typeof buchungsvorlagen.$inferSelect;
+export type InsertBuchungsvorlage = typeof buchungsvorlagen.$inferInsert;
+
+/**
+ * Kontierungsregeln - Automatische Vorschläge für Konten basierend auf Buchungstext
+ */
+export const kontierungsregeln = mysqlTable("kontierungsregeln", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unternehmen */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Suchbegriff im Buchungstext (case-insensitive) */
+  suchbegriff: varchar("suchbegriff", { length: 255 }).notNull(),
+  /** Soll-Konto */
+  sollKonto: varchar("sollKonto", { length: 20 }).notNull(),
+  /** Haben-Konto */
+  habenKonto: varchar("habenKonto", { length: 20 }).notNull(),
+  /** USt-Satz */
+  ustSatz: decimal("ustSatz", { precision: 5, scale: 2 }).default("0.00").notNull(),
+  /** Priorität (höhere Zahl = höhere Priorität bei mehreren Matches) */
+  prioritaet: int("prioritaet").default(0).notNull(),
+  /** Beschreibung der Regel */
+  beschreibung: text("beschreibung"),
+  /** Geschäftspartner (optional) */
+  geschaeftspartner: varchar("geschaeftspartner", { length: 255 }),
+  /** Anzahl der Verwendungen (für Lern-Funktion) */
+  verwendungen: int("verwendungen").default(0).notNull(),
+  /** Erfolgsrate (für Lern-Funktion) */
+  erfolgsrate: decimal("erfolgsrate", { precision: 5, scale: 2 }).default("100.00"),
+  /** Aktiv/Inaktiv */
+  aktiv: boolean("aktiv").default(true).notNull(),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Kontierungsregel = typeof kontierungsregeln.$inferSelect;
+export type InsertKontierungsregel = typeof kontierungsregeln.$inferInsert;
+
+/**
+ * Monatsabschluss - Tracking des Monatsabschlussprozesses
+ */
+export const monatsabschluss = mysqlTable("monatsabschluss", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unternehmen */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Jahr */
+  jahr: int("jahr").notNull(),
+  /** Monat (1-12) */
+  monat: int("monat").notNull(),
+  /** Status */
+  status: mysqlEnum("status", [
+    "offen",           // Monat noch nicht abgeschlossen
+    "in_arbeit",       // Abschluss läuft
+    "geprueft",        // Geprüft, aber noch nicht abgeschlossen
+    "abgeschlossen",   // Abgeschlossen und gesperrt
+    "korrektur"        // Nachträgliche Korrektur erforderlich
+  ]).default("offen").notNull(),
+  /** Abgeschlossen am */
+  abgeschlossenAm: timestamp("abgeschlossenAm"),
+  /** Abgeschlossen von */
+  abgeschlossenVon: int("abgeschlossenVon").references(() => users.id),
+  /** Gesperrt für Änderungen */
+  gesperrt: boolean("gesperrt").default(false).notNull(),
+  /** Notizen zum Abschluss */
+  notizen: text("notizen"),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Monatsabschluss = typeof monatsabschluss.$inferSelect;
+export type InsertMonatsabschluss = typeof monatsabschluss.$inferInsert;
+
+/**
+ * Monatsabschluss-Checkliste - Einzelne Aufgaben für den Monatsabschluss
+ */
+export const monatsabschlussItems = mysqlTable("monatsabschluss_items", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Monatsabschluss */
+  monatsabschlussId: int("monatsabschlussId").references(() => monatsabschluss.id).notNull(),
+  /** Aufgabenbeschreibung */
+  beschreibung: varchar("beschreibung", { length: 500 }).notNull(),
+  /** Kategorie */
+  kategorie: mysqlEnum("kategorie", [
+    "belege",          // Belege erfassen
+    "abstimmung",      // Konten abstimmen
+    "steuer",          // Steuer-Aufgaben
+    "personal",        // Personal/Gehälter
+    "pruefung",        // Prüfungen
+    "bericht",         // Berichte erstellen
+    "sonstig"          // Sonstige Aufgaben
+  ]).default("sonstig").notNull(),
+  /** Erledigt */
+  erledigt: boolean("erledigt").default(false).notNull(),
+  /** Erledigt am */
+  erledigtAm: timestamp("erledigtAm"),
+  /** Erledigt von */
+  erledigtVon: int("erledigtVon").references(() => users.id),
+  /** Pflichtfeld */
+  pflicht: boolean("pflicht").default(true).notNull(),
+  /** Sortierung */
+  sortierung: int("sortierung").default(0),
+  /** Notizen */
+  notizen: text("notizen"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MonatsabschlussItem = typeof monatsabschlussItems.$inferSelect;
+export type InsertMonatsabschlussItem = typeof monatsabschlussItems.$inferInsert;
