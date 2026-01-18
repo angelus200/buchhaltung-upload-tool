@@ -45,6 +45,7 @@ import { Link } from "wouter";
 import AppHeader from "@/components/AppHeader";
 import BelegVorschau from "@/components/BelegVorschau";
 import { SachkontoCombobox } from "@/components/SachkontoCombobox";
+import QuickBookingDialog from "@/components/QuickBookingDialog";
 import { trpc } from "@/lib/trpc";
 
 interface Buchung {
@@ -311,6 +312,12 @@ export default function Home() {
   // OCR Mutations
   const ocrMutation = trpc.ocr.analyzeImage.useMutation();
   const pdfOcrMutation = trpc.ocr.analyzePdf.useMutation();
+
+  // Auto-Kontierung State
+  const [autoKontierungCache, setAutoKontierungCache] = useState<Map<string, any>>(new Map());
+
+  // Auto-Kontierung Mutation
+  const markUsedMutation = trpc.kontierungsregeln.markUsed.useMutation();
 
   // Finde die ausgewählte Buchung für die Vorschau
   const selectedBuchung = buchungen.find(b => b.id === selectedBuchungId);
@@ -581,9 +588,9 @@ export default function Home() {
   const updateBuchung = useCallback((id: string, field: keyof Buchung, value: string | File | null) => {
     setBuchungen(prev => prev.map(b => {
       if (b.id !== id) return b;
-      
+
       const updated = { ...b, [field]: value };
-      
+
       // Auto-update Kontobereich bei Geschäftspartner-Typ-Änderung
       if (field === "geschaeftspartnerTyp") {
         const typ = GESCHAEFTSPARTNER_TYPEN.find(t => t.value === value);
@@ -591,7 +598,7 @@ export default function Home() {
           updated.geschaeftspartnerKonto = typ.kontobereich;
         }
       }
-      
+
       // Auto-update Sachkonto bei Personenkonto-Änderung (basierend auf Kreditor-Stammdaten)
       if (field === "geschaeftspartnerKonto" && kreditorenList) {
         const kreditor = kreditorenList.find(k => k.kontonummer === value);
@@ -599,27 +606,89 @@ export default function Home() {
           updated.sachkonto = kreditor.standardSachkonto;
         }
       }
-      
+
       // Auto-calculate brutto when netto or steuersatz changes
       if (field === "nettobetrag" || field === "steuersatz") {
         const netto = field === "nettobetrag" ? value as string : b.nettobetrag;
         const steuer = field === "steuersatz" ? value as string : b.steuersatz;
         updated.bruttobetrag = calculateBrutto(netto, steuer);
       }
-      
+
+      // Auto-Kontierung: Wenn Buchungstext geändert wird, hole Vorschläge
+      if (field === "buchungstext" && value && typeof value === "string" && value.length >= 3 && selectedUnternehmenId) {
+        // Debounce: Nur wenn Text sich wirklich geändert hat
+        setTimeout(async () => {
+          try {
+            const response = await fetch(`/trpc/kontierungsregeln.suggest?input=${encodeURIComponent(JSON.stringify({
+              unternehmenId: selectedUnternehmenId,
+              buchungstext: value
+            }))}`);
+            if (response.ok) {
+              const result = await response.json();
+              if (result.result?.data) {
+                setAutoKontierungCache(prev => new Map(prev).set(id, result.result.data));
+              }
+            }
+          } catch (error) {
+            console.error("Auto-Kontierung Fehler:", error);
+          }
+        }, 500);
+      }
+
       // Check if buchung is complete
-      const isComplete = 
-        updated.belegdatum && 
-        updated.belegnummer && 
-        updated.geschaeftspartner && 
-        updated.sachkonto && 
+      const isComplete =
+        updated.belegdatum &&
+        updated.belegnummer &&
+        updated.geschaeftspartner &&
+        updated.sachkonto &&
         updated.bruttobetrag;
-      
+
       updated.status = isComplete ? "complete" : "pending";
-      
+
       return updated;
     }));
-  }, [kreditorenList]);
+  }, [kreditorenList, selectedUnternehmenId]);
+
+  // Funktion zum Anwenden eines Auto-Kontierungs-Vorschlags
+  const applyAutoKontierung = useCallback((buchungId: string, vorschlag: any, accepted: boolean) => {
+    if (accepted) {
+      setBuchungen(prev => prev.map(b => {
+        if (b.id !== buchungId) return b;
+        const updated = {
+          ...b,
+          sachkonto: vorschlag.sollKonto,
+          geschaeftspartnerKonto: vorschlag.habenKonto,
+          steuersatz: vorschlag.ustSatz.toString(),
+          bruttobetrag: calculateBrutto(b.nettobetrag, vorschlag.ustSatz.toString()),
+        };
+        // Check completeness
+        const isComplete =
+          updated.belegdatum &&
+          updated.belegnummer &&
+          updated.geschaeftspartner &&
+          updated.sachkonto &&
+          updated.bruttobetrag;
+        updated.status = isComplete ? "complete" : "pending";
+        return updated;
+      }));
+      toast.success("Kontierung angewendet");
+    }
+
+    // Markiere Regel als verwendet
+    if (vorschlag.regelId) {
+      markUsedMutation.mutate({
+        id: vorschlag.regelId,
+        erfolg: accepted,
+      });
+    }
+
+    // Entferne Vorschlag aus Cache
+    setAutoKontierungCache(prev => {
+      const next = new Map(prev);
+      next.delete(buchungId);
+      return next;
+    });
+  }, [markUsedMutation]);
 
   const handleExport = useCallback(() => {
     const completeBuchungen = buchungen.filter(b => b.status === "complete");
@@ -812,12 +881,37 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Buchungen ({buchungen.length})</h2>
             <div className="flex gap-2 flex-wrap">
+              {/* Quick-Booking Button */}
+              {selectedUnternehmenId && (
+                <QuickBookingDialog
+                  unternehmenId={selectedUnternehmenId}
+                  onVorlageSelected={(vorlage) => {
+                    // Neue Buchung aus Vorlage erstellen
+                    const neueBuchung = {
+                      ...createEmptyBuchung(),
+                      sachkonto: vorlage.sollKonto,
+                      geschaeftspartnerKonto: vorlage.habenKonto,
+                      buchungstext: vorlage.buchungstext,
+                      steuersatz: vorlage.ustSatz.toString(),
+                      geschaeftspartner: vorlage.geschaeftspartner || "",
+                      nettobetrag: vorlage.betrag ? parseFloat(vorlage.betrag).toFixed(2).replace(".", ",") : "",
+                      bruttobetrag: vorlage.betrag ? calculateBrutto(
+                        parseFloat(vorlage.betrag).toFixed(2).replace(".", ","),
+                        vorlage.ustSatz.toString()
+                      ) : "",
+                      status: "pending" as const,
+                    };
+                    setBuchungen(prev => [...prev, neueBuchung]);
+                  }}
+                />
+              )}
+
               <Button variant="outline" onClick={addEmptyBuchung}>
                 <Plus className="w-4 h-4 mr-2" />
                 Manuelle Buchung
               </Button>
-              <Button 
-                onClick={handleExport} 
+              <Button
+                onClick={handleExport}
                 disabled={completeBuchungenCount === 0}
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -1024,6 +1118,54 @@ export default function Home() {
                             onChange={(e) => updateBuchung(buchung.id, "buchungstext", e.target.value)}
                             rows={2}
                           />
+                          {/* Auto-Kontierung Vorschläge */}
+                          {autoKontierungCache.has(buchung.id) && autoKontierungCache.get(buchung.id)?.vorschlaege?.length > 0 && (
+                            <div className="mt-2 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Sparkles className="w-4 h-4 text-purple-600" />
+                                <span className="text-sm font-medium text-purple-900">Automatische Kontierungsvorschläge</span>
+                              </div>
+                              {autoKontierungCache.get(buchung.id).vorschlaege.slice(0, 3).map((vorschlag: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between gap-2 mt-2 p-2 bg-white rounded border border-purple-100">
+                                  <div className="flex-1 text-xs">
+                                    <div className="flex gap-2 items-center">
+                                      <span className="font-medium">Soll: {vorschlag.sollKonto}</span>
+                                      <span className="text-muted-foreground">→</span>
+                                      <span className="font-medium">Haben: {vorschlag.habenKonto}</span>
+                                      <span className="text-muted-foreground">•</span>
+                                      <span>USt: {vorschlag.ustSatz}%</span>
+                                      {vorschlag.verwendungen > 0 && (
+                                        <>
+                                          <span className="text-muted-foreground">•</span>
+                                          <span className="text-green-600">{Math.round(parseFloat(vorschlag.erfolgsrate))}% Erfolg</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    <div className="text-muted-foreground mt-1">Regel: "{vorschlag.suchbegriff}"</div>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      className="h-7 px-3 bg-purple-600 hover:bg-purple-700"
+                                      onClick={() => applyAutoKontierung(buchung.id, vorschlag, true)}
+                                    >
+                                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                                      Anwenden
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 px-2"
+                                      onClick={() => applyAutoKontierung(buchung.id, vorschlag, false)}
+                                    >
+                                      <Ban className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         {/* Zahlungsstatus */}

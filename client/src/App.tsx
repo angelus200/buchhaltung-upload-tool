@@ -25,6 +25,8 @@ import Finanzamt from "./pages/Finanzamt";
 import Aufgaben from "./pages/Aufgaben";
 import Steuerberater from "./pages/Steuerberater";
 import DatevImport from "./pages/DatevImport";
+import Vorlagen from "./pages/Vorlagen";
+import Monatsabschluss from "./pages/Monatsabschluss";
 
 function Router() {
   return (
@@ -139,6 +141,18 @@ function Router() {
       <Route path={"/datev-import"}>
         <ProtectedRoute>
           <DatevImport />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/vorlagen"}>
+        <ProtectedRoute>
+          <Vorlagen />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/monatsabschluss"}>
+        <ProtectedRoute>
+          <Monatsabschluss />
         </ProtectedRoute>
       </Route>
 

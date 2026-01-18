@@ -132,7 +132,7 @@ export const monatsabschlussRouter = router({
         jahr: input.jahr,
         monat: input.monat,
         status: "offen",
-        erstelltVon: ctx.user.userId,
+        erstelltVon: ctx.user.id,
       });
 
       const monatsabschlussId = result.insertId;
@@ -188,7 +188,7 @@ export const monatsabschlussRouter = router({
       // Wenn abgeschlossen, setze Datum und sperre
       if (input.status === "abgeschlossen") {
         updateData.abgeschlossenAm = new Date();
-        updateData.abgeschlossenVon = ctx.user.userId;
+        updateData.abgeschlossenVon = ctx.user.id;
         updateData.gesperrt = true;
       }
 
@@ -229,7 +229,7 @@ export const monatsabschlussRouter = router({
 
       if (input.erledigt) {
         updateData.erledigtAm = new Date();
-        updateData.erledigtVon = ctx.user.userId;
+        updateData.erledigtVon = ctx.user.id;
       } else {
         updateData.erledigtAm = null;
         updateData.erledigtVon = null;

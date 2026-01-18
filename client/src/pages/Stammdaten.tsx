@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { Link } from "wouter";
 import AppHeader from "@/components/AppHeader";
+import Kontierungsregeln from "@/components/Kontierungsregeln";
 import { 
   ArrowLeft, 
   Plus,
@@ -1262,6 +1263,13 @@ export default function Stammdaten() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Kontierungsregeln Section */}
+        {selectedUnternehmenId && (
+          <div className="mt-12">
+            <Kontierungsregeln unternehmenId={selectedUnternehmenId} />
+          </div>
+        )}
       </main>
     </div>
   );

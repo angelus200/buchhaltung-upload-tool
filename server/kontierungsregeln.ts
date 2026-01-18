@@ -21,22 +21,25 @@ export const kontierungsregelnRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Datenbank nicht verfügbar");
 
-      let query = db
+      if (input.nurAktive) {
+        const result = await db
+          .select()
+          .from(kontierungsregeln)
+          .where(
+            and(
+              eq(kontierungsregeln.unternehmenId, input.unternehmenId),
+              eq(kontierungsregeln.aktiv, true)
+            )
+          )
+          .orderBy(desc(kontierungsregeln.prioritaet), kontierungsregeln.suchbegriff);
+        return result;
+      }
+
+      const result = await db
         .select()
         .from(kontierungsregeln)
         .where(eq(kontierungsregeln.unternehmenId, input.unternehmenId))
         .orderBy(desc(kontierungsregeln.prioritaet), kontierungsregeln.suchbegriff);
-
-      if (input.nurAktive) {
-        query = query.where(
-          and(
-            eq(kontierungsregeln.unternehmenId, input.unternehmenId),
-            eq(kontierungsregeln.aktiv, true)
-          )
-        ) as any;
-      }
-
-      const result = await query;
 
       return result;
     }),
@@ -128,7 +131,7 @@ export const kontierungsregelnRouter = router({
       const [result] = await db.insert(kontierungsregeln).values({
         ...input,
         ustSatz: input.ustSatz.toString() as any,
-        erstelltVon: ctx.user.userId,
+        erstelltVon: ctx.user.id,
       });
 
       return {

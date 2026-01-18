@@ -32,22 +32,25 @@ export const buchungsvorlagenRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Datenbank nicht verfügbar");
 
-      let query = db
+      if (input.kategorie) {
+        const result = await db
+          .select()
+          .from(buchungsvorlagen)
+          .where(
+            and(
+              eq(buchungsvorlagen.unternehmenId, input.unternehmenId),
+              eq(buchungsvorlagen.kategorie, input.kategorie)
+            )
+          )
+          .orderBy(buchungsvorlagen.sortierung, buchungsvorlagen.name);
+        return result;
+      }
+
+      const result = await db
         .select()
         .from(buchungsvorlagen)
         .where(eq(buchungsvorlagen.unternehmenId, input.unternehmenId))
         .orderBy(buchungsvorlagen.sortierung, buchungsvorlagen.name);
-
-      if (input.kategorie) {
-        query = query.where(
-          and(
-            eq(buchungsvorlagen.unternehmenId, input.unternehmenId),
-            eq(buchungsvorlagen.kategorie, input.kategorie)
-          )
-        ) as any;
-      }
-
-      const result = await query;
 
       return result;
     }),
@@ -108,7 +111,7 @@ export const buchungsvorlagenRouter = router({
         ...input,
         betrag: input.betrag?.toString() as any,
         ustSatz: input.ustSatz.toString() as any,
-        erstelltVon: ctx.user.userId,
+        erstelltVon: ctx.user.id,
       });
 
       return {
@@ -216,7 +219,7 @@ export const buchungsvorlagenRouter = router({
         geschaeftspartner: original.geschaeftspartner,
         farbe: original.farbe,
         sortierung: original.sortierung,
-        erstelltVon: ctx.user.userId,
+        erstelltVon: ctx.user.id,
       });
 
       return {

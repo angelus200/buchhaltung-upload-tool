@@ -29,7 +29,9 @@ import {
   Landmark,
   ListTodo,
   Send,
-  FileSpreadsheet
+  FileSpreadsheet,
+  BookTemplate,
+  Lock
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -333,6 +335,28 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 DATEV Import
+              </Button>
+            </Link>
+            <Link href="/vorlagen">
+              <Button
+                variant={isActive("/vorlagen") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/vorlagen") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <BookTemplate className="w-3.5 h-3.5" />
+                Vorlagen
+              </Button>
+            </Link>
+            <Link href="/monatsabschluss">
+              <Button
+                variant={isActive("/monatsabschluss") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/monatsabschluss") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Monatsabschluss
               </Button>
             </Link>
             <Link href="/unternehmen">

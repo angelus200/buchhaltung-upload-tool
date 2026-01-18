@@ -369,7 +369,7 @@ export const dashboardRouter = router({
       const map2 = new Map(periode2.map((p) => [p.sachkonto, parseFloat(p.summe || "0")]));
 
       // Alle Sachkonten sammeln
-      const alleSachkonten = new Set([...map1.keys(), ...map2.keys()]);
+      const alleSachkonten = new Set([...Array.from(map1.keys()), ...Array.from(map2.keys())]);
 
       // Vergleiche berechnen
       const vergleiche = Array.from(alleSachkonten).map((sachkonto) => {
