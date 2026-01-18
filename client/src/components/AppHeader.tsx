@@ -28,7 +28,8 @@ import {
   Settings,
   Landmark,
   ListTodo,
-  Send
+  Send,
+  FileSpreadsheet
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -313,14 +314,25 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               </Button>
             </Link>
             <Link href="/steuerberater">
-              <Button 
-                variant={isActive("/steuerberater") ? "default" : "ghost"} 
-                size="sm" 
+              <Button
+                variant={isActive("/steuerberater") ? "default" : "ghost"}
+                size="sm"
                 className="gap-1.5 h-8 text-xs"
                 style={isActive("/steuerberater") ? { backgroundColor: firmenFarbe } : {}}
               >
                 <Send className="w-3.5 h-3.5" />
                 Steuerberater
+              </Button>
+            </Link>
+            <Link href="/datev-import">
+              <Button
+                variant={isActive("/datev-import") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/datev-import") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                DATEV Import
               </Button>
             </Link>
             <Link href="/unternehmen">
