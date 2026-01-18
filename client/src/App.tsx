@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -27,29 +28,104 @@ function Router() {
     <Switch>
       {/* Öffentliche Seiten */}
       <Route path={"/login"} component={Login} />
-      
-      {/* Dashboard (nach Login) */}
-      <Route path={"/dashboard"} component={Dashboard} />
-      
-      {/* Admin-Board (nur für Administratoren) */}
-      <Route path={"/admin"} component={AdminBoard} />
-      
-      {/* Buchhaltungs-Funktionen */}
-      <Route path={"/"} component={Home} />
-      <Route path={"/uebersicht"} component={Uebersicht} />
-      <Route path={"/kennzahlen"} component={Kennzahlen} />
-      <Route path={"/zahlungen"} component={Zahlungen} />
-      <Route path={"/kalender"} component={Kalender} />
-      <Route path={"/notizen"} component={Notizen} />
-      <Route path={"/stammdaten"} component={Stammdaten} />
-      <Route path={"/unternehmen"} component={Unternehmen} />
-      <Route path={"/benachrichtigungen"} component={Benachrichtigungen} />
-      <Route path={"/einladung/:token"} component={Einladung} />
-      <Route path={"/benutzerverwaltung"} component={Benutzerverwaltung} />
-      <Route path={"/finanzamt"} component={Finanzamt} />
-      <Route path={"/aufgaben"} component={Aufgaben} />
-      <Route path={"/steuerberater"} component={Steuerberater} />
-      
+
+      {/* Geschützte Routen */}
+      <Route path={"/dashboard"}>
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/admin"}>
+        <ProtectedRoute>
+          <AdminBoard />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/"}>
+        <ProtectedRoute>
+          <Home />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/uebersicht"}>
+        <ProtectedRoute>
+          <Uebersicht />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/kennzahlen"}>
+        <ProtectedRoute>
+          <Kennzahlen />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/zahlungen"}>
+        <ProtectedRoute>
+          <Zahlungen />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/kalender"}>
+        <ProtectedRoute>
+          <Kalender />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/notizen"}>
+        <ProtectedRoute>
+          <Notizen />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/stammdaten"}>
+        <ProtectedRoute>
+          <Stammdaten />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/unternehmen"}>
+        <ProtectedRoute>
+          <Unternehmen />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/benachrichtigungen"}>
+        <ProtectedRoute>
+          <Benachrichtigungen />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/einladung/:token"}>
+        <ProtectedRoute>
+          <Einladung />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/benutzerverwaltung"}>
+        <ProtectedRoute>
+          <Benutzerverwaltung />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/finanzamt"}>
+        <ProtectedRoute>
+          <Finanzamt />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/aufgaben"}>
+        <ProtectedRoute>
+          <Aufgaben />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/steuerberater"}>
+        <ProtectedRoute>
+          <Steuerberater />
+        </ProtectedRoute>
+      </Route>
+
       {/* Fallback */}
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
