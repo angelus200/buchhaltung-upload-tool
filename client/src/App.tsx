@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import AdminBoard from "./pages/AdminBoard";
 import Unternehmen from "./pages/Unternehmen";
+import UnternehmenManagement from "./pages/UnternehmenManagement";
 import Benachrichtigungen from "./pages/Benachrichtigungen";
 import Einladung from "./pages/Einladung";
 import Benutzerverwaltung from "./pages/Benutzerverwaltung";
