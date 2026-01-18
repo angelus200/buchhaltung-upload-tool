@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -29,16 +30,17 @@ function Router() {
       {/* Öffentliche Seiten */}
       <Route path={"/login"} component={Login} />
 
-      {/* Geschützte Routen */}
+      {/* Admin-Only Routen (nur für Benutzer mit role === 'admin') */}
+      <Route path={"/admin"}>
+        <AdminRoute>
+          <AdminBoard />
+        </AdminRoute>
+      </Route>
+
+      {/* Geschützte Routen (für alle authentifizierten Benutzer) */}
       <Route path={"/dashboard"}>
         <ProtectedRoute>
           <Dashboard />
-        </ProtectedRoute>
-      </Route>
-
-      <Route path={"/admin"}>
-        <ProtectedRoute>
-          <AdminBoard />
         </ProtectedRoute>
       </Route>
 
