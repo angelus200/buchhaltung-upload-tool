@@ -136,6 +136,12 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
+      <Route path={"/datev-import"}>
+        <ProtectedRoute>
+          <DatevImport />
+        </ProtectedRoute>
+      </Route>
+
       {/* Fallback */}
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
