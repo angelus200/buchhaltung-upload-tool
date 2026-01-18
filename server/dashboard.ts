@@ -6,6 +6,9 @@ import {
   buchungen,
   unternehmen,
   userUnternehmen,
+  artikel,
+  lagerbestaende,
+  lagerorte,
 } from "../drizzle/schema";
 
 // ============================================
@@ -408,5 +411,71 @@ export const dashboardRouter = router({
           differenzProzent: gesamtProzent,
         },
       };
+    }),
+
+  // Niedrige Lagerbestände - Artikel unter Mindestbestand
+  niedrigeBestaende: protectedProcedure
+    .input(
+      z.object({
+        unternehmenId: z.number(),
+        limit: z.number().default(10),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      // Hole alle Artikel mit Beständen
+      const result = await db
+        .select({
+          artikel: artikel,
+          bestand: lagerbestaende,
+          lagerort: lagerorte,
+        })
+        .from(lagerbestaende)
+        .innerJoin(artikel, eq(lagerbestaende.artikelId, artikel.id))
+        .innerJoin(lagerorte, eq(lagerbestaende.lagerortId, lagerorte.id))
+        .where(
+          and(
+            eq(artikel.unternehmenId, input.unternehmenId),
+            eq(artikel.aktiv, true)
+          )
+        );
+
+      // Filtere auf niedrige Bestände (Bestand < Mindestbestand)
+      const niedrig = result
+        .filter((r) => {
+          const menge = parseFloat(r.bestand.menge || "0");
+          const mindest = parseFloat(r.artikel.mindestbestand || "0");
+          return mindest > 0 && menge < mindest;
+        })
+        .map((r) => {
+          const menge = parseFloat(r.bestand.menge || "0");
+          const mindest = parseFloat(r.artikel.mindestbestand || "0");
+          const ziel = parseFloat(r.artikel.zielbestand || "0");
+          const fehlmenge = Math.max(0, (ziel > 0 ? ziel : mindest) - menge);
+
+          return {
+            artikelId: r.artikel.id,
+            artikelnummer: r.artikel.artikelnummer,
+            bezeichnung: r.artikel.bezeichnung,
+            kategorie: r.artikel.kategorie,
+            einheit: r.artikel.einheit,
+            lagerort: r.lagerort.name,
+            aktuellerBestand: menge,
+            mindestbestand: mindest,
+            zielbestand: ziel > 0 ? ziel : mindest,
+            fehlmenge: fehlmenge,
+            einkaufspreis: r.artikel.einkaufspreis ? parseFloat(r.artikel.einkaufspreis) : null,
+            geschaetzterWert: r.artikel.einkaufspreis
+              ? fehlmenge * parseFloat(r.artikel.einkaufspreis)
+              : null,
+          };
+        })
+        // Sortiere nach Fehlmenge (absteigend)
+        .sort((a, b) => b.fehlmenge - a.fehlmenge)
+        .slice(0, input.limit);
+
+      return niedrig;
     }),
 });

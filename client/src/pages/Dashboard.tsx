@@ -7,8 +7,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import AppHeader from "@/components/AppHeader";
-import { 
-  FileText, 
+import NiedrigeBestaendeWidget from "@/components/NiedrigeBestaendeWidget";
+import {
+  FileText,
   Upload,
   BarChart3,
   Building2,
@@ -310,6 +311,14 @@ export default function Dashboard() {
                 </Card>
               </div>
             </div>
+
+            {/* Niedrige Lagerbestände Widget */}
+            {selectedUnternehmen && (
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Lagerverwaltung</h3>
+                <NiedrigeBestaendeWidget unternehmenId={selectedUnternehmen} />
+              </div>
+            )}
           </div>
         )}
       </main>
