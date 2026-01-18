@@ -15,6 +15,13 @@
       "when": 1768742447188,
       "tag": "0001_dear_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1768750418065,
+      "tag": "0002_bitter_wasp",
+      "breakpoints": true
     }
   ]
 }

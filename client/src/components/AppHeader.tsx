@@ -9,15 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Building2, 
-  Upload, 
-  BarChart3, 
-  Briefcase, 
-  StickyNote, 
-  Bell, 
-  Users, 
-  LayoutDashboard, 
+import {
+  Building2,
+  Upload,
+  BarChart3,
+  Briefcase,
+  StickyNote,
+  Bell,
+  Users,
+  LayoutDashboard,
   Shield,
   ChevronDown,
   TrendingUp,
@@ -31,7 +31,10 @@ import {
   Send,
   FileSpreadsheet,
   BookTemplate,
-  Lock
+  Lock,
+  Package,
+  Warehouse,
+  ClipboardList
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -272,9 +275,9 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               </Button>
             </Link>
             <Link href="/stammdaten">
-              <Button 
-                variant={isActive("/stammdaten") ? "default" : "ghost"} 
-                size="sm" 
+              <Button
+                variant={isActive("/stammdaten") ? "default" : "ghost"}
+                size="sm"
                 className="gap-1.5 h-8 text-xs"
                 style={isActive("/stammdaten") ? { backgroundColor: firmenFarbe } : {}}
               >
@@ -282,6 +285,53 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                 Stammdaten
               </Button>
             </Link>
+
+            {/* Lager Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={
+                    isActive("/artikel") || isActive("/lager") || isActive("/inventur")
+                      ? "default"
+                      : "ghost"
+                  }
+                  size="sm"
+                  className="gap-1.5 h-8 text-xs"
+                  style={
+                    isActive("/artikel") || isActive("/lager") || isActive("/inventur")
+                      ? { backgroundColor: firmenFarbe }
+                      : {}
+                  }
+                >
+                  <Package className="w-3.5 h-3.5" />
+                  Lager
+                  <ChevronDown className="w-3 h-3 ml-0.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Lagerverwaltung</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <Link href="/artikel">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Package className="w-4 h-4 mr-2" />
+                    Artikel
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/lager">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Warehouse className="w-4 h-4 mr-2" />
+                    Bestandsübersicht
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/inventur">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    Inventur
+                  </DropdownMenuItem>
+                </Link>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Link href="/notizen">
               <Button 
                 variant={isActive("/notizen") ? "default" : "ghost"} 

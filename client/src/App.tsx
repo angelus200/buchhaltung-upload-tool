@@ -29,6 +29,9 @@ import Steuerberater from "./pages/Steuerberater";
 import DatevImport from "./pages/DatevImport";
 import Vorlagen from "./pages/Vorlagen";
 import Monatsabschluss from "./pages/Monatsabschluss";
+import Artikel from "./pages/Artikel";
+import Lager from "./pages/Lager";
+import Inventur from "./pages/Inventur";
 
 function Router() {
   return (
@@ -155,6 +158,24 @@ function Router() {
       <Route path={"/monatsabschluss"}>
         <ProtectedRoute>
           <Monatsabschluss />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/artikel"}>
+        <ProtectedRoute>
+          <Artikel />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/lager"}>
+        <ProtectedRoute>
+          <Lager />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/inventur"}>
+        <ProtectedRoute>
+          <Inventur />
         </ProtectedRoute>
       </Route>
 
