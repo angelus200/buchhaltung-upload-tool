@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -6,6 +7,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import ChatAssistant from "./components/ChatAssistant";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -164,12 +166,34 @@ function Router() {
 }
 
 function App() {
+  const [selectedUnternehmenId, setSelectedUnternehmenId] = useState<number | null>(() => {
+    const saved = localStorage.getItem("selectedUnternehmenId");
+    return saved ? parseInt(saved) : null;
+  });
+
+  // Watch for changes in localStorage
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem("selectedUnternehmenId");
+      setSelectedUnternehmenId(saved ? parseInt(saved) : null);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    const interval = setInterval(handleStorageChange, 1000);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster position="top-right" richColors />
           <Router />
+          <ChatAssistant unternehmenId={selectedUnternehmenId} />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
