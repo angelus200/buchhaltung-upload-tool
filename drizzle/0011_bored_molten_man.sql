@@ -1,1 +1,0 @@
-ALTER TABLE `kreditoren` ADD `standardSachkonto` varchar(20);

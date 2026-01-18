@@ -1,1 +1,0 @@
-ALTER TABLE `unternehmen` MODIFY COLUMN `logoUrl` text;
