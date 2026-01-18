@@ -1037,3 +1037,199 @@ export const monatsabschlussItems = mysqlTable("monatsabschluss_items", {
 
 export type MonatsabschlussItem = typeof monatsabschlussItems.$inferSelect;
 export type InsertMonatsabschlussItem = typeof monatsabschlussItems.$inferInsert;
+
+/**
+ * Artikel - Produktstammdaten für Lagerverwaltung
+ */
+export const artikel = mysqlTable("artikel", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unternehmen */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Artikelnummer */
+  artikelnummer: varchar("artikelnummer", { length: 100 }).notNull(),
+  /** Bezeichnung */
+  bezeichnung: varchar("bezeichnung", { length: 255 }).notNull(),
+  /** Beschreibung */
+  beschreibung: text("beschreibung"),
+  /** Kategorie */
+  kategorie: mysqlEnum("kategorie", [
+    "rohstoff",            // Rohmaterial
+    "halbfertig",          // Halbfertige Erzeugnisse
+    "fertigware",          // Fertige Erzeugnisse
+    "handelsware",         // Handelswaren
+    "verbrauchsmaterial"   // Verbrauchsmaterial
+  ]).notNull(),
+  /** Einheit */
+  einheit: mysqlEnum("einheit", [
+    "stueck",   // Stück
+    "kg",       // Kilogramm
+    "liter",    // Liter
+    "meter",    // Meter
+    "karton"    // Karton
+  ]).notNull(),
+  /** Einkaufspreis */
+  einkaufspreis: decimal("einkaufspreis", { precision: 15, scale: 2 }),
+  /** Verkaufspreis */
+  verkaufspreis: decimal("verkaufspreis", { precision: 15, scale: 2 }),
+  /** Mindestbestand */
+  mindestbestand: decimal("mindestbestand", { precision: 15, scale: 2 }),
+  /** Zielbestand */
+  zielbestand: decimal("zielbestand", { precision: 15, scale: 2 }),
+  /** Lieferant */
+  lieferantId: int("lieferantId").references(() => kreditoren.id),
+  /** Sachkonto für Buchungen */
+  sachkontoId: int("sachkontoId").references(() => sachkonten.id),
+  /** Aktiv/Inaktiv */
+  aktiv: boolean("aktiv").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Artikel = typeof artikel.$inferSelect;
+export type InsertArtikel = typeof artikel.$inferInsert;
+
+/**
+ * Lagerorte - Lagerstätten/Warehouse Locations
+ */
+export const lagerorte = mysqlTable("lagerorte", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unternehmen */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Name des Lagerortes */
+  name: varchar("name", { length: 255 }).notNull(),
+  /** Beschreibung */
+  beschreibung: text("beschreibung"),
+  /** Adresse */
+  adresse: varchar("adresse", { length: 500 }),
+  /** Ist Hauptlager */
+  istHauptlager: boolean("istHauptlager").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Lagerort = typeof lagerorte.$inferSelect;
+export type InsertLagerort = typeof lagerorte.$inferInsert;
+
+/**
+ * Lagerbestände - Aktuelle Bestände pro Artikel und Lagerort
+ */
+export const lagerbestaende = mysqlTable("lagerbestaende", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Artikel */
+  artikelId: int("artikelId").references(() => artikel.id).notNull(),
+  /** Lagerort */
+  lagerortId: int("lagerortId").references(() => lagerorte.id).notNull(),
+  /** Aktuelle Menge */
+  menge: decimal("menge", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** Reservierte Menge (für Bestellungen) */
+  reservierteMenge: decimal("reservierteMenge", { precision: 15, scale: 2 }).default("0.00"),
+  /** Letzte Bewegung */
+  letzteBewegung: timestamp("letzteBewegung"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Lagerbestand = typeof lagerbestaende.$inferSelect;
+export type InsertLagerbestand = typeof lagerbestaende.$inferInsert;
+
+/**
+ * Bestandsbewegungen - Lagerbewegungen (Ein-/Ausgang, Korrekturen)
+ */
+export const bestandsbewegungen = mysqlTable("bestandsbewegungen", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Artikel */
+  artikelId: int("artikelId").references(() => artikel.id).notNull(),
+  /** Lagerort */
+  lagerortId: int("lagerortId").references(() => lagerorte.id).notNull(),
+  /** Bewegungsart */
+  bewegungsart: mysqlEnum("bewegungsart", [
+    "eingang",     // Wareneingang
+    "ausgang",     // Warenausgang
+    "korrektur",   // Bestandskorrektur
+    "umbuchung",   // Umbuchung zwischen Lagerorten
+    "inventur"     // Inventuranpassung
+  ]).notNull(),
+  /** Bewegte Menge */
+  menge: decimal("menge", { precision: 15, scale: 2 }).notNull(),
+  /** Bestand vorher */
+  vorherMenge: decimal("vorherMenge", { precision: 15, scale: 2 }),
+  /** Bestand nachher */
+  nachherMenge: decimal("nachherMenge", { precision: 15, scale: 2 }),
+  /** Referenztyp (z.B. "bestellung", "rechnung", "inventur") */
+  referenzTyp: varchar("referenzTyp", { length: 50 }),
+  /** Referenz-ID */
+  referenzId: int("referenzId"),
+  /** Verknüpfung zur Buchung (für Bestandsbewertung) */
+  buchungId: int("buchungId").references(() => buchungen.id),
+  /** Notiz zur Bewegung */
+  notiz: text("notiz"),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Bestandsbewegung = typeof bestandsbewegungen.$inferSelect;
+export type InsertBestandsbewegung = typeof bestandsbewegungen.$inferInsert;
+
+/**
+ * Inventuren - Inventurzählungen
+ */
+export const inventuren = mysqlTable("inventuren", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unternehmen */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Bezeichnung der Inventur */
+  bezeichnung: varchar("bezeichnung", { length: 255 }).notNull(),
+  /** Stichtag der Inventur */
+  stichtag: date("stichtag").notNull(),
+  /** Status */
+  status: mysqlEnum("status", [
+    "geplant",        // Geplant, noch nicht gestartet
+    "in_arbeit",      // Zählung läuft
+    "abgeschlossen",  // Abgeschlossen und ausgewertet
+    "storniert"       // Storniert
+  ]).default("geplant").notNull(),
+  /** Lagerort (optional, null = alle Lagerorte) */
+  lagerortId: int("lagerortId").references(() => lagerorte.id),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  /** Abgeschlossen von */
+  abgeschlossenVon: int("abgeschlossenVon").references(() => users.id),
+  /** Abgeschlossen am */
+  abgeschlossenAm: timestamp("abgeschlossenAm"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Inventur = typeof inventuren.$inferSelect;
+export type InsertInventur = typeof inventuren.$inferInsert;
+
+/**
+ * Inventurpositionen - Einzelne Zählpositionen in einer Inventur
+ */
+export const inventurpositionen = mysqlTable("inventurpositionen", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Inventur */
+  inventurId: int("inventurId").references(() => inventuren.id).notNull(),
+  /** Artikel */
+  artikelId: int("artikelId").references(() => artikel.id).notNull(),
+  /** Lagerort */
+  lagerortId: int("lagerortId").references(() => lagerorte.id).notNull(),
+  /** Soll-Menge (aus System) */
+  sollMenge: decimal("sollMenge", { precision: 15, scale: 2 }).notNull(),
+  /** Ist-Menge (gezählt) */
+  istMenge: decimal("istMenge", { precision: 15, scale: 2 }),
+  /** Differenz (Ist - Soll) */
+  differenz: decimal("differenz", { precision: 15, scale: 2 }),
+  /** Gezählt von */
+  gezaehltVon: int("gezaehltVon").references(() => users.id),
+  /** Gezählt am */
+  gezaehltAm: timestamp("gezaehltAm"),
+  /** Kommentar zur Position */
+  kommentar: text("kommentar"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Inventurposition = typeof inventurpositionen.$inferSelect;
+export type InsertInventurposition = typeof inventurpositionen.$inferInsert;
