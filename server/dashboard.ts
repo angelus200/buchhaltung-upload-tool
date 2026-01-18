@@ -312,4 +312,101 @@ export const dashboardRouter = router({
         anzahl: r.anzahl,
       }));
     }),
+
+  // Abweichungsanalyse - Vergleich zwei Zeiträume
+  abweichungsanalyse: protectedProcedure
+    .input(
+      z.object({
+        unternehmenId: z.number(),
+        // Zeitraum 1 (Basis)
+        vonDatum1: z.string(),
+        bisDatum1: z.string(),
+        // Zeitraum 2 (Vergleich)
+        vonDatum2: z.string(),
+        bisDatum2: z.string(),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Datenbank nicht verfügbar");
+
+      // Aggregiere Buchungen nach Sachkonto für Zeitraum 1
+      const periode1 = await db
+        .select({
+          sachkonto: buchungen.sachkonto,
+          summe: sql<string>`SUM(CAST(${buchungen.nettobetrag} AS DECIMAL(15,2)))`,
+          anzahl: count(),
+        })
+        .from(buchungen)
+        .where(
+          and(
+            eq(buchungen.unternehmenId, input.unternehmenId),
+            gte(buchungen.belegdatum, new Date(input.vonDatum1)),
+            lte(buchungen.belegdatum, new Date(input.bisDatum1))
+          )
+        )
+        .groupBy(buchungen.sachkonto);
+
+      // Aggregiere Buchungen nach Sachkonto für Zeitraum 2
+      const periode2 = await db
+        .select({
+          sachkonto: buchungen.sachkonto,
+          summe: sql<string>`SUM(CAST(${buchungen.nettobetrag} AS DECIMAL(15,2)))`,
+          anzahl: count(),
+        })
+        .from(buchungen)
+        .where(
+          and(
+            eq(buchungen.unternehmenId, input.unternehmenId),
+            gte(buchungen.belegdatum, new Date(input.vonDatum2)),
+            lte(buchungen.belegdatum, new Date(input.bisDatum2))
+          )
+        )
+        .groupBy(buchungen.sachkonto);
+
+      // Konvertiere zu Maps für einfachen Zugriff
+      const map1 = new Map(periode1.map((p) => [p.sachkonto, parseFloat(p.summe || "0")]));
+      const map2 = new Map(periode2.map((p) => [p.sachkonto, parseFloat(p.summe || "0")]));
+
+      // Alle Sachkonten sammeln
+      const alleSachkonten = new Set([...map1.keys(), ...map2.keys()]);
+
+      // Vergleiche berechnen
+      const vergleiche = Array.from(alleSachkonten).map((sachkonto) => {
+        const wert1 = map1.get(sachkonto) || 0;
+        const wert2 = map2.get(sachkonto) || 0;
+        const differenz = wert2 - wert1;
+        const prozentual = wert1 !== 0 ? ((differenz / Math.abs(wert1)) * 100) : 0;
+
+        return {
+          sachkonto,
+          periode1: wert1,
+          periode2: wert2,
+          differenz,
+          differenzProzent: prozentual,
+          signifikant: Math.abs(differenz) > 1000 || Math.abs(prozentual) > 10,
+        };
+      });
+
+      // Sortiere nach absoluter Differenz
+      vergleiche.sort((a, b) => Math.abs(b.differenz) - Math.abs(a.differenz));
+
+      // Gesamt-Statistiken
+      const gesamtPeriode1 = Array.from(map1.values()).reduce((sum, v) => sum + v, 0);
+      const gesamtPeriode2 = Array.from(map2.values()).reduce((sum, v) => sum + v, 0);
+      const gesamtDifferenz = gesamtPeriode2 - gesamtPeriode1;
+      const gesamtProzent =
+        gesamtPeriode1 !== 0 ? ((gesamtDifferenz / Math.abs(gesamtPeriode1)) * 100) : 0;
+
+      return {
+        vergleiche,
+        signifikante: vergleiche.filter((v) => v.signifikant),
+        gesamt: {
+          periode1: gesamtPeriode1,
+          periode2: gesamtPeriode2,
+          differenz: gesamtDifferenz,
+          differenzProzent: gesamtProzent,
+        },
+      };
+    }),
 });
