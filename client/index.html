@@ -15,10 +15,20 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Umami Analytics (Optional) -->
+    <!-- Um Analytics zu aktivieren:
+         1. Setze VITE_ANALYTICS_ENDPOINT in Railway Environment Variables (z.B. https://analytics.example.com)
+         2. Setze VITE_ANALYTICS_WEBSITE_ID in Railway Environment Variables
+         3. Entferne die Kommentarzeichen unten
+         4. Rebuild & Deploy
+    -->
+    <!--
     <script
       defer
       src="%VITE_ANALYTICS_ENDPOINT%/umami"
       data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    -->
   </body>
 
 </html>
