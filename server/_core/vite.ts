@@ -25,13 +25,12 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     try {
-      // Use process.cwd() instead of __dirname for esbuild bundle compatibility
-      // In dev: cwd = project root, in prod: cwd = /app (dist is at /app/dist)
-      const clientTemplate = path.join(
-        process.cwd(),
-        "client",
-        "index.html"
-      );
+      // Use process.cwd() with fallback for Railway compatibility
+      const cwd = process.cwd() || "/app";
+      const clientTemplate = path.join(cwd, "client", "index.html");
+
+      console.log(`[setupVite] cwd: ${cwd}`);
+      console.log(`[setupVite] clientTemplate: ${clientTemplate}`);
 
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
@@ -49,10 +48,15 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  // Use process.cwd() for esbuild bundle compatibility
-  // Production: cwd = /app, static files at /app/dist/public
-  // Development: cwd = project root, static files at {cwd}/dist/public
-  const distPath = path.join(process.cwd(), "dist", "public");
+  // Use absolute path for Railway compatibility
+  // Railway working directory: /app
+  // Static files location: /app/dist/public
+  const cwd = process.cwd() || "/app";
+  const distPath = path.join(cwd, "dist", "public");
+
+  console.log(`[serveStatic] cwd: ${cwd}`);
+  console.log(`[serveStatic] distPath: ${distPath}`);
+  console.log(`[serveStatic] distPath exists: ${fs.existsSync(distPath)}`);
 
   if (!fs.existsSync(distPath)) {
     console.error(
@@ -64,6 +68,8 @@ export function serveStatic(app: Express) {
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
+    const indexPath = path.join(distPath, "index.html");
+    console.log(`[serveStatic] Serving index.html from: ${indexPath}`);
+    res.sendFile(indexPath);
   });
 }
