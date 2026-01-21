@@ -31,6 +31,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { Link } from "wouter";
+import { exportBilanzPDF, exportGuVPDF } from "@/lib/pdf-export";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("de-DE", {
@@ -161,12 +162,49 @@ export default function Jahresabschluss() {
     gesellschafterQuery.isLoading;
 
   const handleExportPDF = () => {
-    toast.info("PDF-Export wird vorbereitet...");
-    // TODO: PDF-Export implementieren
+    if (!selectedUnternehmen || !eroeffnungsbilanzQuery.data) {
+      toast.error("Keine Daten zum Exportieren vorhanden");
+      return;
+    }
+
+    try {
+      const eroeffnungsbilanz = eroeffnungsbilanzQuery.data;
+
+      // Aktiva: Sollbuchungen (Konten < 2000)
+      const aktiva = eroeffnungsbilanz
+        .filter((pos) => parseInt(pos.sachkonto) < 2000 && parseFloat(pos.sollbetrag || "0") > 0)
+        .map((pos) => ({
+          sachkonto: pos.sachkonto,
+          kontobezeichnung: pos.kontobezeichnung || "",
+          betrag: parseFloat(pos.sollbetrag || "0"),
+        }));
+
+      // Passiva: Habenbuchungen (Konten >= 2000)
+      const passiva = eroeffnungsbilanz
+        .filter((pos) => parseInt(pos.sachkonto) >= 2000 && parseFloat(pos.habenbetrag || "0") > 0)
+        .map((pos) => ({
+          sachkonto: pos.sachkonto,
+          kontobezeichnung: pos.kontobezeichnung || "",
+          betrag: parseFloat(pos.habenbetrag || "0"),
+        }));
+
+      const selectedUnternehmenObj = unternehmenQuery.data?.find(
+        (u) => u.unternehmen.id === selectedUnternehmen
+      );
+
+      exportBilanzPDF(aktiva, passiva, {
+        unternehmen: selectedUnternehmenObj?.unternehmen.name || "Unbekannt",
+        stichtag: `${selectedJahr}-12-31`,
+      });
+
+      toast.success("Bilanz-PDF wurde erstellt");
+    } catch (error: any) {
+      toast.error(`Fehler beim PDF-Export: ${error.message}`);
+    }
   };
 
   const handleExportExcel = () => {
-    toast.info("Excel-Export wird vorbereitet...");
+    toast.info("Excel-Export wird in Kürze verfügbar sein");
     // TODO: Excel-Export implementieren
   };
 
