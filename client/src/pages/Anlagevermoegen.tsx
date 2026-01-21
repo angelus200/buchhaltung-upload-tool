@@ -1,240 +1,67 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import AppHeader from "@/components/AppHeader";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Calculator,
-  Download,
-  Loader2,
-  Building,
-} from "lucide-react";
+import { useState, useEffect } from 'react';
+import { trpc } from '@/lib/trpc';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Building2, Car, Monitor, Wrench, Factory, Package, Plus, RefreshCw, Calculator, Trash2, Pencil, Loader2, AlertCircle, TrendingDown, Euro } from 'lucide-react';
+import { toast } from 'sonner';
+import AppHeader from '@/components/AppHeader';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
-function formatCurrency(value: number): string {
-  return value.toLocaleString("de-DE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
+const KATEGORIEN = [
+  { value: 'alle', label: 'Alle', icon: Package },
+  { value: 'Grundstücke und Gebäude', label: 'Gebäude', icon: Building2 },
+  { value: 'Technische Anlagen und Maschinen', label: 'Maschinen', icon: Factory },
+  { value: 'Fahrzeuge', label: 'Fahrzeuge', icon: Car },
+  { value: 'Computer', label: 'EDV', icon: Monitor },
+  { value: 'Andere Anlagen, Betriebs- und Geschäftsausstattung', label: 'BGA', icon: Wrench },
+  { value: 'Sonstiges Anlagevermögen', label: 'Sonstiges', icon: Package },
+];
 
-function formatDate(dateStr: string | Date | null | undefined): string {
-  if (!dateStr) return "-";
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("de-DE");
-}
+const MONATE = [
+  { value: 1, label: 'Januar' }, { value: 2, label: 'Februar' }, { value: 3, label: 'März' },
+  { value: 4, label: 'April' }, { value: 5, label: 'Mai' }, { value: 6, label: 'Juni' },
+  { value: 7, label: 'Juli' }, { value: 8, label: 'August' }, { value: 9, label: 'September' },
+  { value: 10, label: 'Oktober' }, { value: 11, label: 'November' }, { value: 12, label: 'Dezember' },
+];
 
-interface AnlageFormProps {
-  anlage?: any;
-  unternehmenId: number;
-  onSave: (data: any) => void;
-  onCancel: () => void;
-}
-
-function AnlageForm({ anlage, unternehmenId, onSave, onCancel }: AnlageFormProps) {
-  const [formData, setFormData] = useState({
-    unternehmenId,
-    kontonummer: anlage?.kontonummer || "",
-    bezeichnung: anlage?.bezeichnung || "",
-    kategorie: anlage?.kategorie || "",
-    anschaffungsdatum: anlage?.anschaffungsdatum
-      ? new Date(anlage.anschaffungsdatum).toISOString().split("T")[0]
-      : "",
-    anschaffungskosten: anlage?.anschaffungskosten || "",
-    nutzungsdauer: anlage?.nutzungsdauer || "",
-    abschreibungsmethode: anlage?.abschreibungsmethode || "linear",
-    restwert: anlage?.restwert || "0",
-    sachkonto: anlage?.sachkonto || "",
-    standort: anlage?.standort || "",
-    inventarnummer: anlage?.inventarnummer || "",
-    seriennummer: anlage?.seriennummer || "",
-    notizen: anlage?.notizen || "",
-  });
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Kontonummer *</Label>
-          <Input
-            value={formData.kontonummer}
-            onChange={(e) => setFormData({ ...formData, kontonummer: e.target.value })}
-          />
-        </div>
-        <div>
-          <Label>Sachkonto</Label>
-          <Input
-            value={formData.sachkonto}
-            onChange={(e) => setFormData({ ...formData, sachkonto: e.target.value })}
-            placeholder="z.B. 0300"
-          />
-        </div>
-        <div className="col-span-2">
-          <Label>Bezeichnung *</Label>
-          <Input
-            value={formData.bezeichnung}
-            onChange={(e) => setFormData({ ...formData, bezeichnung: e.target.value })}
-          />
-        </div>
-        <div>
-          <Label>Kategorie</Label>
-          <Input
-            value={formData.kategorie}
-            onChange={(e) => setFormData({ ...formData, kategorie: e.target.value })}
-            placeholder="z.B. Fahrzeuge, Büroausstattung"
-          />
-        </div>
-        <div>
-          <Label>Anschaffungsdatum</Label>
-          <Input
-            type="date"
-            value={formData.anschaffungsdatum}
-            onChange={(e) =>
-              setFormData({ ...formData, anschaffungsdatum: e.target.value })
-            }
-          />
-        </div>
-        <div>
-          <Label>Anschaffungskosten (€)</Label>
-          <Input
-            type="number"
-            step="0.01"
-            value={formData.anschaffungskosten}
-            onChange={(e) =>
-              setFormData({ ...formData, anschaffungskosten: e.target.value })
-            }
-          />
-        </div>
-        <div>
-          <Label>Nutzungsdauer (Jahre)</Label>
-          <Input
-            type="number"
-            value={formData.nutzungsdauer}
-            onChange={(e) =>
-              setFormData({ ...formData, nutzungsdauer: e.target.value })
-            }
-          />
-        </div>
-        <div>
-          <Label>Abschreibungsmethode</Label>
-          <Select
-            value={formData.abschreibungsmethode}
-            onValueChange={(v) =>
-              setFormData({ ...formData, abschreibungsmethode: v })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="linear">Linear</SelectItem>
-              <SelectItem value="degressiv">Degressiv</SelectItem>
-              <SelectItem value="keine">Keine AfA</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Restwert (€)</Label>
-          <Input
-            type="number"
-            step="0.01"
-            value={formData.restwert}
-            onChange={(e) => setFormData({ ...formData, restwert: e.target.value })}
-          />
-        </div>
-        <div>
-          <Label>Standort</Label>
-          <Input
-            value={formData.standort}
-            onChange={(e) => setFormData({ ...formData, standort: e.target.value })}
-          />
-        </div>
-        <div>
-          <Label>Inventarnummer</Label>
-          <Input
-            value={formData.inventarnummer}
-            onChange={(e) =>
-              setFormData({ ...formData, inventarnummer: e.target.value })
-            }
-          />
-        </div>
-        <div>
-          <Label>Seriennummer</Label>
-          <Input
-            value={formData.seriennummer}
-            onChange={(e) =>
-              setFormData({ ...formData, seriennummer: e.target.value })
-            }
-          />
-        </div>
-      </div>
-      <div>
-        <Label>Notizen</Label>
-        <Textarea
-          value={formData.notizen}
-          onChange={(e) => setFormData({ ...formData, notizen: e.target.value })}
-          rows={3}
-        />
-      </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={onCancel}>
-          Abbrechen
-        </Button>
-        <Button onClick={() => onSave(formData)}>
-          {anlage ? "Speichern" : "Erstellen"}
-        </Button>
-      </DialogFooter>
-    </div>
-  );
-}
+const formatCurrency = (v: number | string) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(parseFloat(String(v)) || 0);
+const formatDate = (d: Date | string) => new Date(d).toLocaleDateString('de-DE');
+const formatPercent = (v: string | number) => `${(parseFloat(String(v)) || 0).toFixed(2)}%`;
 
 export default function Anlagevermoegen() {
   const { user, isAuthenticated } = useAuth();
   const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [afaDialogOpen, setAfaDialogOpen] = useState(false);
-  const [selectedAnlage, setSelectedAnlage] = useState<any>(null);
-  const [afaData, setAfaData] = useState<any>(null);
-  const [showAnlagenspiegel, setShowAnlagenspiegel] = useState(false);
-  const [spiegelJahr, setSpiegelJahr] = useState(new Date().getFullYear());
+  const [kategorie, setKategorie] = useState('alle');
+  const [showCreate, setShowCreate] = useState(false);
+  const [showReconstruct, setShowReconstruct] = useState(false);
+  const [showAfa, setShowAfa] = useState(false);
+  const [editAnlage, setEditAnlage] = useState<any>(null);
+  const [afaJahr, setAfaJahr] = useState(new Date().getFullYear());
+  const [selectedForReconstruct, setSelectedForReconstruct] = useState<string[]>([]);
+  const [selectedForAfa, setSelectedForAfa] = useState<number[]>([]);
+  const [form, setForm] = useState({
+    kontonummer: '',
+    bezeichnung: '',
+    kategorie: 'Andere Anlagen, Betriebs- und Geschäftsausstattung',
+    anschaffungsdatum: new Date().toISOString().split('T')[0],
+    anschaffungskosten: '',
+    nutzungsdauer: 5,
+    abschreibungsmethode: 'linear' as 'linear' | 'degressiv' | 'keine',
+    sachkonto: '',
+    standort: '',
+    inventarnummer: '',
+    notizen: '',
+  });
 
-  // Queries
   const unternehmenQuery = trpc.unternehmen.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -244,113 +71,173 @@ export default function Anlagevermoegen() {
     { enabled: !!selectedUnternehmen }
   );
 
-  const anlagenspiegelQuery = trpc.jahresabschluss.anlagevermoegen.anlagenspiegel.useQuery(
-    { unternehmenId: selectedUnternehmen || 0, jahr: spiegelJahr },
-    { enabled: !!selectedUnternehmen && showAnlagenspiegel }
+  const reconstructQuery = trpc.jahresabschluss.anlagevermoegen.rekonstruktion.analysieren.useQuery(
+    { unternehmenId: selectedUnternehmen || 0 },
+    { enabled: false }
   );
 
-  // Mutations
+  const afaQuery = trpc.jahresabschluss.afaAutomatisierung.berechnen.useQuery(
+    { unternehmenId: selectedUnternehmen || 0, jahr: afaJahr },
+    { enabled: false }
+  );
+
+  const reconstructMutation = trpc.jahresabschluss.anlagevermoegen.rekonstruktion.importieren.useMutation({
+    onSuccess: (d) => {
+      toast.success(d.message);
+      setShowReconstruct(false);
+      setSelectedForReconstruct([]);
+      anlagenQuery.refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const afaMutation = trpc.jahresabschluss.afaAutomatisierung.erstellen.useMutation({
+    onSuccess: (d) => {
+      toast.success(d.message);
+      setShowAfa(false);
+      setSelectedForAfa([]);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const createMutation = trpc.jahresabschluss.anlagevermoegen.create.useMutation({
     onSuccess: () => {
-      toast.success("Anlagegut erstellt");
+      toast.success('Anlagegut erstellt');
+      setShowCreate(false);
+      resetForm();
       anlagenQuery.refetch();
-      setCreateDialogOpen(false);
     },
-    onError: (error) => {
-      toast.error(`Fehler: ${error.message}`);
-    },
+    onError: (e) => toast.error(e.message),
   });
 
   const updateMutation = trpc.jahresabschluss.anlagevermoegen.update.useMutation({
     onSuccess: () => {
-      toast.success("Anlagegut aktualisiert");
+      toast.success('Anlagegut aktualisiert');
+      setEditAnlage(null);
+      resetForm();
       anlagenQuery.refetch();
-      setEditDialogOpen(false);
     },
-    onError: (error) => {
-      toast.error(`Fehler: ${error.message}`);
-    },
+    onError: (e) => toast.error(e.message),
   });
 
   const deleteMutation = trpc.jahresabschluss.anlagevermoegen.delete.useMutation({
     onSuccess: () => {
-      toast.success("Anlagegut gelöscht");
+      toast.success('Anlagegut gelöscht');
       anlagenQuery.refetch();
-      setDeleteDialogOpen(false);
     },
-    onError: (error) => {
-      toast.error(`Fehler: ${error.message}`);
-    },
+    onError: (e) => toast.error(e.message),
   });
 
-  const berechneAfaMutation = trpc.jahresabschluss.anlagevermoegen.berechneAfa.useQuery(
-    {
-      id: selectedAnlage?.id || 0,
-      stichtag: new Date().toISOString().split("T")[0],
-    },
-    {
-      enabled: false,
-    }
-  );
-
-  // Set default Unternehmen
   useEffect(() => {
     if (unternehmenQuery.data && unternehmenQuery.data.length > 0 && !selectedUnternehmen) {
       setSelectedUnternehmen(unternehmenQuery.data[0].unternehmen.id);
     }
   }, [unternehmenQuery.data, selectedUnternehmen]);
 
+  const resetForm = () =>
+    setForm({
+      kontonummer: '',
+      bezeichnung: '',
+      kategorie: 'Andere Anlagen, Betriebs- und Geschäftsausstattung',
+      anschaffungsdatum: new Date().toISOString().split('T')[0],
+      anschaffungskosten: '',
+      nutzungsdauer: 5,
+      abschreibungsmethode: 'linear',
+      sachkonto: '',
+      standort: '',
+      inventarnummer: '',
+      notizen: '',
+    });
+
+  const openEdit = (a: any) => {
+    setEditAnlage(a);
+    setForm({
+      kontonummer: a.kontonummer || '',
+      bezeichnung: a.bezeichnung || '',
+      kategorie: a.kategorie || 'Andere Anlagen, Betriebs- und Geschäftsausstattung',
+      anschaffungsdatum: a.anschaffungsdatum ? new Date(a.anschaffungsdatum).toISOString().split('T')[0] : '',
+      anschaffungskosten: a.anschaffungskosten || '',
+      nutzungsdauer: a.nutzungsdauer || 5,
+      abschreibungsmethode: a.abschreibungsmethode || 'linear',
+      sachkonto: a.sachkonto || '',
+      standort: a.standort || '',
+      inventarnummer: a.inventarnummer || '',
+      notizen: a.notizen || '',
+    });
+  };
+
+  const handleCreate = () =>
+    selectedUnternehmen &&
+    createMutation.mutate({
+      unternehmenId: selectedUnternehmen,
+      ...form,
+    });
+
+  const handleUpdate = () =>
+    editAnlage &&
+    updateMutation.mutate({
+      id: editAnlage.id,
+      ...form,
+    });
+
+  const handleOpenReconstruct = async () => {
+    setShowReconstruct(true);
+    await reconstructQuery.refetch();
+  };
+
+  const handleReconstruct = () => {
+    if (!selectedUnternehmen || selectedForReconstruct.length === 0) return;
+
+    const kandidaten = reconstructQuery.data?.kandidaten || [];
+    const selected = kandidaten.filter((k: any) => selectedForReconstruct.includes(k.sachkonto));
+
+    reconstructMutation.mutate({
+      unternehmenId: selectedUnternehmen,
+      anlagen: selected.map((k: any) => k.vorschlag),
+    });
+  };
+
+  const handleOpenAfa = async () => {
+    setShowAfa(true);
+    await afaQuery.refetch();
+  };
+
+  const handleGenerateAfa = () => {
+    if (!selectedUnternehmen || !afaQuery.data) return;
+
+    const buchungen = afaQuery.data.afaBuchungen || [];
+
+    afaMutation.mutate({
+      unternehmenId: selectedUnternehmen,
+      jahr: afaJahr,
+      buchungen,
+    });
+  };
+
+  const berechneRestbuchwert = (a: any) => {
+    const ahk = parseFloat(a.anschaffungskosten) || 0;
+    const nd = a.nutzungsdauer || 1;
+    const start = new Date(a.anschaffungsdatum);
+    const now = new Date();
+    const monate = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+    return Math.max(0, ahk - (ahk / nd / 12) * monate);
+  };
+
   const anlagen = anlagenQuery.data || [];
-  const anlagenspiegel = anlagenspiegelQuery.data || [];
-
-  const handleAfaBerechnung = async (anlage: any) => {
-    setSelectedAnlage(anlage);
-    const result = await berechneAfaMutation.refetch();
-    setAfaData(result.data);
-    setAfaDialogOpen(true);
-  };
-
-  const exportAnlagenspiegel = () => {
-    if (anlagenspiegel.length === 0) {
-      toast.error("Keine Daten zum Exportieren");
-      return;
-    }
-
-    const csv = [
-      "Kontonummer;Bezeichnung;Kategorie;Anschaffungsdatum;Anschaffungskosten;Nutzungsdauer;Methode;Jahres-AfA;Abgeschrieben;Restwert",
-      ...anlagenspiegel.map((a: any) =>
-        [
-          a.kontonummer,
-          a.bezeichnung,
-          a.kategorie || "",
-          formatDate(a.anschaffungsdatum),
-          formatCurrency(a.anschaffungskosten),
-          a.nutzungsdauer || "",
-          a.abschreibungsmethode || "",
-          formatCurrency(a.jahresAfa),
-          formatCurrency(a.abgeschrieben),
-          formatCurrency(a.restwert),
-        ].join(";")
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Anlagenspiegel_${spiegelJahr}.csv`;
-    link.click();
-    toast.success("Anlagenspiegel exportiert");
-  };
+  const filtered = kategorie === 'alle' ? anlagen : anlagen.filter((a) => a.kategorie === kategorie);
+  const sumAhk = filtered.reduce((s, a) => s + parseFloat(a.anschaffungskosten || '0'), 0);
+  const sumRest = filtered.reduce((s, a) => s + berechneRestbuchwert(a), 0);
+  const jahre = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i);
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader title="Anlagevermögen" subtitle="Verwaltung und AfA-Berechnung" />
+      <AppHeader title="Anlagevermögen" subtitle="Verwaltung, AfA, Rekonstruktion" />
 
-      <main className="container py-8">
-        {/* Filter Bar */}
+      <main className="container py-8 max-w-7xl">
+        {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Select
-            value={String(selectedUnternehmen || "")}
+            value={String(selectedUnternehmen || '')}
             onValueChange={(v) => setSelectedUnternehmen(Number(v))}
           >
             <SelectTrigger className="w-60">
@@ -365,309 +252,475 @@ export default function Anlagevermoegen() {
             </SelectContent>
           </Select>
 
-          <Button
-            variant={showAnlagenspiegel ? "default" : "outline"}
-            onClick={() => setShowAnlagenspiegel(!showAnlagenspiegel)}
-          >
-            <Calculator className="w-4 h-4 mr-2" />
-            Anlagenspiegel
-          </Button>
-
-          {showAnlagenspiegel && (
-            <>
-              <Select value={String(spiegelJahr)} onValueChange={(v) => setSpiegelJahr(Number(v))}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2023">2023</SelectItem>
-                  <SelectItem value="2022">2022</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" onClick={exportAnlagenspiegel}>
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </Button>
-            </>
-          )}
-
-          <Button
-            onClick={() => setCreateDialogOpen(true)}
-            className="ml-auto"
-            disabled={!selectedUnternehmen}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Neues Anlagegut
-          </Button>
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" onClick={handleOpenReconstruct} disabled={!selectedUnternehmen}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Rekonstruieren
+            </Button>
+            <Button variant="outline" onClick={handleOpenAfa} disabled={!selectedUnternehmen}>
+              <Calculator className="w-4 h-4 mr-2" />
+              AfA buchen
+            </Button>
+            <Button onClick={() => setShowCreate(true)} disabled={!selectedUnternehmen}>
+              <Plus className="w-4 h-4 mr-2" />
+              Neu
+            </Button>
+          </div>
         </div>
 
-        {/* Anlagenliste / Anlagenspiegel */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building className="w-5 h-5" />
-              {showAnlagenspiegel ? `Anlagenspiegel ${spiegelJahr}` : "Anlagevermögen"}
-            </CardTitle>
-            <CardDescription>
-              {showAnlagenspiegel
-                ? "Übersicht aller Anlagegüter mit AfA-Berechnung"
-                : "Alle erfassten Anlagegüter"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {anlagenQuery.isLoading || (showAnlagenspiegel && anlagenspiegelQuery.isLoading) ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin" />
+        {/* KPIs */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground">Anlagegüter</div>
+              <div className="text-3xl font-bold">{filtered.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Euro className="w-4 h-4" />
+                AHK
               </div>
-            ) : showAnlagenspiegel ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Bezeichnung</TableHead>
-                    <TableHead>Kategorie</TableHead>
-                    <TableHead>Anschaffung</TableHead>
-                    <TableHead className="text-right">AK</TableHead>
-                    <TableHead className="text-center">ND</TableHead>
-                    <TableHead className="text-right">Jahres-AfA</TableHead>
-                    <TableHead className="text-right">Abgeschrieben</TableHead>
-                    <TableHead className="text-right">Restwert</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {anlagenspiegel.map((a: any) => (
-                    <TableRow key={a.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{a.bezeichnung}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {a.kontonummer}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{a.kategorie || "-"}</TableCell>
-                      <TableCell>{formatDate(a.anschaffungsdatum)}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(a.anschaffungskosten)} €
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {a.nutzungsdauer ? `${a.nutzungsdauer}J` : "-"}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(a.jahresAfa)} €
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(a.abgeschrieben)} €
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-medium">
-                        {formatCurrency(a.restwert)} €
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : anlagen.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Noch keine Anlagegüter erfasst
+              <div className="text-3xl font-bold text-blue-600">{formatCurrency(sumAhk)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <TrendingDown className="w-4 h-4" />
+                Restbuchwert
               </div>
+              <div className="text-3xl font-bold text-green-600">{formatCurrency(sumRest)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground">Kum. AfA</div>
+              <div className="text-3xl font-bold text-orange-600">{formatCurrency(sumAhk - sumRest)}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabs */}
+        <Tabs value={kategorie} onValueChange={setKategorie}>
+          <TabsList>
+            {KATEGORIEN.map((k) => (
+              <TabsTrigger key={k.value} value={k.value}>
+                <k.icon className="w-4 h-4 mr-1" />
+                {k.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <TabsContent value={kategorie} className="mt-4">
+            {anlagenQuery.isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Keine Anlagegüter</p>
+                </CardContent>
+              </Card>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Bezeichnung</TableHead>
-                    <TableHead>Kategorie</TableHead>
-                    <TableHead>Anschaffung</TableHead>
-                    <TableHead className="text-right">AK</TableHead>
-                    <TableHead>Methode</TableHead>
-                    <TableHead className="w-[150px]">Aktionen</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {anlagen.map((a: any) => (
-                    <TableRow key={a.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{a.bezeichnung}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {a.kontonummer}
-                            {a.inventarnummer && ` • Inv: ${a.inventarnummer}`}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{a.kategorie || "-"}</TableCell>
-                      <TableCell>{formatDate(a.anschaffungsdatum)}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {a.anschaffungskosten ? `${formatCurrency(parseFloat(a.anschaffungskosten))} €` : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={a.abschreibungsmethode === "keine" ? "secondary" : "default"}>
-                          {a.abschreibungsmethode}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleAfaBerechnung(a)}
-                            disabled={
-                              !a.anschaffungsdatum ||
-                              !a.anschaffungskosten ||
-                              !a.nutzungsdauer ||
-                              a.abschreibungsmethode === "keine"
-                            }
-                          >
-                            <Calculator className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedAnlage(a);
-                              setEditDialogOpen(true);
-                            }}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedAnlage(a);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Bezeichnung</TableHead>
+                      <TableHead>Inv.Nr.</TableHead>
+                      <TableHead>Anschaffung</TableHead>
+                      <TableHead className="text-right">AHK</TableHead>
+                      <TableHead>ND</TableHead>
+                      <TableHead className="text-right">Restbuchwert</TableHead>
+                      <TableHead>Progress</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((a) => {
+                      const rest = berechneRestbuchwert(a);
+                      const ahk = parseFloat(a.anschaffungskosten || '0') || 0;
+                      const pct = ahk > 0 ? ((ahk - rest) / ahk) * 100 : 0;
+                      const Icon = KATEGORIEN.find((k) => k.value === a.kategorie)?.icon || Package;
+                      return (
+                        <TableRow key={a.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Icon className="w-4 h-4" />
+                              <div>
+                                <div className="font-medium">{a.bezeichnung}</div>
+                                {a.standort && (
+                                  <div className="text-sm text-muted-foreground">{a.standort}</div>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs">{a.inventarnummer || '-'}</code>
+                          </TableCell>
+                          <TableCell>{a.anschaffungsdatum ? formatDate(a.anschaffungsdatum) : '-'}</TableCell>
+                          <TableCell className="text-right font-mono">{formatCurrency(ahk)}</TableCell>
+                          <TableCell>{a.nutzungsdauer}J</TableCell>
+                          <TableCell className="text-right font-mono text-green-600">
+                            {formatCurrency(rest)}
+                          </TableCell>
+                          <TableCell className="w-28">
+                            <Progress value={pct} className="h-2" />
+                            <div className="text-xs text-muted-foreground">{pct.toFixed(0)}%</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => openEdit(a)}>
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-600"
+                                onClick={() => confirm('Löschen?') && deleteMutation.mutate({ id: a.id })}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Card>
             )}
-          </CardContent>
-        </Card>
-      </main>
+          </TabsContent>
+        </Tabs>
 
-      {/* Create Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Neues Anlagegut anlegen</DialogTitle>
-          </DialogHeader>
-          {selectedUnternehmen && (
-            <AnlageForm
-              unternehmenId={selectedUnternehmen}
-              onSave={(data) => createMutation.mutate(data)}
-              onCancel={() => setCreateDialogOpen(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+        {/* Rekonstruktion Dialog */}
+        <Dialog open={showReconstruct} onOpenChange={setShowReconstruct}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                <RefreshCw className="w-5 h-5 inline mr-2" />
+                Aus Buchungen rekonstruieren
+              </DialogTitle>
+              <DialogDescription>
+                Analysiert Buchungen mit Sachkonten 0000-0999 und erstellt Anlagegüter.
+              </DialogDescription>
+            </DialogHeader>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Anlagegut bearbeiten</DialogTitle>
-          </DialogHeader>
-          {selectedAnlage && (
-            <AnlageForm
-              anlage={selectedAnlage}
-              unternehmenId={selectedAnlage.unternehmenId}
-              onSave={(data) => updateMutation.mutate({ id: selectedAnlage.id, ...data })}
-              onCancel={() => setEditDialogOpen(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+            {reconstructQuery.isFetching ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </div>
+            ) : reconstructQuery.data ? (
+              <div className="space-y-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {reconstructQuery.data.zuRekonstruieren} von {reconstructQuery.data.gesamt} Sachkonten können
+                    rekonstruiert werden. {reconstructQuery.data.bereitsErfasst} wurden bereits erfasst.
+                  </AlertDescription>
+                </Alert>
 
-      {/* Delete Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Anlagegut löschen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Möchten Sie "{selectedAnlage?.bezeichnung}" wirklich löschen? Diese Aktion kann
-              nicht rückgängig gemacht werden.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteMutation.mutate({ id: selectedAnlage?.id })}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Löschen
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* AfA Dialog */}
-      <Dialog open={afaDialogOpen} onOpenChange={setAfaDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>AfA-Berechnung: {selectedAnlage?.bezeichnung}</DialogTitle>
-          </DialogHeader>
-          {afaData && !afaData.error ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Methode</Label>
-                  <p className="font-medium capitalize">{afaData.methode}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Anschaffungskosten</Label>
-                  <p className="font-medium">{formatCurrency(afaData.anschaffungskosten)} €</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Nutzungsdauer</Label>
-                  <p className="font-medium">{afaData.nutzungsdauer} Jahre</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Jahres-AfA</Label>
-                  <p className="font-medium">{formatCurrency(afaData.jahresAfa)} €</p>
-                </div>
-                {afaData.monatlicheAfa && (
-                  <div>
-                    <Label className="text-muted-foreground">Monatliche AfA</Label>
-                    <p className="font-medium">{formatCurrency(afaData.monatlicheAfa)} €</p>
-                  </div>
+                {reconstructQuery.data.kandidaten.length > 0 && (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <input
+                            type="checkbox"
+                            checked={selectedForReconstruct.length === reconstructQuery.data.kandidaten.length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedForReconstruct(reconstructQuery.data!.kandidaten.map((k: any) => k.sachkonto));
+                              } else {
+                                setSelectedForReconstruct([]);
+                              }
+                            }}
+                          />
+                        </TableHead>
+                        <TableHead>Sachkonto</TableHead>
+                        <TableHead>Vorschlag</TableHead>
+                        <TableHead>Betrag</TableHead>
+                        <TableHead>Buchungen</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reconstructQuery.data.kandidaten.map((k: any) => (
+                        <TableRow key={k.sachkonto}>
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedForReconstruct.includes(k.sachkonto)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedForReconstruct([...selectedForReconstruct, k.sachkonto]);
+                                } else {
+                                  setSelectedForReconstruct(selectedForReconstruct.filter((id) => id !== k.sachkonto));
+                                }
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <code className="font-mono text-sm">{k.sachkonto}</code>
+                            <div className="text-sm text-muted-foreground">{k.geschaeftspartner}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{k.vorschlag.bezeichnung}</div>
+                            <Badge variant="outline" className="text-xs">
+                              {k.vorschlag.kategorie}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono">{formatCurrency(k.gesamtbetrag)}</TableCell>
+                          <TableCell>
+                            <div className="text-sm">{k.buchungen.length} Buchungen</div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
-                <div>
-                  <Label className="text-muted-foreground">Monate abgeschrieben</Label>
-                  <p className="font-medium">{afaData.monateAbgeschrieben}</p>
+              </div>
+            ) : null}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowReconstruct(false)}>
+                Abbrechen
+              </Button>
+              <Button
+                onClick={handleReconstruct}
+                disabled={selectedForReconstruct.length === 0 || reconstructMutation.isPending}
+              >
+                {reconstructMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Importiere...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    {selectedForReconstruct.length} Anlagen importieren
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* AfA Dialog */}
+        <Dialog open={showAfa} onOpenChange={setShowAfa}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                <Calculator className="w-5 h-5 inline mr-2" />
+                AfA-Buchungen generieren
+              </DialogTitle>
+              <DialogDescription>Erstellt Abschreibungsbuchungen für aktive Anlagen.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label>Jahr</Label>
+                <Select value={afaJahr.toString()} onValueChange={(v) => setAfaJahr(parseInt(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jahre.map((j) => (
+                      <SelectItem key={j} value={j.toString()}>
+                        {j}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {afaQuery.isFetching ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin" />
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Gesamt abgeschrieben</Label>
-                  <p className="font-medium">{formatCurrency(afaData.abgeschrieben)} €</p>
+              ) : afaQuery.data ? (
+                <div className="space-y-4">
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      {afaQuery.data.anzahlAfaBuchungen} AfA-Buchungen für {afaQuery.data.anzahlAnlagen} Anlagen.
+                      Gesamt: {formatCurrency(afaQuery.data.gesamtAfaBetrag)}
+                    </AlertDescription>
+                  </Alert>
+
+                  {afaQuery.data.afaBuchungen.length > 0 && (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Anlage</TableHead>
+                          <TableHead>Sachkonto</TableHead>
+                          <TableHead>Gegenkonto</TableHead>
+                          <TableHead className="text-right">AfA-Betrag</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {afaQuery.data.afaBuchungen.map((b: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell>{b.anlageBezeichnung}</TableCell>
+                            <TableCell>
+                              <code className="text-xs">{b.sachkonto}</code>
+                            </TableCell>
+                            <TableCell>
+                              <code className="text-xs">{b.gegenkonto}</code>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">{formatCurrency(b.betrag)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Aktueller Restwert</Label>
-                  <p className="font-medium text-lg">{formatCurrency(afaData.restwert)} €</p>
+              ) : null}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAfa(false)}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleGenerateAfa} disabled={!afaQuery.data || afaMutation.isPending}>
+                {afaMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Erstelle...
+                  </>
+                ) : (
+                  <>
+                    <Calculator className="w-4 h-4 mr-2" />
+                    Buchungen erstellen
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create/Edit Dialog */}
+        <Dialog
+          open={showCreate || !!editAnlage}
+          onOpenChange={(o) => {
+            if (!o) {
+              setShowCreate(false);
+              setEditAnlage(null);
+              resetForm();
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{editAnlage ? 'Anlagegut bearbeiten' : 'Neues Anlagegut'}</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Bezeichnung *</Label>
+                <Input value={form.bezeichnung} onChange={(e) => setForm({ ...form, bezeichnung: e.target.value })} />
+              </div>
+              <div>
+                <Label>Inventarnummer</Label>
+                <Input
+                  value={form.inventarnummer}
+                  onChange={(e) => setForm({ ...form, inventarnummer: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Kategorie</Label>
+                <Select value={form.kategorie} onValueChange={(v) => setForm({ ...form, kategorie: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KATEGORIEN.filter((k) => k.value !== 'alle').map((k) => (
+                      <SelectItem key={k.value} value={k.value}>
+                        {k.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Standort</Label>
+                <Input value={form.standort} onChange={(e) => setForm({ ...form, standort: e.target.value })} />
+              </div>
+              <div>
+                <Label>Kontonummer</Label>
+                <Input value={form.kontonummer} onChange={(e) => setForm({ ...form, kontonummer: e.target.value })} />
+              </div>
+              <div>
+                <Label>Sachkonto</Label>
+                <Input value={form.sachkonto} onChange={(e) => setForm({ ...form, sachkonto: e.target.value })} />
+              </div>
+              <div>
+                <Label>Anschaffungsdatum *</Label>
+                <Input
+                  type="date"
+                  value={form.anschaffungsdatum}
+                  onChange={(e) => setForm({ ...form, anschaffungsdatum: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>AHK (€) *</Label>
+                <Input
+                  type="number"
+                  value={form.anschaffungskosten}
+                  onChange={(e) => setForm({ ...form, anschaffungskosten: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Nutzungsdauer (Jahre)</Label>
+                <Input
+                  type="number"
+                  value={form.nutzungsdauer}
+                  onChange={(e) => setForm({ ...form, nutzungsdauer: parseInt(e.target.value) || 5 })}
+                />
+                <div className="text-xs text-muted-foreground mt-1">
+                  AfA: {(100 / form.nutzungsdauer).toFixed(2)}%
                 </div>
               </div>
-              {afaData.vollAbgeschrieben && (
-                <Badge variant="secondary" className="w-full justify-center">
-                  Vollständig abgeschrieben
-                </Badge>
-              )}
+              <div>
+                <Label>Abschreibungsmethode</Label>
+                <Select
+                  value={form.abschreibungsmethode}
+                  onValueChange={(v: any) => setForm({ ...form, abschreibungsmethode: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="linear">Linear</SelectItem>
+                    <SelectItem value="degressiv">Degressiv</SelectItem>
+                    <SelectItem value="keine">Keine</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <Label>Notizen</Label>
+                <Input value={form.notizen} onChange={(e) => setForm({ ...form, notizen: e.target.value })} />
+              </div>
             </div>
-          ) : afaData?.error ? (
-            <p className="text-red-500">{afaData.error}</p>
-          ) : (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          )}
-          <DialogFooter>
-            <Button onClick={() => setAfaDialogOpen(false)}>Schließen</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreate(false);
+                  setEditAnlage(null);
+                  resetForm();
+                }}
+              >
+                Abbrechen
+              </Button>
+              <Button onClick={editAnlage ? handleUpdate : handleCreate} disabled={!form.bezeichnung || !form.anschaffungskosten}>
+                {editAnlage ? 'Speichern' : 'Erstellen'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </main>
     </div>
   );
 }
