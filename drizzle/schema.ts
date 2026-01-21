@@ -1334,3 +1334,48 @@ export const belege = mysqlTable("belege", {
 
 export type Beleg = typeof belege.$inferSelect;
 export type InsertBeleg = typeof belege.$inferInsert;
+
+/**
+ * Finanzkonten - Erweiterte Kontenverwaltung für Bank, Kreditkarten, Broker, etc.
+ * Ersetzt/erweitert bankkonten mit mehr Flexibilität
+ */
+export const finanzkonten = mysqlTable("finanzkonten", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  sachkontoId: int("sachkontoId").references(() => sachkonten.id),
+
+  // Typ des Kontos
+  typ: mysqlEnum("typ", ["bank", "kreditkarte", "broker", "kasse", "paypal", "stripe", "sonstiges"]).notNull(),
+
+  // Allgemeine Felder
+  name: varchar("name", { length: 255 }).notNull(),
+  kontonummer: varchar("kontonummer", { length: 50 }),
+
+  // Bank-spezifisch
+  iban: varchar("iban", { length: 34 }),
+  bic: varchar("bic", { length: 11 }),
+  bankName: varchar("bankName", { length: 255 }),
+
+  // Kreditkarte-spezifisch
+  kreditkartenNummer: varchar("kreditkartenNummer", { length: 20 }), // Nur letzte 4 Ziffern
+  kreditlimit: decimal("kreditlimit", { precision: 15, scale: 2 }),
+  abrechnungstag: int("abrechnungstag"), // Tag im Monat
+
+  // Broker-spezifisch
+  depotNummer: varchar("depotNummer", { length: 50 }),
+  brokerName: varchar("brokerName", { length: 255 }),
+
+  // PayPal/Stripe
+  email: varchar("email", { length: 255 }),
+
+  // Allgemein
+  waehrung: varchar("waehrung", { length: 3 }).default("EUR"),
+  aktiv: boolean("aktiv").default(true),
+  notizen: text("notizen"),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Finanzkonto = typeof finanzkonten.$inferSelect;
+export type InsertFinanzkonto = typeof finanzkonten.$inferInsert;
