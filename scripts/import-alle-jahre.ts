@@ -84,10 +84,20 @@ function getPeriodeFromDate(datevDate: string): number {
 }
 
 function getBuchungsart(kontonr: string): string {
-  const nr = parseInt(kontonr);
-  if (nr >= 0 && nr <= 999) return "anlage";
-  if (nr >= 7000 && nr <= 7999) return "ertrag";
-  if (nr >= 8000 && nr <= 9999) return "aufwand";
+  // SKR04 Kontenrahmen Logik (6-stellige Konten)
+  // Erste Ziffer bestimmt die Kontenklasse
+  const firstDigit = parseInt(kontonr.charAt(0));
+
+  // 0-3: Bilanzkonten (Aktiva/Passiva)
+  if (firstDigit >= 0 && firstDigit <= 3) return "anlage";
+
+  // 4: Betriebliche Erträge
+  if (firstDigit === 4) return "ertrag";
+
+  // 5-8: Betriebliche Aufwendungen
+  if (firstDigit >= 5 && firstDigit <= 8) return "aufwand";
+
+  // 9: Vortragskonten
   return "sonstig";
 }
 

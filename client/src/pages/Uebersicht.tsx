@@ -363,7 +363,7 @@ export default function Uebersicht() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [filterSachkonto, setFilterSachkonto] = useState("");
-  const [filterImportRef, setFilterImportRef] = useState("DATEV_2025_VERBESSERT");
+  const [filterImportRef, setFilterImportRef] = useState("");
   const [filterGeschaeftspartner, setFilterGeschaeftspartner] = useState("");
 
   // Modal states
@@ -532,6 +532,7 @@ export default function Uebersicht() {
               <SelectItem value="2025">2025</SelectItem>
               <SelectItem value="2024">2024</SelectItem>
               <SelectItem value="2023">2023</SelectItem>
+              <SelectItem value="2022">2022</SelectItem>
             </SelectContent>
           </Select>
 
