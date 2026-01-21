@@ -34,6 +34,7 @@ import Lager from "./pages/Lager";
 import Inventur from "./pages/Inventur";
 import Anlagevermoegen from "./pages/Anlagevermoegen";
 import Bankkonten from "./pages/Bankkonten";
+import Finanzkonten from "./pages/Finanzkonten";
 import Eroeffnungsbilanz from "./pages/Eroeffnungsbilanz";
 import Jahresabschluss from "./pages/Jahresabschluss";
 
@@ -192,6 +193,12 @@ function Router() {
       <Route path={"/bankkonten"}>
         <ProtectedRoute>
           <Bankkonten />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/finanzkonten"}>
+        <ProtectedRoute>
+          <Finanzkonten />
         </ProtectedRoute>
       </Route>
 
