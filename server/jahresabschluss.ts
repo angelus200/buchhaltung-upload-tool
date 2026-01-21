@@ -1231,4 +1231,189 @@ export const jahresabschlussRouter = router({
         };
       }),
   }),
+
+  // ============================================
+  // AfA-AUTOMATISIERUNG
+  // ============================================
+  afaAutomatisierung: router({
+    // Berechnet AfA-Buchungen für ein Jahr
+    berechnen: protectedProcedure
+      .input(
+        z.object({
+          unternehmenId: z.number(),
+          jahr: z.number(),
+        })
+      )
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Datenbankverbindung nicht verfügbar",
+          });
+        }
+
+        // Hole alle aktiven Anlagegüter
+        const anlagen = await db
+          .select()
+          .from(anlagevermoegen)
+          .where(
+            and(
+              eq(anlagevermoegen.unternehmenId, input.unternehmenId),
+              eq(anlagevermoegen.aktiv, true)
+            )
+          );
+
+        const afaBuchungen = [];
+        const stichtag = `${input.jahr}-12-31`;
+
+        for (const anlage of anlagen) {
+          // Prüfe ob AfA-Berechnung möglich
+          if (
+            !anlage.anschaffungsdatum ||
+            !anlage.anschaffungskosten ||
+            !anlage.nutzungsdauer ||
+            anlage.abschreibungsmethode === "keine"
+          ) {
+            continue;
+          }
+
+          const anschaffungskosten = parseFloat(anlage.anschaffungskosten);
+          const restwertBetrag = parseFloat(anlage.restwert || "0");
+          const nutzungsdauer = anlage.nutzungsdauer;
+          const anschaffungsdatum = new Date(anlage.anschaffungsdatum);
+          const stichtagDate = new Date(stichtag);
+
+          // Prüfe ob Anschaffung vor oder im Jahr liegt
+          if (anschaffungsdatum > stichtagDate) {
+            continue;
+          }
+
+          // Berechne AfA für dieses Jahr
+          let jahresAfa = 0;
+
+          if (anlage.abschreibungsmethode === "linear") {
+            const jahresAfaBetrag = (anschaffungskosten - restwertBetrag) / nutzungsdauer;
+
+            // Prüfe ob im Anschaffungsjahr (anteilig)
+            if (anschaffungsdatum.getFullYear() === input.jahr) {
+              const monateImJahr = 12 - anschaffungsdatum.getMonth();
+              jahresAfa = (jahresAfaBetrag / 12) * monateImJahr;
+            } else {
+              jahresAfa = jahresAfaBetrag;
+            }
+
+            // Prüfe ob bereits vollständig abgeschrieben
+            const monateGesamt = Math.max(
+              0,
+              (stichtagDate.getFullYear() - anschaffungsdatum.getFullYear()) * 12 +
+                (stichtagDate.getMonth() - anschaffungsdatum.getMonth())
+            );
+
+            const gesamtAbschreibung = (jahresAfaBetrag / 12) * monateGesamt;
+
+            if (gesamtAbschreibung >= anschaffungskosten - restwertBetrag) {
+              // Bereits vollständig abgeschrieben
+              continue;
+            }
+          }
+
+          if (jahresAfa > 0) {
+            afaBuchungen.push({
+              anlageId: anlage.id,
+              anlageBezeichnung: anlage.bezeichnung,
+              sachkonto: anlage.sachkonto || "0000",
+              gegenkonto: "4830", // AfA-Aufwand (SKR04)
+              betrag: jahresAfa.toFixed(2),
+              buchungsdatum: stichtag,
+              buchungstext: `AfA ${input.jahr} - ${anlage.bezeichnung}`,
+            });
+          }
+        }
+
+        return {
+          jahr: input.jahr,
+          anzahlAnlagen: anlagen.length,
+          anzahlAfaBuchungen: afaBuchungen.length,
+          afaBuchungen,
+          gesamtAfaBetrag: afaBuchungen.reduce((sum, b) => sum + parseFloat(b.betrag), 0),
+        };
+      }),
+
+    // Erstellt AfA-Buchungen automatisch
+    erstellen: protectedProcedure
+      .input(
+        z.object({
+          unternehmenId: z.number(),
+          jahr: z.number(),
+          buchungen: z.array(
+            z.object({
+              anlageId: z.number(),
+              sachkonto: z.string(),
+              gegenkonto: z.string(),
+              betrag: z.string(),
+              buchungsdatum: z.string(),
+              buchungstext: z.string(),
+            })
+          ),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Datenbankverbindung nicht verfügbar",
+          });
+        }
+
+        const erfolge: number[] = [];
+        const fehler: Array<{ index: number; error: string }> = [];
+
+        for (let i = 0; i < input.buchungen.length; i++) {
+          const afaBuchung = input.buchungen[i];
+
+          try {
+            // Erstelle Buchung
+            const betrag = parseFloat(afaBuchung.betrag);
+            const steuersatz = 0; // AfA ist steuerfrei
+            const nettobetrag = betrag;
+            const bruttobetrag = betrag;
+
+            const result = await db.insert(buchungen).values({
+              unternehmenId: input.unternehmenId,
+              buchungsart: "aufwand",
+              belegdatum: new Date(afaBuchung.buchungsdatum),
+              belegnummer: `AfA-${input.jahr}-${afaBuchung.anlageId}`,
+              geschaeftspartnerTyp: "sonstig",
+              geschaeftspartner: "AfA Automatisch",
+              geschaeftspartnerKonto: afaBuchung.gegenkonto,
+              sachkonto: afaBuchung.gegenkonto,
+              nettobetrag: nettobetrag.toString(),
+              steuersatz: steuersatz.toString(),
+              bruttobetrag: bruttobetrag.toString(),
+              buchungstext: afaBuchung.buchungstext,
+              status: "geprueft",
+              createdBy: ctx.user.id,
+            });
+
+            erfolge.push(result[0].insertId);
+          } catch (error) {
+            console.error(`Fehler beim Erstellen von AfA-Buchung ${i + 1}:`, error);
+            fehler.push({
+              index: i,
+              error: error instanceof Error ? error.message : "Unbekannter Fehler",
+            });
+          }
+        }
+
+        return {
+          success: true,
+          erstellt: erfolge.length,
+          fehler: fehler.length,
+          fehlerDetails: fehler,
+          message: `${erfolge.length} von ${input.buchungen.length} AfA-Buchungen erfolgreich erstellt`,
+        };
+      }),
+  }),
 });
