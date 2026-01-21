@@ -45,7 +45,8 @@ export const dashboardRouter = router({
         ? new Date(input.jahr, input.monat, 0).toISOString().split("T")[0]
         : `${input.jahr}-12-31`;
 
-      // Einnahmen (Erträge)
+      // Einnahmen (Cashflow): Geld kommt auf Bank-Konto (SOLL Bank)
+      // Bank-Konten: 120000-129999 (Kontenklasse 12)
       const einnahmenResult = await db
         .select({
           summe: sql<string>`COALESCE(SUM(CAST(${buchungen.nettobetrag} AS DECIMAL(15,2))), 0)`,
@@ -55,13 +56,13 @@ export const dashboardRouter = router({
         .where(
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
-            eq(buchungen.buchungsart, "ertrag"),
+            sql`${buchungen.sollKonto} LIKE '12%'`,
             gte(buchungen.belegdatum, new Date(startDatum)),
             lte(buchungen.belegdatum, new Date(endDatum))
           )
         );
 
-      // Ausgaben (Aufwände)
+      // Ausgaben (Cashflow): Geld geht von Bank-Konto weg (HABEN Bank)
       const ausgabenResult = await db
         .select({
           summe: sql<string>`COALESCE(SUM(CAST(${buchungen.nettobetrag} AS DECIMAL(15,2))), 0)`,
@@ -71,7 +72,7 @@ export const dashboardRouter = router({
         .where(
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
-            eq(buchungen.buchungsart, "aufwand"),
+            sql`${buchungen.habenKonto} LIKE '12%'`,
             gte(buchungen.belegdatum, new Date(startDatum)),
             lte(buchungen.belegdatum, new Date(endDatum))
           )
@@ -134,7 +135,7 @@ export const dashboardRouter = router({
         const startDatum = `${input.jahr}-${String(monat).padStart(2, "0")}-01`;
         const endDatum = new Date(input.jahr, monat, 0).toISOString().split("T")[0];
 
-        // Einnahmen
+        // Einnahmen (Cashflow: SOLL Bank)
         const einnahmenResult = await db
           .select({
             summe: sql<string>`COALESCE(SUM(CAST(${buchungen.nettobetrag} AS DECIMAL(15,2))), 0)`,
@@ -143,13 +144,13 @@ export const dashboardRouter = router({
           .where(
             and(
               eq(buchungen.unternehmenId, input.unternehmenId),
-              eq(buchungen.buchungsart, "ertrag"),
+              sql`${buchungen.sollKonto} LIKE '12%'`,
               gte(buchungen.belegdatum, new Date(startDatum)),
               lte(buchungen.belegdatum, new Date(endDatum))
             )
           );
 
-        // Ausgaben
+        // Ausgaben (Cashflow: HABEN Bank)
         const ausgabenResult = await db
           .select({
             summe: sql<string>`COALESCE(SUM(CAST(${buchungen.nettobetrag} AS DECIMAL(15,2))), 0)`,
@@ -158,7 +159,7 @@ export const dashboardRouter = router({
           .where(
             and(
               eq(buchungen.unternehmenId, input.unternehmenId),
-              eq(buchungen.buchungsart, "aufwand"),
+              sql`${buchungen.habenKonto} LIKE '12%'`,
               gte(buchungen.belegdatum, new Date(startDatum)),
               lte(buchungen.belegdatum, new Date(endDatum))
             )
