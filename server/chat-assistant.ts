@@ -168,7 +168,7 @@ async function executeDataQuery(
         and(
           eq(buchungen.unternehmenId, unternehmenId),
           eq(buchungen.zahlungsstatus, "offen"),
-          lte(buchungen.faelligkeitsdatum, heute)
+          sql`${buchungen.faelligkeitsdatum} <= ${heute}`
         )
       )
       .orderBy(buchungen.faelligkeitsdatum)
@@ -269,8 +269,8 @@ async function executeDataQuery(
           and(
             eq(buchungen.unternehmenId, unternehmenId),
             eq(buchungen.buchungsart, "aufwand"),
-            gte(buchungen.belegdatum, vonDatum),
-            lte(buchungen.belegdatum, bisDatum)
+            sql`${buchungen.belegdatum} >= ${vonDatum}`,
+            sql`${buchungen.belegdatum} <= ${bisDatum}`
           )
         );
 

@@ -18,7 +18,7 @@ export default function UnternehmenManagement() {
 
   // Query für Unternehmensdaten
   const { data: unternehmenListe } = trpc.unternehmen.list.useQuery();
-  const unternehmen = unternehmenListe?.find((u) => u.id === unternehmenId);
+  const unternehmen = unternehmenListe?.find((u) => u.unternehmen.id === unternehmenId);
 
   // Query für Berechtigungen
   const { data: berechtigungen } = trpc.benutzer.meineBerechtigungen.useQuery(
@@ -53,7 +53,7 @@ export default function UnternehmenManagement() {
             <ChevronLeft className="w-4 h-4" />
             Zurück zu Unternehmen
           </Button>
-          <h1 className="text-3xl font-bold text-slate-900">{unternehmen.name}</h1>
+          <h1 className="text-3xl font-bold text-slate-900">{unternehmen.unternehmen.name}</h1>
           <p className="text-muted-foreground mt-1">
             Verwalten Sie Benutzer und Einladungen für dieses Unternehmen
           </p>
@@ -74,7 +74,7 @@ export default function UnternehmenManagement() {
           <TabsContent value="users" className="space-y-6">
             <BenutzerVerwaltungCompany
               unternehmenId={unternehmenId}
-              unternehmensname={unternehmen.name}
+              unternehmensname={unternehmen.unternehmen.name}
               isAdmin={isAdmin}
               currentUserId={user.id}
             />
@@ -83,7 +83,7 @@ export default function UnternehmenManagement() {
           <TabsContent value="invitations" className="space-y-6">
             <EinladungsVerwaltung
               unternehmenId={unternehmenId}
-              unternehmensname={unternehmen.name}
+              unternehmensname={unternehmen.unternehmen.name}
               isAdmin={isAdmin}
             />
           </TabsContent>

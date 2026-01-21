@@ -65,7 +65,7 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
   const [firmenLogo, setFirmenLogo] = useState<string>("");
 
   // Auth Hook für Benutzer und Logout
-  const { user, isAuthenticated, logout, loading } = useAuth();
+  const { user, isAuthenticated, logout, isLoading } = useAuth();
 
   // TRPC Query für Unternehmensliste
   const { data: unternehmenList } = trpc.unternehmen.list.useQuery();

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import { buchungen, unternehmen } from "../drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { parseDatevFile, exportToDatev, isValidDatevFile, type DatevBuchung } from "./lib/datev-parser";
 
@@ -208,44 +208,27 @@ export const datevRouter = router({
 
       const company = companies[0];
 
-      // Get buchungen
-      let query = db
-        .select()
-        .from(buchungen)
-        .where(eq(buchungen.unternehmenId, input.unternehmenId))
-        .orderBy(desc(buchungen.belegdatum));
+      // Build filters
+      const filters = [eq(buchungen.unternehmenId, input.unternehmenId)];
 
-      // Apply filters
       if (input.datumVon) {
-        query = query.where(
-          and(
-            eq(buchungen.unternehmenId, input.unternehmenId),
-            // @ts-ignore - drizzle type issue
-            buchungen.belegdatum >= input.datumVon
-          )
-        );
+        filters.push(sql`${buchungen.belegdatum} >= ${input.datumVon}`);
       }
 
       if (input.datumBis) {
-        query = query.where(
-          and(
-            eq(buchungen.unternehmenId, input.unternehmenId),
-            // @ts-ignore - drizzle type issue
-            buchungen.belegdatum <= input.datumBis
-          )
-        );
+        filters.push(sql`${buchungen.belegdatum} <= ${input.datumBis}`);
       }
 
       if (input.status) {
-        query = query.where(
-          and(
-            eq(buchungen.unternehmenId, input.unternehmenId),
-            eq(buchungen.status, input.status)
-          )
-        );
+        filters.push(eq(buchungen.status, input.status));
       }
 
-      const buchungenList = await query;
+      // Get buchungen
+      const buchungenList = await db
+        .select()
+        .from(buchungen)
+        .where(and(...filters))
+        .orderBy(desc(buchungen.belegdatum));
 
       if (buchungenList.length === 0) {
         throw new TRPCError({
