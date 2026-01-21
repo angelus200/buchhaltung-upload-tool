@@ -822,7 +822,182 @@ export const jahresabschlussRouter = router({
           sollSumme,
           habenSumme,
           differenz,
-          ausgeglichen: Math.abs(differenz) < 0.01, // Rundungstoleran z
+          ausgeglichen: Math.abs(differenz) < 0.01, // Rundungstoleranz
+        };
+      }),
+  }),
+
+  // ============================================
+  // VORJAHRESWERTE-ÜBERNAHME
+  // ============================================
+  vorjahreswerte: router({
+    // Berechnet Salden aller Bestandskonten zum 31.12. des gewählten Jahres
+    berechneVorjahr: protectedProcedure
+      .input(
+        z.object({
+          unternehmenId: z.number(),
+          jahr: z.number(), // z.B. 2025 → berechnet Salden zum 31.12.2025
+        })
+      )
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+
+        const { unternehmenId, jahr } = input;
+        const stichtag = `${jahr}-12-31`;
+
+        // Nur Bestandskonten (SKR04: 0000-3999)
+        // Aktiva: 0000-1999 (Soll), Passiva: 2000-3999 (Haben)
+        // Saldo = Soll - Haben
+        const saldenQuery = await db
+          .select({
+            sachkonto: buchungen.sachkonto,
+            saldo: sql<number>`SUM(
+              CASE
+                WHEN ${buchungen.buchungsart} = 'ertrag' THEN -CAST(${buchungen.bruttobetrag} AS DECIMAL(15,2))
+                ELSE CAST(${buchungen.bruttobetrag} AS DECIMAL(15,2))
+              END
+            )`,
+          })
+          .from(buchungen)
+          .where(
+            and(
+              eq(buchungen.unternehmenId, unternehmenId),
+              sql`${buchungen.belegdatum} <= ${stichtag}`,
+              sql`CAST(${buchungen.sachkonto} AS UNSIGNED) BETWEEN 0 AND 3999`
+            )
+          )
+          .groupBy(buchungen.sachkonto)
+          .having(
+            sql`ABS(SUM(
+              CASE
+                WHEN ${buchungen.buchungsart} = 'ertrag' THEN -CAST(${buchungen.bruttobetrag} AS DECIMAL(15,2))
+                ELSE CAST(${buchungen.bruttobetrag} AS DECIMAL(15,2))
+              END
+            )) > 0.01`
+          );
+
+        // Kategorisieren
+        const aktiva = saldenQuery
+          .filter((s) => parseInt(s.sachkonto) < 2000)
+          .map((s) => ({
+            sachkonto: s.sachkonto,
+            saldo: Number(s.saldo),
+          }));
+
+        const passiva = saldenQuery
+          .filter((s) => parseInt(s.sachkonto) >= 2000)
+          .map((s) => ({
+            sachkonto: s.sachkonto,
+            saldo: Number(s.saldo),
+          }));
+
+        const summeAktiva = aktiva.reduce((sum, s) => sum + s.saldo, 0);
+        const summePassiva = passiva.reduce((sum, s) => sum + Math.abs(s.saldo), 0);
+
+        return {
+          jahr,
+          stichtag,
+          aktiva,
+          passiva,
+          summeAktiva,
+          summePassiva,
+          differenz: summeAktiva - summePassiva,
+          ausgeglichen: Math.abs(summeAktiva - summePassiva) < 0.01,
+        };
+      }),
+
+    // Übernimmt berechnete Vorjahreswerte als Anfangsbestände
+    uebernehmen: protectedProcedure
+      .input(
+        z.object({
+          unternehmenId: z.number(),
+          quellJahr: z.number(), // Vorjahr (z.B. 2025)
+          zielJahr: z.number(), // Neues Jahr (z.B. 2026)
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+
+        const { unternehmenId, quellJahr, zielJahr } = input;
+
+        // Vorjahressalden berechnen (nutze berechneVorjahr-Logik)
+        const stichtag = `${quellJahr}-12-31`;
+
+        const saldenQuery = await db
+          .select({
+            sachkonto: buchungen.sachkonto,
+            kontobezeichnung: sql<string>`(SELECT bezeichnung FROM sachkonten WHERE kontonummer = ${buchungen.sachkonto} LIMIT 1)`,
+            saldo: sql<number>`SUM(
+              CASE
+                WHEN ${buchungen.buchungsart} = 'ertrag' THEN -CAST(${buchungen.bruttobetrag} AS DECIMAL(15,2))
+                ELSE CAST(${buchungen.bruttobetrag} AS DECIMAL(15,2))
+              END
+            )`,
+          })
+          .from(buchungen)
+          .where(
+            and(
+              eq(buchungen.unternehmenId, unternehmenId),
+              sql`${buchungen.belegdatum} <= ${stichtag}`,
+              sql`CAST(${buchungen.sachkonto} AS UNSIGNED) BETWEEN 0 AND 3999`
+            )
+          )
+          .groupBy(buchungen.sachkonto)
+          .having(
+            sql`ABS(SUM(
+              CASE
+                WHEN ${buchungen.buchungsart} = 'ertrag' THEN -CAST(${buchungen.bruttobetrag} AS DECIMAL(15,2))
+                ELSE CAST(${buchungen.bruttobetrag} AS DECIMAL(15,2))
+              END
+            )) > 0.01`
+          );
+
+        // Alle Positionen als Anfangsbestände vorbereiten
+        const positionen: InsertEroeffnungsbilanz[] = saldenQuery.map((s) => {
+          const saldo = Number(s.saldo);
+          return {
+            unternehmenId,
+            jahr: zielJahr,
+            sachkonto: s.sachkonto,
+            kontobezeichnung: s.kontobezeichnung || s.sachkonto,
+            sollbetrag: saldo >= 0 ? saldo.toFixed(2) : "0.00",
+            habenbetrag: saldo < 0 ? Math.abs(saldo).toFixed(2) : "0.00",
+            importQuelle: "manuell" as const,
+            importDatum: new Date(),
+            erstelltVon: ctx.user?.id,
+          };
+        });
+
+        // Alte Einträge für dieses Jahr löschen
+        await db
+          .delete(eroeffnungsbilanz)
+          .where(
+            and(
+              eq(eroeffnungsbilanz.unternehmenId, unternehmenId),
+              eq(eroeffnungsbilanz.jahr, zielJahr)
+            )
+          );
+
+        // Neue Einträge einfügen
+        if (positionen.length > 0) {
+          await db.insert(eroeffnungsbilanz).values(positionen);
+        }
+
+        const summeAktiva = positionen
+          .filter((p) => parseInt(p.sachkonto) < 2000)
+          .reduce((sum, p) => sum + parseFloat(p.sollbetrag || "0"), 0);
+
+        const summePassiva = positionen
+          .filter((p) => parseInt(p.sachkonto) >= 2000)
+          .reduce((sum, p) => sum + parseFloat(p.habenbetrag || "0"), 0);
+
+        return {
+          erfolg: true,
+          anzahl: positionen.length,
+          summeAktiva,
+          summePassiva,
         };
       }),
   }),

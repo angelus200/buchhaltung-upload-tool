@@ -5,6 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import AppHeader from "@/components/AppHeader";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -18,6 +28,7 @@ import {
   TrendingDown,
   Download,
   AlertCircle,
+  Calendar,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -39,6 +50,9 @@ export default function Jahresabschluss() {
   const { user, isAuthenticated } = useAuth();
   const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(null);
   const [selectedJahr, setSelectedJahr] = useState(new Date().getFullYear());
+  const [vorjahreswerteDialogOpen, setVorjahreswerteDialogOpen] = useState(false);
+  const [quellJahr, setQuellJahr] = useState<number>(new Date().getFullYear() - 1);
+  const [vorjahreswerteBerechnet, setVorjahreswerteBerechnet] = useState<any>(null);
 
   // Queries
   const unternehmenQuery = trpc.unternehmen.list.useQuery(undefined, {
@@ -69,6 +83,26 @@ export default function Jahresabschluss() {
     { unternehmenId: selectedUnternehmen || 0, jahr: selectedJahr },
     { enabled: !!selectedUnternehmen }
   );
+
+  // Mutations für Vorjahreswerte
+  const berechneVorjahrMutation = trpc.jahresabschluss.vorjahreswerte.berechneVorjahr.useQuery(
+    { unternehmenId: selectedUnternehmen || 0, jahr: quellJahr },
+    { enabled: false }
+  );
+
+  const uebernehmenMutation = trpc.jahresabschluss.vorjahreswerte.uebernehmen.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Vorjahreswerte erfolgreich übernommen: ${data.anzahl} Positionen`);
+      setVorjahreswerteDialogOpen(false);
+      setVorjahreswerteBerechnet(null);
+      // Refresh data
+      eroeffnungsbilanzQuery.refetch();
+      summenQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(`Fehler beim Übernehmen: ${error.message}`);
+    },
+  });
 
   // Set default Unternehmen
   useEffect(() => {
@@ -136,6 +170,33 @@ export default function Jahresabschluss() {
     // TODO: Excel-Export implementieren
   };
 
+  const handleBerechneVorjahr = async () => {
+    if (!selectedUnternehmen) {
+      toast.error("Bitte wählen Sie ein Unternehmen aus");
+      return;
+    }
+
+    try {
+      const result = await berechneVorjahrMutation.refetch();
+      if (result.data) {
+        setVorjahreswerteBerechnet(result.data);
+        toast.success(`Vorjahreswerte für ${quellJahr} berechnet`);
+      }
+    } catch (error: any) {
+      toast.error(`Fehler beim Berechnen: ${error.message}`);
+    }
+  };
+
+  const handleUebernehmen = () => {
+    if (!selectedUnternehmen || !vorjahreswerteBerechnet) return;
+
+    uebernehmenMutation.mutate({
+      unternehmenId: selectedUnternehmen,
+      quellJahr,
+      zielJahr: selectedJahr,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader
@@ -176,6 +237,14 @@ export default function Jahresabschluss() {
           </Select>
 
           <div className="ml-auto flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setVorjahreswerteDialogOpen(true)}
+              disabled={!selectedUnternehmen}
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              Vorjahreswerte übernehmen
+            </Button>
             <Button variant="outline" onClick={handleExportExcel}>
               <FileSpreadsheet className="w-4 h-4 mr-2" />
               Excel
@@ -421,6 +490,165 @@ export default function Jahresabschluss() {
             </Card>
           </div>
         )}
+
+        {/* Vorjahreswerte Dialog */}
+        <Dialog open={vorjahreswerteDialogOpen} onOpenChange={setVorjahreswerteDialogOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Vorjahreswerte übernehmen</DialogTitle>
+              <DialogDescription>
+                Übernehmen Sie die Bilanzwerte vom {quellJahr} als Eröffnungsbilanz für {selectedJahr}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Jahr Auswahl */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-2 block">Quelljar (Vorjahr)</label>
+                  <Select
+                    value={String(quellJahr)}
+                    onValueChange={(v) => {
+                      setQuellJahr(Number(v));
+                      setVorjahreswerteBerechnet(null);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2025">2025</SelectItem>
+                      <SelectItem value="2024">2024</SelectItem>
+                      <SelectItem value="2023">2023</SelectItem>
+                      <SelectItem value="2022">2022</SelectItem>
+                      <SelectItem value="2021">2021</SelectItem>
+                      <SelectItem value="2020">2020</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="pt-6">
+                  <Button onClick={handleBerechneVorjahr} disabled={berechneVorjahrMutation.isFetching}>
+                    {berechneVorjahrMutation.isFetching ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Berechne...
+                      </>
+                    ) : (
+                      "Berechnen"
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Ergebnis */}
+              {vorjahreswerteBerechnet && (
+                <div className="space-y-4">
+                  <Alert variant={vorjahreswerteBerechnet.ausgeglichen ? "default" : "destructive"}>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>
+                      {vorjahreswerteBerechnet.ausgeglichen
+                        ? "Bilanz ausgeglichen"
+                        : "Achtung: Bilanz nicht ausgeglichen"}
+                    </AlertTitle>
+                    <AlertDescription>
+                      Die Differenz beträgt {formatCurrency(Math.abs(vorjahreswerteBerechnet.differenz))} €
+                      {!vorjahreswerteBerechnet.ausgeglichen &&
+                        " - Bitte prüfen Sie die Buchungen des Vorjahres."}
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Aktiva */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Aktiva</CardTitle>
+                        <CardDescription>
+                          {vorjahreswerteBerechnet.aktiva.length} Konten
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {vorjahreswerteBerechnet.aktiva.map((item: any) => (
+                            <div
+                              key={item.sachkonto}
+                              className="flex justify-between text-sm border-b pb-1"
+                            >
+                              <span className="font-mono">{item.sachkonto}</span>
+                              <span className="font-mono font-medium">
+                                {formatCurrency(item.saldo)} €
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <Separator className="my-3" />
+                        <div className="flex justify-between font-bold">
+                          <span>Summe Aktiva</span>
+                          <span className="font-mono">
+                            {formatCurrency(vorjahreswerteBerechnet.summeAktiva)} €
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Passiva */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Passiva</CardTitle>
+                        <CardDescription>
+                          {vorjahreswerteBerechnet.passiva.length} Konten
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {vorjahreswerteBerechnet.passiva.map((item: any) => (
+                            <div
+                              key={item.sachkonto}
+                              className="flex justify-between text-sm border-b pb-1"
+                            >
+                              <span className="font-mono">{item.sachkonto}</span>
+                              <span className="font-mono font-medium">
+                                {formatCurrency(item.saldo)} €
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <Separator className="my-3" />
+                        <div className="flex justify-between font-bold">
+                          <span>Summe Passiva</span>
+                          <span className="font-mono">
+                            {formatCurrency(vorjahreswerteBerechnet.summePassiva)} €
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setVorjahreswerteDialogOpen(false)}>
+                Abbrechen
+              </Button>
+              <Button
+                onClick={handleUebernehmen}
+                disabled={!vorjahreswerteBerechnet || uebernehmenMutation.isPending}
+              >
+                {uebernehmenMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Übernehme...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Vorjahreswerte übernehmen
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
