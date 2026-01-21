@@ -458,6 +458,7 @@ export default function Uebersicht() {
   };
 
   // Filtere Buchungen für GuV-Ansicht (SKR04 6-stellig)
+  // WICHTIG: Muss identisch zur Backend-Logik in server/buchhaltung.ts sein!
   const displayBuchungen = useMemo(() => {
     if (!showOnlyGuV) return buchungen;
 
@@ -466,20 +467,37 @@ export default function Uebersicht() {
       const sollKonto = b.sollKonto || "";
       const habenKonto = b.habenKonto || "";
 
-      // Prüfe ob es ein GuV-Konto ist (SKR04 6-stellig)
-      // Erträge: 400000-499999, Aufwand: 500000-799999
-      const isGuvKonto = (konto: string) => {
-        if (!konto) return false;
-        return (konto >= "400000" && konto < "500000") || // Erträge (Klasse 4)
-               (konto >= "500000" && konto < "800000");   // Aufwand (Klassen 5-7)
-      };
+      // Erträge (Klasse 4): habenKonto ODER sachkonto in 400000-499999
+      const istErtrag =
+        (habenKonto >= "400000" && habenKonto < "500000") ||
+        (sachkonto >= "400000" && sachkonto < "500000");
 
-      return isGuvKonto(sachkonto) || isGuvKonto(sollKonto) || isGuvKonto(habenKonto);
+      // Aufwand (Klassen 5-7): sollKonto ODER sachkonto in 500000-799999
+      const istAufwand =
+        (sollKonto >= "500000" && sollKonto < "800000") ||
+        (sachkonto >= "500000" && sachkonto < "800000");
+
+      return istErtrag || istAufwand;
     });
   }, [buchungen, showOnlyGuV]);
 
   const monatName =
     MONATE.find((m) => m.value === String(selectedMonth))?.label || "";
+
+  // Statistik-Werte basierend auf Toggle-State
+  const displayStats = showOnlyGuV
+    ? {
+        count: stats.guvCount,
+        netto: stats.guvNetto,
+        steuer: stats.guvSteuer,
+        brutto: stats.guvBrutto,
+      }
+    : {
+        count: stats.count,
+        netto: stats.netto,
+        steuer: stats.steuer,
+        brutto: stats.brutto,
+      };
 
   // Gruppierungen nach Konto und Kreditor (basiert auf gefilterten Buchungen)
   const nachKonto = useMemo(() => {
@@ -612,11 +630,13 @@ export default function Uebersicht() {
                   <FileText className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Buchungen</p>
-                  <p className="text-2xl font-bold tabular-nums">
-                    {stats.count}
+                  <p className="text-sm text-muted-foreground">
+                    Buchungen{showOnlyGuV ? " (nur GuV)" : ""}
                   </p>
-                  {stats.guvCount !== stats.count && (
+                  <p className="text-2xl font-bold tabular-nums">
+                    {displayStats.count}
+                  </p>
+                  {!showOnlyGuV && stats.guvCount !== stats.count && (
                     <p className="text-xs text-muted-foreground mt-1">
                       davon GuV: {stats.guvCount}
                     </p>
@@ -633,11 +653,13 @@ export default function Uebersicht() {
                   <Euro className="w-6 h-6 text-accent" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Nettobetrag</p>
-                  <p className="text-2xl font-bold tabular-nums font-mono">
-                    {formatCurrency(stats.netto)} €
+                  <p className="text-sm text-muted-foreground">
+                    Nettobetrag{showOnlyGuV ? " (nur GuV)" : ""}
                   </p>
-                  {stats.guvNetto !== stats.netto && (
+                  <p className="text-2xl font-bold tabular-nums font-mono">
+                    {formatCurrency(displayStats.netto)} €
+                  </p>
+                  {!showOnlyGuV && stats.guvNetto !== stats.netto && (
                     <p className="text-xs text-muted-foreground mt-1">
                       davon GuV: {formatCurrency(stats.guvNetto)} €
                     </p>
@@ -654,11 +676,13 @@ export default function Uebersicht() {
                   <TrendingUp className="w-6 h-6 text-yellow-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Vorsteuer</p>
-                  <p className="text-2xl font-bold tabular-nums font-mono">
-                    {formatCurrency(stats.steuer)} €
+                  <p className="text-sm text-muted-foreground">
+                    Vorsteuer{showOnlyGuV ? " (nur GuV)" : ""}
                   </p>
-                  {stats.guvSteuer !== stats.steuer && (
+                  <p className="text-2xl font-bold tabular-nums font-mono">
+                    {formatCurrency(displayStats.steuer)} €
+                  </p>
+                  {!showOnlyGuV && stats.guvSteuer !== stats.steuer && (
                     <p className="text-xs text-muted-foreground mt-1">
                       davon GuV: {formatCurrency(stats.guvSteuer)} €
                     </p>
@@ -675,11 +699,13 @@ export default function Uebersicht() {
                   <Euro className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Bruttobetrag</p>
-                  <p className="text-2xl font-bold tabular-nums font-mono">
-                    {formatCurrency(stats.brutto)} €
+                  <p className="text-sm text-muted-foreground">
+                    Bruttobetrag{showOnlyGuV ? " (nur GuV)" : ""}
                   </p>
-                  {stats.guvBrutto !== stats.brutto && (
+                  <p className="text-2xl font-bold tabular-nums font-mono">
+                    {formatCurrency(displayStats.brutto)} €
+                  </p>
+                  {!showOnlyGuV && stats.guvBrutto !== stats.brutto && (
                     <p className="text-xs text-muted-foreground mt-1">
                       davon GuV: {formatCurrency(stats.guvBrutto)} €
                     </p>
