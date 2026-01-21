@@ -32,6 +32,9 @@ import Monatsabschluss from "./pages/Monatsabschluss";
 import Artikel from "./pages/Artikel";
 import Lager from "./pages/Lager";
 import Inventur from "./pages/Inventur";
+import Anlagevermoegen from "./pages/Anlagevermoegen";
+import Bankkonten from "./pages/Bankkonten";
+import Eroeffnungsbilanz from "./pages/Eroeffnungsbilanz";
 
 function Router() {
   return (
@@ -176,6 +179,24 @@ function Router() {
       <Route path={"/inventur"}>
         <ProtectedRoute>
           <Inventur />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/anlagevermoegen"}>
+        <ProtectedRoute>
+          <Anlagevermoegen />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/bankkonten"}>
+        <ProtectedRoute>
+          <Bankkonten />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/eroeffnungsbilanz"}>
+        <ProtectedRoute>
+          <Eroeffnungsbilanz />
         </ProtectedRoute>
       </Route>
 

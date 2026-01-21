@@ -234,6 +234,7 @@ export const anlagevermoegen = mysqlTable("anlagevermoegen", {
   nutzungsdauer: int("nutzungsdauer"),
   abschreibungsmethode: mysqlEnum("abschreibungsmethode", ["linear", "degressiv", "keine"]).default("linear"),
   restwert: decimal("restwert", { precision: 15, scale: 2 }),
+  sachkonto: varchar("sachkonto", { length: 20 }), // Verknüpfung mit Buchungen
   standort: varchar("standort", { length: 255 }),
   inventarnummer: varchar("inventarnummer", { length: 50 }),
   seriennummer: varchar("seriennummer", { length: 100 }),
@@ -258,6 +259,7 @@ export const beteiligungen = mysqlTable("beteiligungen", {
   anteil: decimal("anteil", { precision: 5, scale: 2 }),
   buchwert: decimal("buchwert", { precision: 15, scale: 2 }),
   erwerbsdatum: date("erwerbsdatum"),
+  sachkonto: varchar("sachkonto", { length: 20 }), // Verknüpfung mit Buchungen
   sitz: varchar("sitz", { length: 255 }),
   handelsregister: varchar("handelsregister", { length: 100 }),
   notizen: text("notizen"),
@@ -281,6 +283,7 @@ export const gesellschafter = mysqlTable("gesellschafter", {
   anteil: decimal("anteil", { precision: 5, scale: 2 }),
   einlage: decimal("einlage", { precision: 15, scale: 2 }),
   eintrittsdatum: date("eintrittsdatum"),
+  sachkonto: varchar("sachkonto", { length: 20 }), // Kapitalkonto für Buchungen
   strasse: varchar("strasse", { length: 255 }),
   plz: varchar("plz", { length: 10 }),
   ort: varchar("ort", { length: 100 }),
@@ -305,6 +308,8 @@ export const bankkonten = mysqlTable("bankkonten", {
   bankname: varchar("bankname", { length: 255 }),
   iban: varchar("iban", { length: 34 }),
   bic: varchar("bic", { length: 11 }),
+  sachkonto: varchar("sachkonto", { length: 20 }), // Verknüpfung mit Buchungen
+  anfangsbestand: decimal("anfangsbestand", { precision: 15, scale: 2 }).default("0.00"), // Anfangsbestand für Saldo-Berechnung
   kontotyp: mysqlEnum("kontotyp", ["girokonto", "sparkonto", "festgeld", "kreditkarte", "sonstig"]).default("girokonto"),
   waehrung: varchar("waehrung", { length: 3 }).default("EUR"),
   notizen: text("notizen"),
@@ -1261,6 +1266,38 @@ export const inventurpositionen = mysqlTable("inventurpositionen", {
 
 export type Inventurposition = typeof inventurpositionen.$inferSelect;
 export type InsertInventurposition = typeof inventurpositionen.$inferInsert;
+
+/**
+ * Eröffnungsbilanz - Anfangsbestände für ein Wirtschaftsjahr
+ */
+export const eroeffnungsbilanz = mysqlTable("eroeffnungsbilanz", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unternehmen */
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  /** Wirtschaftsjahr */
+  jahr: int("jahr").notNull(),
+  /** Sachkonto */
+  sachkonto: varchar("sachkonto", { length: 20 }).notNull(),
+  /** Kontenbezeichnung */
+  kontobezeichnung: varchar("kontobezeichnung", { length: 255 }),
+  /** Soll-Betrag (Aktiva, Aufwand) */
+  sollbetrag: decimal("sollbetrag", { precision: 15, scale: 2 }).default("0.00").notNull(),
+  /** Haben-Betrag (Passiva, Ertrag) */
+  habenbetrag: decimal("habenbetrag", { precision: 15, scale: 2 }).default("0.00").notNull(),
+  /** Import-Quelle */
+  importQuelle: mysqlEnum("importQuelle", ["manuell", "datev", "api"]).default("manuell"),
+  /** Import-Datum */
+  importDatum: timestamp("importDatum"),
+  /** Notizen */
+  notizen: text("notizen"),
+  /** Erstellt von */
+  erstelltVon: int("erstelltVon").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Eroeffnungsbilanz = typeof eroeffnungsbilanz.$inferSelect;
+export type InsertEroeffnungsbilanz = typeof eroeffnungsbilanz.$inferInsert;
 
 /**
  * Belege - Digitale Belegdateien (PDFs, Bilder)

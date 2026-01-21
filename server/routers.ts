@@ -15,6 +15,7 @@ import { kontierungsregelnRouter } from "./kontierungsregeln";
 import { monatsabschlussRouter } from "./monatsabschluss";
 import { chatAssistantRouter } from "./chat-assistant";
 import { inventurMainRouter } from "./inventur";
+import { jahresabschlussRouter } from "./jahresabschluss";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -72,6 +73,9 @@ export const appRouter = router({
 
   // Lager- und Inventurverwaltung
   inventur: inventurMainRouter,
+
+  // Jahresabschluss-Module
+  jahresabschluss: jahresabschlussRouter,
 });
 
 export type AppRouter = typeof appRouter;
