@@ -1,144 +1,513 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Link } from "wouter";
 import AppHeader from "@/components/AppHeader";
-import { 
-  ArrowLeft, 
-  Download, 
-  FileSpreadsheet,
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import {
+  Download,
+  FileText,
   Calendar,
   Euro,
   TrendingUp,
-  FileText,
-  Building2
+  FileSpreadsheet,
+  Building2,
+  Pencil,
+  Trash2,
+  Plus,
+  Loader2,
 } from "lucide-react";
 
-// Demo-Daten für die Übersicht
-const DEMO_BUCHUNGEN = [
-  {
-    id: "1",
-    belegdatum: "2025-12-05",
-    belegnummer: "RE-2025-001",
-    kreditor: "Bürobedarf Müller",
-    aufwandskonto: "4930",
-    aufwandsbezeichnung: "Bürobedarf",
-    nettobetrag: 100.00,
-    steuersatz: 19,
-    bruttobetrag: 119.00,
-  },
-  {
-    id: "2",
-    belegdatum: "2025-12-10",
-    belegnummer: "RE-2025-002",
-    kreditor: "Telekom",
-    aufwandskonto: "4200",
-    aufwandsbezeichnung: "Telefon",
-    nettobetrag: 200.00,
-    steuersatz: 19,
-    bruttobetrag: 238.00,
-  },
-  {
-    id: "3",
-    belegdatum: "2025-12-15",
-    belegnummer: "RE-2025-003",
-    kreditor: "Vodafone",
-    aufwandskonto: "4210",
-    aufwandsbezeichnung: "Internet",
-    nettobetrag: 500.00,
-    steuersatz: 19,
-    bruttobetrag: 595.00,
-  },
-  {
-    id: "4",
-    belegdatum: "2025-12-20",
-    belegnummer: "RE-2025-004",
-    kreditor: "Immobilien AG",
-    aufwandskonto: "4120",
-    aufwandsbezeichnung: "Miete",
-    nettobetrag: 1500.00,
-    steuersatz: 19,
-    bruttobetrag: 1785.00,
-  },
-];
-
 const MONATE = [
-  { value: "01", label: "Januar" },
-  { value: "02", label: "Februar" },
-  { value: "03", label: "März" },
-  { value: "04", label: "April" },
-  { value: "05", label: "Mai" },
-  { value: "06", label: "Juni" },
-  { value: "07", label: "Juli" },
-  { value: "08", label: "August" },
-  { value: "09", label: "September" },
+  { value: "1", label: "Januar" },
+  { value: "2", label: "Februar" },
+  { value: "3", label: "März" },
+  { value: "4", label: "April" },
+  { value: "5", label: "Mai" },
+  { value: "6", label: "Juni" },
+  { value: "7", label: "Juli" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
   { value: "10", label: "Oktober" },
   { value: "11", label: "November" },
   { value: "12", label: "Dezember" },
 ];
 
 function formatCurrency(value: number): string {
-  return value.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return value.toLocaleString("de-DE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | Date): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString("de-DE");
 }
 
+interface EditBuchungFormProps {
+  buchung: any;
+  onSave: (data: any) => void;
+  onCancel: () => void;
+}
+
+function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
+  const [formData, setFormData] = useState({
+    belegdatum: new Date(buchung.belegdatum).toISOString().split("T")[0],
+    belegnummer: buchung.belegnummer || "",
+    geschaeftspartner: buchung.geschaeftspartner || "",
+    sachkonto: buchung.sachkonto || "",
+    nettobetrag: buchung.nettobetrag || "0",
+    steuersatz: buchung.steuersatz || "0",
+    bruttobetrag: buchung.bruttobetrag || "0",
+    buchungstext: buchung.buchungstext || "",
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Belegdatum</Label>
+          <Input
+            type="date"
+            value={formData.belegdatum}
+            onChange={(e) =>
+              setFormData({ ...formData, belegdatum: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Belegnummer</Label>
+          <Input
+            value={formData.belegnummer}
+            onChange={(e) =>
+              setFormData({ ...formData, belegnummer: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Geschäftspartner</Label>
+          <Input
+            value={formData.geschaeftspartner}
+            onChange={(e) =>
+              setFormData({ ...formData, geschaeftspartner: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Sachkonto</Label>
+          <Input
+            value={formData.sachkonto}
+            onChange={(e) =>
+              setFormData({ ...formData, sachkonto: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Nettobetrag</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={formData.nettobetrag}
+            onChange={(e) =>
+              setFormData({ ...formData, nettobetrag: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Steuersatz (%)</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={formData.steuersatz}
+            onChange={(e) =>
+              setFormData({ ...formData, steuersatz: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Bruttobetrag</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={formData.bruttobetrag}
+            onChange={(e) =>
+              setFormData({ ...formData, bruttobetrag: e.target.value })
+            }
+          />
+        </div>
+      </div>
+      <div>
+        <Label>Buchungstext</Label>
+        <Textarea
+          value={formData.buchungstext}
+          onChange={(e) =>
+            setFormData({ ...formData, buchungstext: e.target.value })
+          }
+          rows={3}
+        />
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>
+          Abbrechen
+        </Button>
+        <Button onClick={() => onSave(formData)}>Speichern</Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+interface CreateBuchungFormProps {
+  unternehmenId: number;
+  onSave: (data: any) => void;
+  onCancel: () => void;
+}
+
+function CreateBuchungForm({ unternehmenId, onSave, onCancel }: CreateBuchungFormProps) {
+  const [formData, setFormData] = useState({
+    unternehmenId,
+    buchungsart: "aufwand" as const,
+    belegdatum: new Date().toISOString().split("T")[0],
+    belegnummer: "",
+    geschaeftspartnerTyp: "kreditor" as const,
+    geschaeftspartner: "",
+    geschaeftspartnerKonto: "",
+    sachkonto: "",
+    nettobetrag: "0",
+    steuersatz: "19",
+    bruttobetrag: "0",
+    buchungstext: "",
+  });
+
+  // Auto-calculate bruttobetrag
+  useEffect(() => {
+    const netto = parseFloat(formData.nettobetrag) || 0;
+    const steuer = parseFloat(formData.steuersatz) || 0;
+    const brutto = netto * (1 + steuer / 100);
+    setFormData((prev) => ({ ...prev, bruttobetrag: brutto.toFixed(2) }));
+  }, [formData.nettobetrag, formData.steuersatz]);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Buchungsart</Label>
+          <Select
+            value={formData.buchungsart}
+            onValueChange={(v: any) =>
+              setFormData({ ...formData, buchungsart: v })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="aufwand">Aufwand</SelectItem>
+              <SelectItem value="ertrag">Ertrag</SelectItem>
+              <SelectItem value="anlage">Anlage</SelectItem>
+              <SelectItem value="sonstig">Sonstig</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Geschäftspartner-Typ</Label>
+          <Select
+            value={formData.geschaeftspartnerTyp}
+            onValueChange={(v: any) =>
+              setFormData({ ...formData, geschaeftspartnerTyp: v })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="kreditor">Kreditor</SelectItem>
+              <SelectItem value="debitor">Debitor</SelectItem>
+              <SelectItem value="gesellschafter">Gesellschafter</SelectItem>
+              <SelectItem value="sonstig">Sonstig</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Belegdatum</Label>
+          <Input
+            type="date"
+            value={formData.belegdatum}
+            onChange={(e) =>
+              setFormData({ ...formData, belegdatum: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Belegnummer</Label>
+          <Input
+            value={formData.belegnummer}
+            onChange={(e) =>
+              setFormData({ ...formData, belegnummer: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Geschäftspartner</Label>
+          <Input
+            value={formData.geschaeftspartner}
+            onChange={(e) =>
+              setFormData({ ...formData, geschaeftspartner: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Geschäftspartner-Konto</Label>
+          <Input
+            value={formData.geschaeftspartnerKonto}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                geschaeftspartnerKonto: e.target.value,
+              })
+            }
+          />
+        </div>
+        <div>
+          <Label>Sachkonto</Label>
+          <Input
+            value={formData.sachkonto}
+            onChange={(e) =>
+              setFormData({ ...formData, sachkonto: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Nettobetrag</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={formData.nettobetrag}
+            onChange={(e) =>
+              setFormData({ ...formData, nettobetrag: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Steuersatz (%)</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={formData.steuersatz}
+            onChange={(e) =>
+              setFormData({ ...formData, steuersatz: e.target.value })
+            }
+          />
+        </div>
+        <div>
+          <Label>Bruttobetrag (autom.)</Label>
+          <Input type="text" value={formData.bruttobetrag} disabled />
+        </div>
+      </div>
+      <div>
+        <Label>Buchungstext</Label>
+        <Textarea
+          value={formData.buchungstext}
+          onChange={(e) =>
+            setFormData({ ...formData, buchungstext: e.target.value })
+          }
+          rows={3}
+        />
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>
+          Abbrechen
+        </Button>
+        <Button onClick={() => onSave(formData)}>Erstellen</Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
 export default function Uebersicht() {
-  const [selectedMonth, setSelectedMonth] = useState("12");
-  const [selectedYear] = useState("2025");
+  const { user, isAuthenticated } = useAuth();
+  const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(
+    null
+  );
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [filterSachkonto, setFilterSachkonto] = useState("");
+  const [filterImportRef, setFilterImportRef] = useState("DATEV_2025_VERBESSERT");
+  const [filterGeschaeftspartner, setFilterGeschaeftspartner] = useState("");
 
-  const buchungen = DEMO_BUCHUNGEN; // In der echten Anwendung würden diese aus dem State kommen
+  // Modal states
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedBuchung, setSelectedBuchung] = useState<any>(null);
 
-  const stats = useMemo(() => {
-    const total = buchungen.reduce((sum, b) => sum + b.bruttobetrag, 0);
-    const netto = buchungen.reduce((sum, b) => sum + b.nettobetrag, 0);
-    const steuer = total - netto;
-    
-    // Gruppierung nach Aufwandskonto
-    const nachKonto = buchungen.reduce((acc, b) => {
-      if (!acc[b.aufwandskonto]) {
-        acc[b.aufwandskonto] = { bezeichnung: b.aufwandsbezeichnung, summe: 0 };
+  // tRPC Queries
+  const unternehmenQuery = trpc.unternehmen.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const buchungenQuery = trpc.buchungen.list.useQuery(
+    {
+      unternehmenId: selectedUnternehmen || 0,
+      monat: selectedMonth,
+      jahr: selectedYear,
+      sachkonto: filterSachkonto || undefined,
+      importReferenz: filterImportRef || undefined,
+      geschaeftspartnerKonto: filterGeschaeftspartner || undefined,
+    },
+    { enabled: !!selectedUnternehmen }
+  );
+
+  const statsQuery = trpc.buchungen.stats.useQuery(
+    {
+      unternehmenId: selectedUnternehmen || 0,
+      monat: selectedMonth,
+      jahr: selectedYear,
+      importReferenz: filterImportRef || undefined,
+    },
+    { enabled: !!selectedUnternehmen }
+  );
+
+  // Mutations
+  const updateMutation = trpc.buchungen.update.useMutation({
+    onSuccess: () => {
+      toast.success("Buchung aktualisiert");
+      buchungenQuery.refetch();
+      statsQuery.refetch();
+      setEditDialogOpen(false);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = trpc.buchungen.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Buchung gelöscht");
+      buchungenQuery.refetch();
+      statsQuery.refetch();
+      setDeleteDialogOpen(false);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const createMutation = trpc.buchungen.create.useMutation({
+    onSuccess: () => {
+      toast.success("Buchung erstellt");
+      buchungenQuery.refetch();
+      statsQuery.refetch();
+      setCreateDialogOpen(false);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  // Set default Unternehmen
+  useEffect(() => {
+    if (unternehmenQuery.data && unternehmenQuery.data.length > 0 && !selectedUnternehmen) {
+      setSelectedUnternehmen(unternehmenQuery.data[0].unternehmen.id);
+    }
+  }, [unternehmenQuery.data, selectedUnternehmen]);
+
+  const buchungen = buchungenQuery.data || [];
+  const stats = statsQuery.data || { count: 0, netto: 0, steuer: 0, brutto: 0 };
+
+  const monatName =
+    MONATE.find((m) => m.value === String(selectedMonth))?.label || "";
+
+  // Gruppierungen nach Konto und Kreditor
+  const nachKonto = useMemo(() => {
+    const grouped: Record<string, { bezeichnung: string; summe: number }> = {};
+    buchungen.forEach((b: any) => {
+      if (!grouped[b.sachkonto]) {
+        grouped[b.sachkonto] = { bezeichnung: b.sachkonto, summe: 0 };
       }
-      acc[b.aufwandskonto].summe += b.bruttobetrag;
-      return acc;
-    }, {} as Record<string, { bezeichnung: string; summe: number }>);
-
-    // Gruppierung nach Kreditor
-    const nachKreditor = buchungen.reduce((acc, b) => {
-      if (!acc[b.kreditor]) {
-        acc[b.kreditor] = 0;
-      }
-      acc[b.kreditor] += b.bruttobetrag;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return { total, netto, steuer, nachKonto, nachKreditor };
+      grouped[b.sachkonto].summe += parseFloat(b.bruttobetrag || "0");
+    });
+    return Object.entries(grouped).sort((a, b) => b[1].summe - a[1].summe);
   }, [buchungen]);
 
-  const monatName = MONATE.find(m => m.value === selectedMonth)?.label || "";
+  const nachGeschaeftspartner = useMemo(() => {
+    const grouped: Record<string, number> = {};
+    buchungen.forEach((b: any) => {
+      const partner = b.geschaeftspartner || "Unbekannt";
+      if (!grouped[partner]) {
+        grouped[partner] = 0;
+      }
+      grouped[partner] += parseFloat(b.bruttobetrag || "0");
+    });
+    return Object.entries(grouped).sort((a, b) => b[1] - a[1]);
+  }, [buchungen]);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Einheitlicher Header */}
-      <AppHeader title="Monatsübersicht" subtitle="Buchungen und Auswertungen" />
+      <AppHeader
+        title="Monatsübersicht"
+        subtitle="Buchungen und Auswertungen"
+      />
 
       <main className="container py-8">
-        {/* Monatsauswahl und Export */}
-        <div className="flex items-center justify-between mb-6">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+        {/* Filter Bar */}
+        <div className="flex items-center gap-4 mb-6 flex-wrap">
+          {/* Unternehmen Selector */}
+          <Select
+            value={String(selectedUnternehmen || "")}
+            onValueChange={(v) => setSelectedUnternehmen(Number(v))}
+          >
+            <SelectTrigger className="w-60">
+              <SelectValue placeholder="Unternehmen wählen" />
+            </SelectTrigger>
+            <SelectContent>
+              {unternehmenQuery.data?.map((u) => (
+                <SelectItem
+                  key={u.unternehmen.id}
+                  value={String(u.unternehmen.id)}
+                >
+                  {u.unternehmen.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Monat */}
+          <Select
+            value={String(selectedMonth)}
+            onValueChange={(v) => setSelectedMonth(Number(v))}
+          >
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -150,11 +519,57 @@ export default function Uebersicht() {
               ))}
             </SelectContent>
           </Select>
-          <Button>
-            <Download className="w-4 h-4 mr-2" />
-            Bericht exportieren
+
+          {/* Jahr */}
+          <Select
+            value={String(selectedYear)}
+            onValueChange={(v) => setSelectedYear(Number(v))}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2025">2025</SelectItem>
+              <SelectItem value="2024">2024</SelectItem>
+              <SelectItem value="2023">2023</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Import Referenz */}
+          <Input
+            placeholder="Import-Referenz"
+            value={filterImportRef}
+            onChange={(e) => setFilterImportRef(e.target.value)}
+            className="w-60"
+          />
+
+          {/* Sachkonto Filter */}
+          <Input
+            placeholder="Sachkonto"
+            value={filterSachkonto}
+            onChange={(e) => setFilterSachkonto(e.target.value)}
+            className="w-32"
+          />
+
+          {/* Geschäftspartner Filter */}
+          <Input
+            placeholder="Geschäftspartner-Konto"
+            value={filterGeschaeftspartner}
+            onChange={(e) => setFilterGeschaeftspartner(e.target.value)}
+            className="w-48"
+          />
+
+          {/* Neue Buchung Button */}
+          <Button
+            onClick={() => setCreateDialogOpen(true)}
+            className="ml-auto"
+            disabled={!selectedUnternehmen}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Neue Buchung
           </Button>
         </div>
+
         {/* Statistik-Karten */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>
@@ -165,7 +580,9 @@ export default function Uebersicht() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Buchungen</p>
-                  <p className="text-2xl font-bold tabular-nums">{buchungen.length}</p>
+                  <p className="text-2xl font-bold tabular-nums">
+                    {stats.count}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -179,7 +596,9 @@ export default function Uebersicht() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Nettobetrag</p>
-                  <p className="text-2xl font-bold tabular-nums font-mono">{formatCurrency(stats.netto)} €</p>
+                  <p className="text-2xl font-bold tabular-nums font-mono">
+                    {formatCurrency(stats.netto)} €
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -193,7 +612,9 @@ export default function Uebersicht() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Vorsteuer</p>
-                  <p className="text-2xl font-bold tabular-nums font-mono">{formatCurrency(stats.steuer)} €</p>
+                  <p className="text-2xl font-bold tabular-nums font-mono">
+                    {formatCurrency(stats.steuer)} €
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -207,7 +628,9 @@ export default function Uebersicht() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Bruttobetrag</p>
-                  <p className="text-2xl font-bold tabular-nums font-mono">{formatCurrency(stats.total)} €</p>
+                  <p className="text-2xl font-bold tabular-nums font-mono">
+                    {formatCurrency(stats.brutto)} €
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -228,93 +651,193 @@ export default function Uebersicht() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Datum</TableHead>
-                      <TableHead>Belegnr.</TableHead>
-                      <TableHead>Kreditor</TableHead>
-                      <TableHead>Konto</TableHead>
-                      <TableHead className="text-right">Betrag</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {buchungen.map((b) => (
-                      <TableRow key={b.id}>
-                        <TableCell>{formatDate(b.belegdatum)}</TableCell>
-                        <TableCell className="font-mono text-sm">{b.belegnummer}</TableCell>
-                        <TableCell>{b.kreditor}</TableCell>
-                        <TableCell>
-                          <span className="font-mono text-sm">{b.aufwandskonto}</span>
-                          <span className="text-muted-foreground ml-2 text-sm">{b.aufwandsbezeichnung}</span>
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">
-                          {formatCurrency(b.bruttobetrag)} €
-                        </TableCell>
+                {buchungenQuery.isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : buchungen.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Keine Buchungen gefunden
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Datum</TableHead>
+                        <TableHead>Belegnr.</TableHead>
+                        <TableHead>Geschäftspartner</TableHead>
+                        <TableHead>Konto</TableHead>
+                        <TableHead className="text-right">Betrag</TableHead>
+                        <TableHead className="w-[100px]">Aktionen</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {buchungen.map((b: any) => (
+                        <TableRow key={b.id}>
+                          <TableCell>{formatDate(b.belegdatum)}</TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {b.belegnummer}
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate">
+                            {b.geschaeftspartner}
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-mono text-sm">
+                              {b.sachkonto}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-mono tabular-nums">
+                            {formatCurrency(parseFloat(b.bruttobetrag))} €
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedBuchung(b);
+                                  setEditDialogOpen(true);
+                                }}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedBuchung(b);
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </div>
 
           {/* Auswertungen */}
           <div className="space-y-6">
-            {/* Nach Aufwandskonto */}
+            {/* Nach Sachkonto */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <FileSpreadsheet className="w-4 h-4" />
-                  Nach Aufwandskonto
+                  Nach Sachkonto
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {Object.entries(stats.nachKonto).map(([konto, data]) => (
+                  {nachKonto.slice(0, 5).map(([konto, data]) => (
                     <div key={konto} className="flex items-center justify-between">
-                      <div>
-                        <span className="font-mono text-sm">{konto}</span>
-                        <span className="text-muted-foreground ml-2 text-sm">{data.bezeichnung}</span>
-                      </div>
-                      <span className="font-mono tabular-nums font-medium">
+                      <span className="font-mono text-sm">{konto}</span>
+                      <span className="font-mono tabular-nums font-medium text-sm">
                         {formatCurrency(data.summe)} €
                       </span>
                     </div>
                   ))}
-                  <Separator />
-                  <div className="flex items-center justify-between font-semibold">
-                    <span>Gesamt</span>
-                    <span className="font-mono tabular-nums">{formatCurrency(stats.total)} €</span>
-                  </div>
+                  {nachKonto.length === 0 && (
+                    <div className="text-center text-sm text-muted-foreground">
+                      Keine Daten verfügbar
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Nach Kreditor */}
+            {/* Nach Geschäftspartner */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Building2 className="w-4 h-4" />
-                  Nach Kreditor
+                  Nach Geschäftspartner
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {Object.entries(stats.nachKreditor).map(([kreditor, summe]) => (
-                    <div key={kreditor} className="flex items-center justify-between">
-                      <span className="text-sm truncate max-w-[150px]">{kreditor}</span>
+                  {nachGeschaeftspartner.slice(0, 5).map(([partner, summe]) => (
+                    <div key={partner} className="flex items-center justify-between">
+                      <span className="text-sm truncate max-w-[150px]">
+                        {partner}
+                      </span>
                       <span className="font-mono tabular-nums font-medium text-sm">
                         {formatCurrency(summe)} €
                       </span>
                     </div>
                   ))}
+                  {nachGeschaeftspartner.length === 0 && (
+                    <div className="text-center text-sm text-muted-foreground">
+                      Keine Daten verfügbar
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </main>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Buchung bearbeiten</DialogTitle>
+          </DialogHeader>
+          {selectedBuchung && (
+            <EditBuchungForm
+              buchung={selectedBuchung}
+              onSave={(data) =>
+                updateMutation.mutate({ id: selectedBuchung.id, ...data })
+              }
+              onCancel={() => setEditDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Buchung löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchten Sie die Buchung "{selectedBuchung?.belegnummer}" wirklich
+              löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate({ id: selectedBuchung?.id })}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Neue Buchung anlegen</DialogTitle>
+          </DialogHeader>
+          {selectedUnternehmen && (
+            <CreateBuchungForm
+              unternehmenId={selectedUnternehmen}
+              onSave={(data) => createMutation.mutate(data)}
+              onCancel={() => setCreateDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

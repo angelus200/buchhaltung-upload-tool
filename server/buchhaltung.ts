@@ -1,4 +1,4 @@
-import { eq, desc, and, or, gte, lte } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, count, sum } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -208,16 +208,40 @@ export const buchungenRouter = router({
         monat: z.number().min(1).max(12).optional(),
         jahr: z.number().optional(),
         status: z.enum(["entwurf", "geprueft", "exportiert"]).optional(),
+        sachkonto: z.string().optional(),
+        importReferenz: z.string().optional(),
+        geschaeftspartnerKonto: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
 
-      let query = db
+      const conditions = [eq(buchungen.unternehmenId, input.unternehmenId)];
+
+      if (input.monat) {
+        conditions.push(eq(buchungen.periode, input.monat));
+      }
+      if (input.jahr) {
+        conditions.push(eq(buchungen.wirtschaftsjahr, input.jahr));
+      }
+      if (input.status) {
+        conditions.push(eq(buchungen.status, input.status));
+      }
+      if (input.sachkonto) {
+        conditions.push(eq(buchungen.sachkonto, input.sachkonto));
+      }
+      if (input.importReferenz) {
+        conditions.push(eq(buchungen.importReferenz, input.importReferenz));
+      }
+      if (input.geschaeftspartnerKonto) {
+        conditions.push(eq(buchungen.geschaeftspartnerKonto, input.geschaeftspartnerKonto));
+      }
+
+      const query = db
         .select()
         .from(buchungen)
-        .where(eq(buchungen.unternehmenId, input.unternehmenId))
+        .where(and(...conditions))
         .orderBy(desc(buchungen.belegdatum));
 
       return await query;
@@ -320,6 +344,43 @@ export const buchungenRouter = router({
 
       await db.delete(buchungen).where(eq(buchungen.id, input.id));
       return { success: true };
+    }),
+
+  // Statistiken abrufen (Anzahl, Summen)
+  stats: protectedProcedure
+    .input(
+      z.object({
+        unternehmenId: z.number(),
+        monat: z.number().min(1).max(12).optional(),
+        jahr: z.number().optional(),
+        importReferenz: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { count: 0, netto: 0, steuer: 0, brutto: 0 };
+
+      const conditions = [eq(buchungen.unternehmenId, input.unternehmenId)];
+      if (input.monat) conditions.push(eq(buchungen.periode, input.monat));
+      if (input.jahr) conditions.push(eq(buchungen.wirtschaftsjahr, input.jahr));
+      if (input.importReferenz) conditions.push(eq(buchungen.importReferenz, input.importReferenz));
+
+      const result = await db
+        .select({
+          count: count(),
+          netto: sum(buchungen.nettobetrag),
+          brutto: sum(buchungen.bruttobetrag),
+        })
+        .from(buchungen)
+        .where(and(...conditions));
+
+      const row = result[0];
+      return {
+        count: row.count || 0,
+        netto: parseFloat(row.netto || "0"),
+        brutto: parseFloat(row.brutto || "0"),
+        steuer: parseFloat(row.brutto || "0") - parseFloat(row.netto || "0"),
+      };
     }),
 
   // Zahlungsstatus aktualisieren
