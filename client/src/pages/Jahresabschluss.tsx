@@ -85,6 +85,11 @@ export default function Jahresabschluss() {
     { enabled: !!selectedUnternehmen }
   );
 
+  const guvQuery = trpc.jahresabschluss.guv.aggregieren.useQuery(
+    { unternehmenId: selectedUnternehmen || 0, jahr: selectedJahr },
+    { enabled: !!selectedUnternehmen }
+  );
+
   // Mutations für Vorjahreswerte
   const berechneVorjahrMutation = trpc.jahresabschluss.vorjahreswerte.berechneVorjahr.useQuery(
     { unternehmenId: selectedUnternehmen || 0, jahr: quellJahr },
@@ -159,7 +164,8 @@ export default function Jahresabschluss() {
     anlagenQuery.isLoading ||
     bankkontenQuery.isLoading ||
     eroeffnungsbilanzQuery.isLoading ||
-    gesellschafterQuery.isLoading;
+    gesellschafterQuery.isLoading ||
+    guvQuery.isLoading;
 
   const handleExportPDF = () => {
     if (!selectedUnternehmen || !eroeffnungsbilanzQuery.data) {
@@ -200,6 +206,31 @@ export default function Jahresabschluss() {
       toast.success("Bilanz-PDF wurde erstellt");
     } catch (error: any) {
       toast.error(`Fehler beim PDF-Export: ${error.message}`);
+    }
+  };
+
+  const handleExportGuVPDF = () => {
+    if (!selectedUnternehmen || !guvQuery.data) {
+      toast.error("Keine GuV-Daten zum Exportieren vorhanden");
+      return;
+    }
+
+    try {
+      const guvData = guvQuery.data;
+
+      const selectedUnternehmenObj = unternehmenQuery.data?.find(
+        (u) => u.unternehmen.id === selectedUnternehmen
+      );
+
+      exportGuVPDF(guvData.ertraege, guvData.aufwendungen, {
+        unternehmen: selectedUnternehmenObj?.unternehmen.name || "Unbekannt",
+        stichtag: `${selectedJahr}-12-31`,
+        jahr: selectedJahr,
+      });
+
+      toast.success("GuV-PDF wurde erstellt");
+    } catch (error: any) {
+      toast.error(`Fehler beim GuV-PDF-Export: ${error.message}`);
     }
   };
 
@@ -289,7 +320,11 @@ export default function Jahresabschluss() {
             </Button>
             <Button variant="outline" onClick={handleExportPDF}>
               <FileText className="w-4 h-4 mr-2" />
-              PDF
+              Bilanz-PDF
+            </Button>
+            <Button variant="outline" onClick={handleExportGuVPDF}>
+              <Download className="w-4 h-4 mr-2" />
+              GuV-PDF
             </Button>
           </div>
         </div>
