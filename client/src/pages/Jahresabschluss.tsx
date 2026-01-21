@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { exportBilanzPDF, exportGuVPDF } from "@/lib/pdf-export";
+import { exportBilanzExcel, exportGuVExcel } from "@/lib/excel-export";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("de-DE", {
@@ -234,9 +235,54 @@ export default function Jahresabschluss() {
     }
   };
 
-  const handleExportExcel = () => {
-    toast.info("Excel-Export wird in Kürze verfügbar sein");
-    // TODO: Excel-Export implementieren
+  const handleExportExcel = async () => {
+    if (!selectedUnternehmen || !eroeffnungsbilanzQuery.data || !guvQuery.data) {
+      toast.error("Keine Daten zum Exportieren vorhanden");
+      return;
+    }
+
+    try {
+      const eroeffnungsbilanz = eroeffnungsbilanzQuery.data;
+      const guvData = guvQuery.data;
+
+      // Aktiva: Sollbuchungen (Konten < 2000)
+      const aktiva = eroeffnungsbilanz
+        .filter((pos) => parseInt(pos.sachkonto) < 2000 && parseFloat(pos.sollbetrag || "0") > 0)
+        .map((pos) => ({
+          sachkonto: pos.sachkonto,
+          kontobezeichnung: pos.kontobezeichnung || "",
+          betrag: parseFloat(pos.sollbetrag || "0"),
+        }));
+
+      // Passiva: Habenbuchungen (Konten >= 2000)
+      const passiva = eroeffnungsbilanz
+        .filter((pos) => parseInt(pos.sachkonto) >= 2000 && parseFloat(pos.habenbetrag || "0") > 0)
+        .map((pos) => ({
+          sachkonto: pos.sachkonto,
+          kontobezeichnung: pos.kontobezeichnung || "",
+          betrag: parseFloat(pos.habenbetrag || "0"),
+        }));
+
+      const selectedUnternehmenObj = unternehmenQuery.data?.find(
+        (u) => u.unternehmen.id === selectedUnternehmen
+      );
+
+      const options = {
+        unternehmen: selectedUnternehmenObj?.unternehmen.name || "Unbekannt",
+        stichtag: `${selectedJahr}-12-31`,
+        jahr: selectedJahr,
+      };
+
+      // Export Bilanz
+      await exportBilanzExcel(aktiva, passiva, options);
+
+      // Export GuV
+      await exportGuVExcel(guvData.ertraege, guvData.aufwendungen, options);
+
+      toast.success("Excel-Dateien wurden erstellt (Bilanz und GuV)");
+    } catch (error: any) {
+      toast.error(`Fehler beim Excel-Export: ${error.message}`);
+    }
   };
 
   const handleBerechneVorjahr = async () => {

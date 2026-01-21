@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Building2, Car, Monitor, Wrench, Factory, Package, Plus, RefreshCw, Calculator, Trash2, Pencil, Loader2, AlertCircle, TrendingDown, Euro, Download } from 'lucide-react';
+import { Building2, Car, Monitor, Wrench, Factory, Package, Plus, RefreshCw, Calculator, Trash2, Pencil, Loader2, AlertCircle, TrendingDown, Euro, Download, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import AppHeader from '@/components/AppHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { exportAnlagenspiegelPDF } from '@/lib/pdf-export';
+import { exportAnlagenspiegelExcel } from '@/lib/excel-export';
 
 const KATEGORIEN = [
   { value: 'alle', label: 'Alle', icon: Package },
@@ -203,6 +204,28 @@ export default function Anlagevermoegen() {
     }
   };
 
+  const handleExportExcel = async () => {
+    if (!selectedUnternehmen || !anlagenQuery.data) {
+      toast.error('Keine Daten zum Exportieren vorhanden');
+      return;
+    }
+
+    try {
+      const unternehmenObj = unternehmenQuery.data?.find(
+        (u) => u.unternehmen.id === selectedUnternehmen
+      );
+
+      await exportAnlagenspiegelExcel(anlagenQuery.data, {
+        unternehmen: unternehmenObj?.unternehmen.name || 'Unbekannt',
+        stichtag: `${new Date().getFullYear()}-12-31`,
+      });
+
+      toast.success('Anlagenspiegel-Excel wurde erstellt');
+    } catch (error: any) {
+      toast.error(`Fehler beim Excel-Export: ${error.message}`);
+    }
+  };
+
   const handleOpenReconstruct = async () => {
     setShowReconstruct(true);
     await reconstructQuery.refetch();
@@ -286,7 +309,11 @@ export default function Anlagevermoegen() {
             </Button>
             <Button variant="outline" onClick={handleExportPDF} disabled={!selectedUnternehmen}>
               <Download className="w-4 h-4 mr-2" />
-              PDF-Export
+              PDF
+            </Button>
+            <Button variant="outline" onClick={handleExportExcel} disabled={!selectedUnternehmen}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Excel
             </Button>
             <Button onClick={() => setShowCreate(true)} disabled={!selectedUnternehmen}>
               <Plus className="w-4 h-4 mr-2" />
