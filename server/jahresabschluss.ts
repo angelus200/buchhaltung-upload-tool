@@ -1416,4 +1416,138 @@ export const jahresabschlussRouter = router({
         };
       }),
   }),
+
+  // ============================================
+  // GuV (GEWINN- UND VERLUSTRECHNUNG)
+  // ============================================
+  guv: router({
+    // Aggregiert Buchungen für GuV-Export
+    aggregieren: protectedProcedure
+      .input(
+        z.object({
+          unternehmenId: z.number(),
+          vonDatum: z.string().optional(), // ISO-Date String
+          bisDatum: z.string().optional(), // ISO-Date String
+          jahr: z.number().optional(), // Alternativ: Ganzes Jahr
+        })
+      )
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Datenbankverbindung nicht verfügbar",
+          });
+        }
+
+        // Bestimme Zeitraum
+        let vonDatum: string;
+        let bisDatum: string;
+
+        if (input.jahr) {
+          vonDatum = `${input.jahr}-01-01`;
+          bisDatum = `${input.jahr}-12-31`;
+        } else {
+          vonDatum = input.vonDatum || `${new Date().getFullYear()}-01-01`;
+          bisDatum = input.bisDatum || `${new Date().getFullYear()}-12-31`;
+        }
+
+        // Erträge: SKR04 Konten 4000-4999
+        const ertraegeQuery = await db
+          .select({
+            sachkonto: buchungen.sachkonto,
+            summe: sql<number>`SUM(CAST(${buchungen.bruttobetrag} AS DECIMAL(15,2)))`,
+            anzahl: sql<number>`COUNT(*)`,
+          })
+          .from(buchungen)
+          .where(
+            and(
+              eq(buchungen.unternehmenId, input.unternehmenId),
+              eq(buchungen.buchungsart, "ertrag"),
+              sql`${buchungen.belegdatum} >= ${vonDatum}`,
+              sql`${buchungen.belegdatum} <= ${bisDatum}`,
+              sql`CAST(${buchungen.sachkonto} AS UNSIGNED) BETWEEN 4000 AND 4999`
+            )
+          )
+          .groupBy(buchungen.sachkonto);
+
+        // Aufwendungen: SKR04 Konten 6000-7999
+        const aufwendungenQuery = await db
+          .select({
+            sachkonto: buchungen.sachkonto,
+            summe: sql<number>`SUM(CAST(${buchungen.bruttobetrag} AS DECIMAL(15,2)))`,
+            anzahl: sql<number>`COUNT(*)`,
+          })
+          .from(buchungen)
+          .where(
+            and(
+              eq(buchungen.unternehmenId, input.unternehmenId),
+              eq(buchungen.buchungsart, "aufwand"),
+              sql`${buchungen.belegdatum} >= ${vonDatum}`,
+              sql`${buchungen.belegdatum} <= ${bisDatum}`,
+              sql`CAST(${buchungen.sachkonto} AS UNSIGNED) BETWEEN 6000 AND 7999`
+            )
+          )
+          .groupBy(buchungen.sachkonto);
+
+        // Hole Kontobezeichnungen aus Sachkonten
+        const ertraege = await Promise.all(
+          ertraegeQuery.map(async (e) => {
+            const sachkontoInfo = await db
+              .select()
+              .from(sachkonten)
+              .where(
+                and(
+                  eq(sachkonten.unternehmenId, input.unternehmenId),
+                  eq(sachkonten.kontonummer, e.sachkonto)
+                )
+              )
+              .limit(1);
+
+            return {
+              sachkonto: e.sachkonto,
+              kontobezeichnung: sachkontoInfo[0]?.bezeichnung || "",
+              betrag: Number(e.summe),
+              anzahlBuchungen: Number(e.anzahl),
+            };
+          })
+        );
+
+        const aufwendungen = await Promise.all(
+          aufwendungenQuery.map(async (a) => {
+            const sachkontoInfo = await db
+              .select()
+              .from(sachkonten)
+              .where(
+                and(
+                  eq(sachkonten.unternehmenId, input.unternehmenId),
+                  eq(sachkonten.kontonummer, a.sachkonto)
+                )
+              )
+              .limit(1);
+
+            return {
+              sachkonto: a.sachkonto,
+              kontobezeichnung: sachkontoInfo[0]?.bezeichnung || "",
+              betrag: Number(a.summe),
+              anzahlBuchungen: Number(a.anzahl),
+            };
+          })
+        );
+
+        const summeErtraege = ertraege.reduce((sum, e) => sum + e.betrag, 0);
+        const summeAufwendungen = aufwendungen.reduce((sum, a) => sum + a.betrag, 0);
+        const ergebnis = summeErtraege - summeAufwendungen;
+
+        return {
+          zeitraum: { vonDatum, bisDatum },
+          ertraege,
+          aufwendungen,
+          summeErtraege,
+          summeAufwendungen,
+          ergebnis,
+          ergebnisTyp: ergebnis > 0 ? "gewinn" : ergebnis < 0 ? "verlust" : "ausgeglichen",
+        };
+      }),
+  }),
 });
