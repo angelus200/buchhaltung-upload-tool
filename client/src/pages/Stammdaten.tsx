@@ -296,6 +296,18 @@ export default function Stammdaten() {
     { enabled: !!selectedUnternehmenId && activeTab === "sachkonto" }
   );
 
+  // Lade Anlagevermögen für das ausgewählte Unternehmen
+  const { data: anlagenList, refetch: refetchAnlagen } = trpc.jahresabschluss.anlagevermoegen.list.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId && activeTab === "anlagevermoegen" }
+  );
+
+  // Lade Bankkonten für das ausgewählte Unternehmen
+  const { data: bankkontenList, refetch: refetchBankkonten } = trpc.jahresabschluss.bankkonten.list.useQuery(
+    { unternehmenId: selectedUnternehmenId!, stichtag: new Date().toISOString().split("T")[0] },
+    { enabled: !!selectedUnternehmenId && activeTab === "bankkonto" }
+  );
+
   // Mutations für Kreditoren
   const createKreditorMutation = trpc.stammdaten.kreditoren.create.useMutation({
     onSuccess: () => {
@@ -395,6 +407,76 @@ export default function Stammdaten() {
     onSuccess: () => {
       refetchSachkonten();
       toast.info("Sachkonto gelöscht");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  // Mutations für Anlagevermögen
+  const createAnlageMutation = trpc.jahresabschluss.anlagevermoegen.create.useMutation({
+    onSuccess: () => {
+      refetchAnlagen();
+      toast.success("Anlagegut erstellt");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const updateAnlageMutation = trpc.jahresabschluss.anlagevermoegen.update.useMutation({
+    onSuccess: () => {
+      refetchAnlagen();
+      toast.success("Anlagegut aktualisiert");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const deleteAnlageMutation = trpc.jahresabschluss.anlagevermoegen.delete.useMutation({
+    onSuccess: () => {
+      refetchAnlagen();
+      toast.info("Anlagegut gelöscht");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  // Mutations für Bankkonten
+  const createBankkontoMutation = trpc.jahresabschluss.bankkonten.create.useMutation({
+    onSuccess: () => {
+      refetchBankkonten();
+      toast.success("Bankkonto erstellt");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const updateBankkontoMutation = trpc.jahresabschluss.bankkonten.update.useMutation({
+    onSuccess: () => {
+      refetchBankkonten();
+      toast.success("Bankkonto aktualisiert");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const deleteBankkontoMutation = trpc.jahresabschluss.bankkonten.delete.useMutation({
+    onSuccess: () => {
+      refetchBankkonten();
+      toast.info("Bankkonto gelöscht");
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -569,6 +651,65 @@ export default function Stammdaten() {
       return;
     }
 
+    // Anlagevermögen (Datenbank)
+    if (activeTab === "anlagevermoegen") {
+      if (!selectedUnternehmenId) {
+        toast.error("Bitte wählen Sie zuerst ein Unternehmen aus");
+        return;
+      }
+
+      const anlageData = {
+        kontonummer: formKontonummer,
+        bezeichnung: formData.bezeichnung || "",
+        kategorie: formData.kategorie || undefined,
+        anschaffungsdatum: formData.anschaffungsdatum || undefined,
+        anschaffungskosten: formData.anschaffungskosten || undefined,
+        nutzungsdauer: formData.nutzungsdauer ? parseInt(formData.nutzungsdauer) : undefined,
+        abschreibungsmethode: (formData.abschreibungsmethode as any) || undefined,
+        restwert: formData.restwert || undefined,
+        sachkonto: formData.sachkonto || undefined,
+        standort: formData.standort || undefined,
+        inventarnummer: formData.inventarnummer || undefined,
+        seriennummer: formData.seriennummer || undefined,
+        notizen: formNotizen || undefined,
+      };
+
+      if (editItem) {
+        updateAnlageMutation.mutate({ id: parseInt(editItem.id), ...anlageData });
+      } else {
+        createAnlageMutation.mutate({ unternehmenId: selectedUnternehmenId, ...anlageData });
+      }
+      return;
+    }
+
+    // Bankkonten (Datenbank)
+    if (activeTab === "bankkonto") {
+      if (!selectedUnternehmenId) {
+        toast.error("Bitte wählen Sie zuerst ein Unternehmen aus");
+        return;
+      }
+
+      const bankkontoData = {
+        kontonummer: formKontonummer,
+        bezeichnung: formData.bankname || "",
+        bankname: formData.bankname || undefined,
+        iban: formData.iban || undefined,
+        bic: formData.bic || undefined,
+        sachkonto: formData.sachkonto || undefined,
+        anfangsbestand: formData.anfangsbestand || undefined,
+        kontotyp: (formData.kontotyp as any) || undefined,
+        waehrung: formData.waehrung || undefined,
+        notizen: formNotizen || undefined,
+      };
+
+      if (editItem) {
+        updateBankkontoMutation.mutate({ id: parseInt(editItem.id), ...bankkontoData });
+      } else {
+        createBankkontoMutation.mutate({ unternehmenId: selectedUnternehmenId, ...bankkontoData });
+      }
+      return;
+    }
+
     // Standard-Behandlung für andere Stammdaten (LocalStorage)
     const now = new Date().toISOString();
     const name = formData[activeTypConfig.felder[0].key] || "Unbenannt";
@@ -630,6 +771,20 @@ export default function Stammdaten() {
       deleteSachkontoMutation.mutate({ id });
     }
   }, [deleteSachkontoMutation]);
+
+  // Anlage löschen (Datenbank)
+  const handleDeleteAnlage = useCallback((id: number) => {
+    if (confirm("Möchten Sie dieses Anlagegut wirklich löschen?")) {
+      deleteAnlageMutation.mutate({ id });
+    }
+  }, [deleteAnlageMutation]);
+
+  // Bankkonto löschen (Datenbank)
+  const handleDeleteBankkonto = useCallback((id: number) => {
+    if (confirm("Möchten Sie dieses Bankkonto wirklich löschen?")) {
+      deleteBankkontoMutation.mutate({ id });
+    }
+  }, [deleteBankkontoMutation]);
 
   // Kreditor bearbeiten
   const openEditKreditorDialog = useCallback((kreditor: any) => {
@@ -704,6 +859,66 @@ export default function Stammdaten() {
     setDialogOpen(true);
   }, []);
 
+  // Anlage bearbeiten
+  const openEditAnlageDialog = useCallback((anlage: any) => {
+    setEditItem({
+      id: anlage.id.toString(),
+      typ: "anlagevermoegen",
+      name: anlage.bezeichnung,
+      kontonummer: anlage.kontonummer,
+      details: {},
+      notizen: anlage.notizen || "",
+      erstelltAm: anlage.createdAt,
+      aktualisiertAm: anlage.updatedAt,
+    });
+    setFormKontonummer(anlage.kontonummer);
+    setFormData({
+      bezeichnung: anlage.bezeichnung || "",
+      kategorie: anlage.kategorie || "",
+      anschaffungsdatum: anlage.anschaffungsdatum
+        ? new Date(anlage.anschaffungsdatum).toISOString().split("T")[0]
+        : "",
+      anschaffungskosten: anlage.anschaffungskosten || "",
+      nutzungsdauer: anlage.nutzungsdauer?.toString() || "",
+      abschreibungsmethode: anlage.abschreibungsmethode || "linear",
+      restwert: anlage.restwert || "0",
+      sachkonto: anlage.sachkonto || "",
+      standort: anlage.standort || "",
+      inventarnummer: anlage.inventarnummer || "",
+      seriennummer: anlage.seriennummer || "",
+    });
+    setFormNotizen(anlage.notizen || "");
+    setDialogOpen(true);
+  }, []);
+
+  // Bankkonto bearbeiten
+  const openEditBankkontoDialog = useCallback((konto: any) => {
+    setEditItem({
+      id: konto.id.toString(),
+      typ: "bankkonto",
+      name: konto.bezeichnung,
+      kontonummer: konto.kontonummer,
+      details: {},
+      notizen: konto.notizen || "",
+      erstelltAm: konto.createdAt,
+      aktualisiertAm: konto.updatedAt,
+    });
+    setFormKontonummer(konto.kontonummer);
+    setFormData({
+      bankname: konto.bankname || "",
+      iban: konto.iban || "",
+      bic: konto.bic || "",
+      kontoinhaber: konto.kontoinhaber || "",
+      waehrung: konto.waehrung || "EUR",
+      kontotyp: konto.kontotyp || "girokonto",
+      sachkonto: konto.sachkonto || "",
+      anfangsbestand: konto.anfangsbestand || "0",
+      kreditlinie: konto.kreditlinie || "",
+    });
+    setFormNotizen(konto.notizen || "");
+    setDialogOpen(true);
+  }, []);
+
   // Gefilterte Kreditoren
   const gefilterteKreditoren = kreditorenList?.filter(k => {
     if (!suchbegriff) return true;
@@ -729,6 +944,25 @@ export default function Stammdaten() {
     return s.kontonummer.toLowerCase().includes(searchLower) ||
            s.bezeichnung.toLowerCase().includes(searchLower) ||
            (s.kategorie?.toLowerCase().includes(searchLower) ?? false);
+  }) || [];
+
+  // Gefilterte Anlagen
+  const gefilterteAnlagen = anlagenList?.filter(a => {
+    if (!suchbegriff) return true;
+    const searchLower = suchbegriff.toLowerCase();
+    return a.kontonummer.toLowerCase().includes(searchLower) ||
+           a.bezeichnung.toLowerCase().includes(searchLower) ||
+           (a.kategorie?.toLowerCase().includes(searchLower) ?? false);
+  }) || [];
+
+  // Gefilterte Bankkonten
+  const gefilterteBankkonten = bankkontenList?.filter(b => {
+    if (!suchbegriff) return true;
+    const searchLower = suchbegriff.toLowerCase();
+    return b.kontonummer.toLowerCase().includes(searchLower) ||
+           b.bezeichnung.toLowerCase().includes(searchLower) ||
+           (b.bankname?.toLowerCase().includes(searchLower) ?? false) ||
+           (b.iban?.toLowerCase().includes(searchLower) ?? false);
   }) || [];
 
   // Gefilterte Daten für aktiven Tab
@@ -771,6 +1005,10 @@ export default function Stammdaten() {
                   count = kreditorenList?.length || 0;
                 } else if (typ.value === "debitor") {
                   count = debitorenList?.length || 0;
+                } else if (typ.value === "anlagevermoegen") {
+                  count = anlagenList?.length || 0;
+                } else if (typ.value === "bankkonto") {
+                  count = bankkontenList?.length || 0;
                 } else {
                   count = stammdaten.filter(s => s.typ === typ.value).length;
                 }
@@ -1098,6 +1336,186 @@ export default function Stammdaten() {
                               <Separator className="my-3" />
                               <p className="text-xs text-muted-foreground line-clamp-2">
                                 {sachkonto.notizen}
+                              </p>
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : typ.value === "anlagevermoegen" ? (
+                !selectedUnternehmenId ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <Car className="w-12 h-12 mx-auto mb-4 opacity-50 text-orange-600" />
+                      <p className="font-medium">Kein Unternehmen ausgewählt</p>
+                      <p className="text-sm">Bitte wählen Sie zuerst ein Unternehmen aus</p>
+                    </div>
+                  </Card>
+                ) : gefilterteAnlagen.length === 0 ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <Car className="w-12 h-12 mx-auto mb-4 opacity-50 text-orange-600" />
+                      <p className="font-medium">Kein Anlagevermögen vorhanden</p>
+                      <p className="text-sm">Legen Sie ein neues Anlagegut an</p>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {gefilterteAnlagen.map((anlage) => (
+                      <Card key={anlage.id} className="flex flex-col">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                                <Car className="w-5 h-5 text-orange-600" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-base line-clamp-1">{anlage.bezeichnung}</CardTitle>
+                                <CardDescription className="text-sm font-mono">
+                                  {anlage.kontonummer}
+                                </CardDescription>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => openEditAnlageDialog(anlage)}
+                                title="Bearbeiten"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteAnlage(anlage.id)}
+                                title="Löschen"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 pt-0">
+                          <div className="space-y-1 text-sm">
+                            {anlage.kategorie && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Kategorie:</span>
+                                <span className="font-medium">{anlage.kategorie}</span>
+                              </div>
+                            )}
+                            {anlage.anschaffungskosten && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">AK:</span>
+                                <span className="font-medium">{parseFloat(anlage.anschaffungskosten).toLocaleString('de-DE', {minimumFractionDigits: 2})} €</span>
+                              </div>
+                            )}
+                            {anlage.sachkonto && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Sachkonto:</span>
+                                <span className="font-medium font-mono">{anlage.sachkonto}</span>
+                              </div>
+                            )}
+                          </div>
+                          {anlage.notizen && (
+                            <>
+                              <Separator className="my-3" />
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {anlage.notizen}
+                              </p>
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : typ.value === "bankkonto" ? (
+                !selectedUnternehmenId ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <Landmark className="w-12 h-12 mx-auto mb-4 opacity-50 text-teal-600" />
+                      <p className="font-medium">Kein Unternehmen ausgewählt</p>
+                      <p className="text-sm">Bitte wählen Sie zuerst ein Unternehmen aus</p>
+                    </div>
+                  </Card>
+                ) : gefilterteBankkonten.length === 0 ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <Landmark className="w-12 h-12 mx-auto mb-4 opacity-50 text-teal-600" />
+                      <p className="font-medium">Keine Bankkonten vorhanden</p>
+                      <p className="text-sm">Legen Sie ein neues Bankkonto an</p>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {gefilterteBankkonten.map((konto) => (
+                      <Card key={konto.id} className="flex flex-col">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
+                                <Landmark className="w-5 h-5 text-teal-600" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-base line-clamp-1">{konto.bezeichnung}</CardTitle>
+                                <CardDescription className="text-sm font-mono">
+                                  {konto.kontonummer}
+                                </CardDescription>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => openEditBankkontoDialog(konto)}
+                                title="Bearbeiten"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteBankkonto(konto.id)}
+                                title="Löschen"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 pt-0">
+                          <div className="space-y-1 text-sm">
+                            {konto.bankname && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Bank:</span>
+                                <span className="font-medium">{konto.bankname}</span>
+                              </div>
+                            )}
+                            {konto.iban && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">IBAN:</span>
+                                <span className="font-medium font-mono text-xs">{konto.iban.substring(0, 10)}...</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Saldo:</span>
+                              <span className={`font-medium font-mono ${konto.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {konto.saldo ? parseFloat(konto.saldo.toString()).toLocaleString('de-DE', {minimumFractionDigits: 2}) : '0,00'} €
+                              </span>
+                            </div>
+                          </div>
+                          {konto.notizen && (
+                            <>
+                              <Separator className="my-3" />
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {konto.notizen}
                               </p>
                             </>
                           )}

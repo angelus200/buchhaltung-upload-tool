@@ -35,6 +35,7 @@ import Inventur from "./pages/Inventur";
 import Anlagevermoegen from "./pages/Anlagevermoegen";
 import Bankkonten from "./pages/Bankkonten";
 import Eroeffnungsbilanz from "./pages/Eroeffnungsbilanz";
+import Jahresabschluss from "./pages/Jahresabschluss";
 
 function Router() {
   return (
@@ -197,6 +198,12 @@ function Router() {
       <Route path={"/eroeffnungsbilanz"}>
         <ProtectedRoute>
           <Eroeffnungsbilanz />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/jahresabschluss"}>
+        <ProtectedRoute>
+          <Jahresabschluss />
         </ProtectedRoute>
       </Route>
 
