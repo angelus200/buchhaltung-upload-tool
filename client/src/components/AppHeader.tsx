@@ -34,7 +34,8 @@ import {
   Lock,
   Package,
   Warehouse,
-  ClipboardList
+  ClipboardList,
+  Calculator
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -407,6 +408,17 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               >
                 <Lock className="w-3.5 h-3.5" />
                 Monatsabschluss
+              </Button>
+            </Link>
+            <Link href="/jahresabschluss">
+              <Button
+                variant={isActive("/jahresabschluss") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/jahresabschluss") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <Calculator className="w-3.5 h-3.5" />
+                Jahresabschluss
               </Button>
             </Link>
             <Link href="/unternehmen">
