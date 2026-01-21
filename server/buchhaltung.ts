@@ -384,7 +384,7 @@ export const buchungenRouter = router({
         .from(buchungen)
         .where(and(...conditions));
 
-      // GuV-relevante Summen (nur Kontenklassen 4-7)
+      // GuV-relevante Summen (nur Kontenklassen 4-7 für SKR04 6-stellig)
       const guvResult = await db
         .select({
           count: count(),
@@ -396,16 +396,12 @@ export const buchungenRouter = router({
           and(
             ...conditions,
             or(
-              // Erträge (Klasse 4)
-              sql`${buchungen.habenKonto} LIKE '4%'`,
-              sql`${buchungen.sachkonto} LIKE '4%'`,
-              // Aufwendungen (Klassen 5-7)
-              sql`${buchungen.sollKonto} LIKE '5%'`,
-              sql`${buchungen.sollKonto} LIKE '6%'`,
-              sql`${buchungen.sollKonto} LIKE '7%'`,
-              sql`${buchungen.sachkonto} LIKE '5%'`,
-              sql`${buchungen.sachkonto} LIKE '6%'`,
-              sql`${buchungen.sachkonto} LIKE '7%'`
+              // Erträge (Klasse 4: 400000-499999)
+              sql`${buchungen.habenKonto} >= '400000' AND ${buchungen.habenKonto} < '500000'`,
+              sql`${buchungen.sachkonto} >= '400000' AND ${buchungen.sachkonto} < '500000'`,
+              // Aufwendungen (Klassen 5-7: 500000-799999)
+              sql`${buchungen.sollKonto} >= '500000' AND ${buchungen.sollKonto} < '800000'`,
+              sql`${buchungen.sachkonto} >= '500000' AND ${buchungen.sachkonto} < '800000'`
             )
           )
         );

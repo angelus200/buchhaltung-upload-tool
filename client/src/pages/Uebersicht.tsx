@@ -457,7 +457,7 @@ export default function Uebersicht() {
     guvBrutto: 0,
   };
 
-  // Filtere Buchungen für GuV-Ansicht
+  // Filtere Buchungen für GuV-Ansicht (SKR04 6-stellig)
   const displayBuchungen = useMemo(() => {
     if (!showOnlyGuV) return buchungen;
 
@@ -466,16 +466,15 @@ export default function Uebersicht() {
       const sollKonto = b.sollKonto || "";
       const habenKonto = b.habenKonto || "";
 
-      // Prüfe ob es ein GuV-Konto ist (Klassen 4-7)
-      const firstDigit = sachkonto.charAt(0);
-      const sollFirst = sollKonto.charAt(0);
-      const habenFirst = habenKonto.charAt(0);
+      // Prüfe ob es ein GuV-Konto ist (SKR04 6-stellig)
+      // Erträge: 400000-499999, Aufwand: 500000-799999
+      const isGuvKonto = (konto: string) => {
+        if (!konto) return false;
+        return (konto >= "400000" && konto < "500000") || // Erträge (Klasse 4)
+               (konto >= "500000" && konto < "800000");   // Aufwand (Klassen 5-7)
+      };
 
-      return (
-        firstDigit >= "4" && firstDigit <= "7" ||
-        sollFirst >= "4" && sollFirst <= "7" ||
-        habenFirst >= "4" && habenFirst <= "7"
-      );
+      return isGuvKonto(sachkonto) || isGuvKonto(sollKonto) || isGuvKonto(habenKonto);
     });
   }, [buchungen, showOnlyGuV]);
 

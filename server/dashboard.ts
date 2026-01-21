@@ -45,7 +45,7 @@ export const dashboardRouter = router({
         ? new Date(input.jahr, input.monat, 0).toISOString().split("T")[0]
         : `${input.jahr}-12-31`;
 
-      // Einnahmen (GuV): Erträge nach SKR04 (Kontenklasse 4)
+      // Einnahmen (GuV): Erträge nach SKR04 (Kontenklasse 4: 400000-499999)
       // Ertragskonten werden im HABEN gebucht: SOLL Bank / HABEN Umsatz
       const einnahmenResult = await db
         .select({
@@ -57,15 +57,15 @@ export const dashboardRouter = router({
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
             or(
-              sql`${buchungen.habenKonto} LIKE '4%'`,
-              sql`${buchungen.sachkonto} LIKE '4%'`
+              sql`${buchungen.habenKonto} >= '400000' AND ${buchungen.habenKonto} < '500000'`,
+              sql`${buchungen.sachkonto} >= '400000' AND ${buchungen.sachkonto} < '500000'`
             ),
             gte(buchungen.belegdatum, new Date(startDatum)),
             lte(buchungen.belegdatum, new Date(endDatum))
           )
         );
 
-      // Ausgaben (GuV): Aufwendungen nach SKR04 (Kontenklassen 5-7)
+      // Ausgaben (GuV): Aufwendungen nach SKR04 (Kontenklassen 5-7: 500000-799999)
       // Aufwandskonten werden im SOLL gebucht: SOLL Aufwand / HABEN Bank
       const ausgabenResult = await db
         .select({
@@ -77,12 +77,8 @@ export const dashboardRouter = router({
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
             or(
-              sql`${buchungen.sollKonto} LIKE '5%'`,
-              sql`${buchungen.sollKonto} LIKE '6%'`,
-              sql`${buchungen.sollKonto} LIKE '7%'`,
-              sql`${buchungen.sachkonto} LIKE '5%'`,
-              sql`${buchungen.sachkonto} LIKE '6%'`,
-              sql`${buchungen.sachkonto} LIKE '7%'`
+              sql`${buchungen.sollKonto} >= '500000' AND ${buchungen.sollKonto} < '800000'`,
+              sql`${buchungen.sachkonto} >= '500000' AND ${buchungen.sachkonto} < '800000'`
             ),
             gte(buchungen.belegdatum, new Date(startDatum)),
             lte(buchungen.belegdatum, new Date(endDatum))
@@ -146,7 +142,7 @@ export const dashboardRouter = router({
         const startDatum = `${input.jahr}-${String(monat).padStart(2, "0")}-01`;
         const endDatum = new Date(input.jahr, monat, 0).toISOString().split("T")[0];
 
-        // Einnahmen (GuV: Erträge Klasse 4)
+        // Einnahmen (GuV: Erträge Klasse 4: 400000-499999)
         const einnahmenResult = await db
           .select({
             summe: sql<string>`COALESCE(SUM(CAST(${buchungen.nettobetrag} AS DECIMAL(15,2))), 0)`,
@@ -156,15 +152,15 @@ export const dashboardRouter = router({
             and(
               eq(buchungen.unternehmenId, input.unternehmenId),
               or(
-                sql`${buchungen.habenKonto} LIKE '4%'`,
-                sql`${buchungen.sachkonto} LIKE '4%'`
+                sql`${buchungen.habenKonto} >= '400000' AND ${buchungen.habenKonto} < '500000'`,
+                sql`${buchungen.sachkonto} >= '400000' AND ${buchungen.sachkonto} < '500000'`
               ),
               gte(buchungen.belegdatum, new Date(startDatum)),
               lte(buchungen.belegdatum, new Date(endDatum))
             )
           );
 
-        // Ausgaben (GuV: Aufwendungen Klassen 5-7)
+        // Ausgaben (GuV: Aufwendungen Klassen 5-7: 500000-799999)
         const ausgabenResult = await db
           .select({
             summe: sql<string>`COALESCE(SUM(CAST(${buchungen.nettobetrag} AS DECIMAL(15,2))), 0)`,
@@ -174,12 +170,8 @@ export const dashboardRouter = router({
             and(
               eq(buchungen.unternehmenId, input.unternehmenId),
               or(
-                sql`${buchungen.sollKonto} LIKE '5%'`,
-                sql`${buchungen.sollKonto} LIKE '6%'`,
-                sql`${buchungen.sollKonto} LIKE '7%'`,
-                sql`${buchungen.sachkonto} LIKE '5%'`,
-                sql`${buchungen.sachkonto} LIKE '6%'`,
-                sql`${buchungen.sachkonto} LIKE '7%'`
+                sql`${buchungen.sollKonto} >= '500000' AND ${buchungen.sollKonto} < '800000'`,
+                sql`${buchungen.sachkonto} >= '500000' AND ${buchungen.sachkonto} < '800000'`
               ),
               gte(buchungen.belegdatum, new Date(startDatum)),
               lte(buchungen.belegdatum, new Date(endDatum))
@@ -221,7 +213,7 @@ export const dashboardRouter = router({
         ? new Date(input.jahr, input.monat, 0).toISOString().split("T")[0]
         : `${input.jahr}-12-31`;
 
-      // Aufwandsverteilung nach SKR04 (Kontenklassen 5-7)
+      // Aufwandsverteilung nach SKR04 (Kontenklassen 5-7: 500000-799999)
       const result = await db
         .select({
           sachkonto: buchungen.sachkonto,
@@ -233,12 +225,8 @@ export const dashboardRouter = router({
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
             or(
-              sql`${buchungen.sollKonto} LIKE '5%'`,
-              sql`${buchungen.sollKonto} LIKE '6%'`,
-              sql`${buchungen.sollKonto} LIKE '7%'`,
-              sql`${buchungen.sachkonto} LIKE '5%'`,
-              sql`${buchungen.sachkonto} LIKE '6%'`,
-              sql`${buchungen.sachkonto} LIKE '7%'`
+              sql`${buchungen.sollKonto} >= '500000' AND ${buchungen.sollKonto} < '800000'`,
+              sql`${buchungen.sachkonto} >= '500000' AND ${buchungen.sachkonto} < '800000'`
             ),
             gte(buchungen.belegdatum, new Date(startDatum)),
             lte(buchungen.belegdatum, new Date(endDatum))
@@ -275,7 +263,7 @@ export const dashboardRouter = router({
         ? new Date(input.jahr, input.monat, 0).toISOString().split("T")[0]
         : `${input.jahr}-12-31`;
 
-      // Ertragsverteilung nach SKR04 (Kontenklasse 4)
+      // Ertragsverteilung nach SKR04 (Kontenklasse 4: 400000-499999)
       const result = await db
         .select({
           sachkonto: buchungen.sachkonto,
@@ -287,8 +275,8 @@ export const dashboardRouter = router({
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
             or(
-              sql`${buchungen.habenKonto} LIKE '4%'`,
-              sql`${buchungen.sachkonto} LIKE '4%'`
+              sql`${buchungen.habenKonto} >= '400000' AND ${buchungen.habenKonto} < '500000'`,
+              sql`${buchungen.sachkonto} >= '400000' AND ${buchungen.sachkonto} < '500000'`
             ),
             gte(buchungen.belegdatum, new Date(startDatum)),
             lte(buchungen.belegdatum, new Date(endDatum))
@@ -321,19 +309,15 @@ export const dashboardRouter = router({
       const startDatum = `${input.jahr}-01-01`;
       const endDatum = `${input.jahr}-12-31`;
 
-      // Kreditor = Aufwendungen (SKR04 Klassen 5-7), Debitor = Erträge (SKR04 Klasse 4)
+      // Kreditor = Aufwendungen (SKR04 Klassen 5-7: 500000-799999), Debitor = Erträge (SKR04 Klasse 4: 400000-499999)
       const kontenFilter = input.typ === "kreditor"
         ? or(
-            sql`${buchungen.sollKonto} LIKE '5%'`,
-            sql`${buchungen.sollKonto} LIKE '6%'`,
-            sql`${buchungen.sollKonto} LIKE '7%'`,
-            sql`${buchungen.sachkonto} LIKE '5%'`,
-            sql`${buchungen.sachkonto} LIKE '6%'`,
-            sql`${buchungen.sachkonto} LIKE '7%'`
+            sql`${buchungen.sollKonto} >= '500000' AND ${buchungen.sollKonto} < '800000'`,
+            sql`${buchungen.sachkonto} >= '500000' AND ${buchungen.sachkonto} < '800000'`
           )
         : or(
-            sql`${buchungen.habenKonto} LIKE '4%'`,
-            sql`${buchungen.sachkonto} LIKE '4%'`
+            sql`${buchungen.habenKonto} >= '400000' AND ${buchungen.habenKonto} < '500000'`,
+            sql`${buchungen.sachkonto} >= '400000' AND ${buchungen.sachkonto} < '500000'`
           );
 
       const result = await db
