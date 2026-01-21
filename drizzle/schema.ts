@@ -181,6 +181,8 @@ export const kreditoren = mysqlTable("kreditoren", {
   skontofrist: int("skontofrist"),
   standardSachkonto: varchar("standardSachkonto", { length: 20 }),
   notizen: text("notizen"),
+  // DATEV-Import: Original-Kontonummer aus DATEV für Rückverfolgung
+  datevKontonummer: varchar("datevKontonummer", { length: 20 }),
   aktiv: boolean("aktiv").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -208,6 +210,8 @@ export const debitoren = mysqlTable("debitoren", {
   kreditlimit: decimal("kreditlimit", { precision: 15, scale: 2 }),
   zahlungsziel: int("zahlungsziel").default(14),
   notizen: text("notizen"),
+  // DATEV-Import: Original-Kontonummer aus DATEV für Rückverfolgung
+  datevKontonummer: varchar("datevKontonummer", { length: 20 }),
   aktiv: boolean("aktiv").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -384,6 +388,30 @@ export const buchungen = mysqlTable("buchungen", {
   bezahltAm: date("bezahltAm"),
   bezahlterBetrag: decimal("bezahlterBetrag", { precision: 15, scale: 2 }),
   zahlungsreferenz: varchar("zahlungsreferenz", { length: 100 }),
+
+  // === DATEV-Import Erweiterungen ===
+
+  // Soll/Haben-Konten separat (für doppelte Buchführung)
+  sollKonto: varchar("sollKonto", { length: 20 }),
+  habenKonto: varchar("habenKonto", { length: 20 }),
+
+  // DATEV-spezifische Identifikatoren
+  datevBelegnummer: varchar("datevBelegnummer", { length: 50 }), // Original DATEV-Belegnummer
+  datevBuchungszeile: int("datevBuchungszeile"), // Zeilen-ID innerhalb eines Buchungssatzes
+  datevBelegId: varchar("datevBelegId", { length: 100 }), // BEDI-ID für Belegzuordnung
+
+  // Periode/Wirtschaftsjahr
+  wirtschaftsjahr: int("wirtschaftsjahr"), // z.B. 2025
+  periode: int("periode"), // Monat 1-12
+
+  // Buchungstext aus DATEV (kann länger sein als normaler buchungstext)
+  datevBuchungstext: text("datevBuchungstext"),
+
+  // Import-Tracking
+  importQuelle: mysqlEnum("importQuelle", ["manuell", "datev_gdpdu", "datev_csv", "datev_ascii", "api"]),
+  importDatum: timestamp("importDatum"),
+  importReferenz: varchar("importReferenz", { length: 255 }), // z.B. "DATEV_2025_Q1"
+
   createdBy: int("createdBy").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -1233,3 +1261,39 @@ export const inventurpositionen = mysqlTable("inventurpositionen", {
 
 export type Inventurposition = typeof inventurpositionen.$inferSelect;
 export type InsertInventurposition = typeof inventurpositionen.$inferInsert;
+
+/**
+ * Belege - Digitale Belegdateien (PDFs, Bilder)
+ * Für DATEV-Import und manuelle Uploads
+ */
+export const belege = mysqlTable("belege", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+
+  // Verknüpfung zur Buchung (optional, da Belege ohne Buchung existieren können)
+  buchungId: int("buchungId").references(() => buchungen.id),
+
+  // DATEV-spezifische Felder
+  datevBelegId: varchar("datevBelegId", { length: 100 }), // BEDI-ID aus DATEV
+  externeReferenz: varchar("externeReferenz", { length: 100 }), // Externe Belegnummer (z.B. Rechnungsnummer)
+
+  // Datei-Informationen
+  dateiName: varchar("dateiName", { length: 255 }).notNull(),
+  dateiPfad: varchar("dateiPfad", { length: 500 }), // Lokaler Pfad oder S3-Key
+  dateiUrl: varchar("dateiUrl", { length: 500 }), // URL für direkten Zugriff
+  dateiGroesse: int("dateiGroesse"), // Bytes
+  dateiTyp: mysqlEnum("dateiTyp", ["pdf", "png", "jpg", "jpeg", "tiff", "sonstig"]).default("pdf"),
+
+  // Metadaten
+  belegdatum: date("belegdatum"),
+  beschreibung: text("beschreibung"),
+  notizen: text("notizen"),
+
+  // Upload-Tracking
+  uploadedBy: int("uploadedBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Beleg = typeof belege.$inferSelect;
+export type InsertBeleg = typeof belege.$inferInsert;
