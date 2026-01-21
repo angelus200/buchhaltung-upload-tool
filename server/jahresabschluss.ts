@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, sql, sum } from "drizzle-orm";
+import { eq, and, sql, sum, desc } from "drizzle-orm";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
 import {
@@ -15,6 +15,60 @@ import {
   InsertGesellschafter,
   InsertEroeffnungsbilanz,
 } from "../drizzle/schema";
+import { TRPCError } from "@trpc/server";
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Bestimmt Anlagenkategorie basierend auf SKR04-Kontonummer
+ */
+function bestimmeKategorie(kontonummer: string): string {
+  const konto = parseInt(kontonummer, 10);
+
+  if (konto >= 0 && konto < 10) return "Immaterielle Vermögensgegenstände";
+  if (konto >= 10 && konto < 100) return "Grundstücke und Gebäude";
+  if (konto >= 100 && konto < 300) return "Technische Anlagen und Maschinen";
+  if (konto >= 300 && konto < 500) return "Andere Anlagen, Betriebs- und Geschäftsausstattung";
+  if (konto >= 500 && konto < 600) return "Anlagen im Bau";
+  if (konto >= 600 && konto < 700) return "Finanzanlagen";
+
+  return "Sonstiges Anlagevermögen";
+}
+
+/**
+ * Bestimmt Nutzungsdauer basierend auf SKR04-Kontonummer (AfA-Tabelle)
+ */
+function bestimmeNutzungsdauer(kontonummer: string): number {
+  const konto = parseInt(kontonummer, 10);
+
+  // Immaterielle Vermögensgegenstände (Software, Lizenzen)
+  if (konto >= 0 && konto < 10) return 3;
+
+  // Gebäude
+  if (konto >= 10 && konto < 100) return 50;
+
+  // Technische Anlagen und Maschinen
+  if (konto >= 100 && konto < 300) return 10;
+
+  // Betriebs- und Geschäftsausstattung
+  if (konto >= 300 && konto < 500) {
+    // Büromöbel, Computer, etc.
+    if (konto >= 300 && konto < 320) return 13; // Büromöbel
+    if (konto >= 320 && konto < 340) return 3; // Computer
+    if (konto >= 340 && konto < 360) return 8; // Büromaschinen
+    return 10; // Sonstige
+  }
+
+  // Fahrzeuge
+  if (konto >= 400 && konto < 500) return 6;
+
+  // Finanzanlagen (keine AfA)
+  if (konto >= 600 && konto < 700) return 0;
+
+  return 5; // Default
+}
 
 // ============================================
 // JAHRESABSCHLUSS ROUTER
@@ -320,6 +374,182 @@ export const jahresabschlussRouter = router({
 
         return anlagenspiegel;
       }),
+
+    // Rekonstruktion von Anlagevermögen aus Buchungen
+    rekonstruktion: router({
+      // Analysiere Buchungen und identifiziere potenzielle Anlagegüter
+      analysieren: protectedProcedure
+        .input(
+          z.object({
+            unternehmenId: z.number(),
+            jahr: z.number().optional(), // Optional: Nur Buchungen aus diesem Jahr
+          })
+        )
+        .query(async ({ input }) => {
+          const db = await getDb();
+          if (!db) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Datenbankverbindung nicht verfügbar",
+            });
+          }
+
+          // SKR04: Anlagevermögen = Konten 0000-0999
+          // Suche nach Buchungen mit Sachkonten in diesem Bereich
+          const filters = [
+            eq(buchungen.unternehmenId, input.unternehmenId),
+            eq(buchungen.buchungsart, "anlage"),
+            sql`CAST(${buchungen.sachkonto} AS UNSIGNED) BETWEEN 0 AND 999`,
+          ];
+
+          if (input.jahr) {
+            const vonDatum = `${input.jahr}-01-01`;
+            const bisDatum = `${input.jahr}-12-31`;
+            filters.push(sql`${buchungen.belegdatum} >= ${vonDatum}`);
+            filters.push(sql`${buchungen.belegdatum} <= ${bisDatum}`);
+          }
+
+          const anlagenBuchungen = await db
+            .select()
+            .from(buchungen)
+            .where(and(...filters))
+            .orderBy(desc(buchungen.belegdatum));
+
+          // Gruppiere nach Sachkonto und Geschäftspartner
+          const gruppiert = anlagenBuchungen.reduce((acc, buchung) => {
+            const key = `${buchung.sachkonto}-${buchung.geschaeftspartner}`;
+            if (!acc[key]) {
+              acc[key] = {
+                sachkonto: buchung.sachkonto,
+                geschaeftspartner: buchung.geschaeftspartner,
+                buchungen: [],
+                gesamtbetrag: 0,
+              };
+            }
+            acc[key].buchungen.push(buchung);
+            acc[key].gesamtbetrag += parseFloat(buchung.bruttobetrag);
+            return acc;
+          }, {} as Record<string, any>);
+
+          // Prüfe für jede Gruppe, ob bereits als Anlagegut erfasst
+          const kandidaten = await Promise.all(
+            Object.values(gruppiert).map(async (gruppe: any) => {
+              // Suche nach existierendem Anlagegut mit diesem Sachkonto
+              const existing = await db
+                .select()
+                .from(anlagevermoegen)
+                .where(
+                  and(
+                    eq(anlagevermoegen.unternehmenId, input.unternehmenId),
+                    eq(anlagevermoegen.sachkonto, gruppe.sachkonto)
+                  )
+                )
+                .limit(1);
+
+              const bereitsErfasst = existing.length > 0;
+
+              // Erstelle Vorschlag
+              const ersteBuchung = gruppe.buchungen[gruppe.buchungen.length - 1];
+              const vorschlag = {
+                bezeichnung:
+                  ersteBuchung.buchungstext ||
+                  `${gruppe.geschaeftspartner} - ${gruppe.sachkonto}`,
+                sachkonto: gruppe.sachkonto,
+                anschaffungsdatum: ersteBuchung.belegdatum,
+                anschaffungskosten: gruppe.gesamtbetrag.toFixed(2),
+                kategorie: bestimmeKategorie(gruppe.sachkonto),
+                nutzungsdauer: bestimmeNutzungsdauer(gruppe.sachkonto),
+                abschreibungsmethode: "linear" as const,
+              };
+
+              return {
+                sachkonto: gruppe.sachkonto,
+                geschaeftspartner: gruppe.geschaeftspartner,
+                buchungen: gruppe.buchungen,
+                gesamtbetrag: gruppe.gesamtbetrag,
+                bereitsErfasst,
+                vorschlag,
+              };
+            })
+          );
+
+          // Filtere: Nur nicht erfasste
+          const zuRekonstruieren = kandidaten.filter((k) => !k.bereitsErfasst);
+
+          return {
+            gesamt: kandidaten.length,
+            bereitsErfasst: kandidaten.filter((k) => k.bereitsErfasst).length,
+            zuRekonstruieren: zuRekonstruieren.length,
+            kandidaten: zuRekonstruieren,
+          };
+        }),
+
+      // Importiere ausgewählte Rekonstruktionen als Anlagegüter
+      importieren: protectedProcedure
+        .input(
+          z.object({
+            unternehmenId: z.number(),
+            anlagen: z.array(
+              z.object({
+                bezeichnung: z.string(),
+                sachkonto: z.string(),
+                anschaffungsdatum: z.string(),
+                anschaffungskosten: z.string(),
+                kategorie: z.string().optional(),
+                nutzungsdauer: z.number().optional(),
+                abschreibungsmethode: z.enum(["linear", "degressiv", "keine"]).optional(),
+              })
+            ),
+          })
+        )
+        .mutation(async ({ input, ctx }) => {
+          const db = await getDb();
+          if (!db) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Datenbankverbindung nicht verfügbar",
+            });
+          }
+
+          const erfolge: number[] = [];
+          const fehler: Array<{ index: number; error: string }> = [];
+
+          for (let i = 0; i < input.anlagen.length; i++) {
+            const anlage = input.anlagen[i];
+
+            try {
+              const result = await db.insert(anlagevermoegen).values({
+                unternehmenId: input.unternehmenId,
+                kontonummer: anlage.sachkonto,
+                bezeichnung: anlage.bezeichnung,
+                sachkonto: anlage.sachkonto,
+                anschaffungsdatum: new Date(anlage.anschaffungsdatum),
+                anschaffungskosten: anlage.anschaffungskosten,
+                kategorie: anlage.kategorie || null,
+                nutzungsdauer: anlage.nutzungsdauer || null,
+                abschreibungsmethode: anlage.abschreibungsmethode || "linear",
+                aktiv: true,
+              });
+
+              erfolge.push(result[0].insertId);
+            } catch (error) {
+              console.error(`Fehler beim Importieren von Anlage ${i + 1}:`, error);
+              fehler.push({
+                index: i,
+                error: error instanceof Error ? error.message : "Unbekannter Fehler",
+              });
+            }
+          }
+
+          return {
+            success: true,
+            importiert: erfolge.length,
+            fehler: fehler.length,
+            fehlerDetails: fehler,
+            message: `${erfolge.length} von ${input.anlagen.length} Anlagegüter erfolgreich importiert`,
+          };
+        }),
+    }),
   }),
 
   // ============================================
