@@ -9,6 +9,7 @@ import {
   gesellschafter,
   eroeffnungsbilanz,
   buchungen,
+  sachkonten,
   InsertAnlagevermoegen,
   InsertBankkonto,
   InsertBeteiligung,
