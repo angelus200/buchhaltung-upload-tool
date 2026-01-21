@@ -1,5 +1,3 @@
-import ExcelJS from 'exceljs';
-
 interface BilanzPosition {
   sachkonto: string;
   kontobezeichnung?: string;
@@ -42,9 +40,11 @@ export const exportBilanzExcel = async (
   passiva: BilanzPosition[],
   options: ExportOptions
 ): Promise<void> => {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Buchhaltung KI';
-  workbook.created = new Date();
+  try {
+    const ExcelJS = (await import('exceljs')).default;
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Buchhaltung KI';
+    workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet('Bilanz');
 
@@ -169,9 +169,12 @@ export const exportBilanzExcel = async (
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `Bilanz_${options.unternehmen.replace(/\s+/g, '_')}_${formatDate(options.stichtag).replace(/\./g, '')}.xlsx`;
-  link.click();
-  window.URL.revokeObjectURL(url);
+    link.download = `Bilanz_${options.unternehmen.replace(/\s+/g, '_')}_${formatDate(options.stichtag).replace(/\./g, '')}.xlsx`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    throw new Error('Excel-Export-Bibliotheken nicht verfügbar. Bitte führen Sie "pnpm install" aus.');
+  }
 };
 
 /**
@@ -182,9 +185,11 @@ export const exportGuVExcel = async (
   aufwendungen: GuVPosition[],
   options: ExportOptions
 ): Promise<void> => {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Buchhaltung KI';
-  workbook.created = new Date();
+  try {
+    const ExcelJS = (await import('exceljs')).default;
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Buchhaltung KI';
+    workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet('GuV');
 
@@ -315,9 +320,12 @@ export const exportGuVExcel = async (
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `GuV_${options.unternehmen.replace(/\s+/g, '_')}_${options.jahr || 'aktuell'}.xlsx`;
-  link.click();
-  window.URL.revokeObjectURL(url);
+    link.download = `GuV_${options.unternehmen.replace(/\s+/g, '_')}_${options.jahr || 'aktuell'}.xlsx`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    throw new Error('Excel-Export-Bibliotheken nicht verfügbar. Bitte führen Sie "pnpm install" aus.');
+  }
 };
 
 /**
@@ -327,9 +335,11 @@ export const exportAnlagenspiegelExcel = async (
   anlagen: any[],
   options: ExportOptions
 ): Promise<void> => {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Buchhaltung KI';
-  workbook.created = new Date();
+  try {
+    const ExcelJS = (await import('exceljs')).default;
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Buchhaltung KI';
+    workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet('Anlagenspiegel');
 
@@ -440,7 +450,10 @@ export const exportAnlagenspiegelExcel = async (
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `Anlagenspiegel_${options.unternehmen.replace(/\s+/g, '_')}_${formatDate(options.stichtag).replace(/\./g, '')}.xlsx`;
-  link.click();
-  window.URL.revokeObjectURL(url);
+    link.download = `Anlagenspiegel_${options.unternehmen.replace(/\s+/g, '_')}_${formatDate(options.stichtag).replace(/\./g, '')}.xlsx`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    throw new Error('Excel-Export-Bibliotheken nicht verfügbar. Bitte führen Sie "pnpm install" aus.');
+  }
 };

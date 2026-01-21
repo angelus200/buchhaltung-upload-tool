@@ -182,7 +182,7 @@ export default function Anlagevermoegen() {
       ...form,
     });
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!selectedUnternehmen || !anlagenQuery.data) {
       toast.error('Keine Daten zum Exportieren vorhanden');
       return;
@@ -193,7 +193,7 @@ export default function Anlagevermoegen() {
         (u) => u.unternehmen.id === selectedUnternehmen
       );
 
-      exportAnlagenspiegelPDF(anlagenQuery.data, {
+      await exportAnlagenspiegelPDF(anlagenQuery.data, {
         unternehmen: unternehmenObj?.unternehmen.name || 'Unbekannt',
         stichtag: `${new Date().getFullYear()}-12-31`,
       });

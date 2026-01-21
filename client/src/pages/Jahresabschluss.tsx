@@ -168,7 +168,7 @@ export default function Jahresabschluss() {
     gesellschafterQuery.isLoading ||
     guvQuery.isLoading;
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!selectedUnternehmen || !eroeffnungsbilanzQuery.data) {
       toast.error("Keine Daten zum Exportieren vorhanden");
       return;
@@ -199,7 +199,7 @@ export default function Jahresabschluss() {
         (u) => u.unternehmen.id === selectedUnternehmen
       );
 
-      exportBilanzPDF(aktiva, passiva, {
+      await exportBilanzPDF(aktiva, passiva, {
         unternehmen: selectedUnternehmenObj?.unternehmen.name || "Unbekannt",
         stichtag: `${selectedJahr}-12-31`,
       });
@@ -210,7 +210,7 @@ export default function Jahresabschluss() {
     }
   };
 
-  const handleExportGuVPDF = () => {
+  const handleExportGuVPDF = async () => {
     if (!selectedUnternehmen || !guvQuery.data) {
       toast.error("Keine GuV-Daten zum Exportieren vorhanden");
       return;
@@ -223,7 +223,7 @@ export default function Jahresabschluss() {
         (u) => u.unternehmen.id === selectedUnternehmen
       );
 
-      exportGuVPDF(guvData.ertraege, guvData.aufwendungen, {
+      await exportGuVPDF(guvData.ertraege, guvData.aufwendungen, {
         unternehmen: selectedUnternehmenObj?.unternehmen.name || "Unbekannt",
         stichtag: `${selectedJahr}-12-31`,
         jahr: selectedJahr,
