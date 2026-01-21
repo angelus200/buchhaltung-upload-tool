@@ -1,4 +1,4 @@
-import { eq, desc, and, or, gte, lte, count, sum } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, count, sum, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -358,13 +358,23 @@ export const buchungenRouter = router({
     )
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) return { count: 0, netto: 0, steuer: 0, brutto: 0 };
+      if (!db) return {
+        count: 0,
+        netto: 0,
+        steuer: 0,
+        brutto: 0,
+        guvCount: 0,
+        guvNetto: 0,
+        guvSteuer: 0,
+        guvBrutto: 0,
+      };
 
       const conditions = [eq(buchungen.unternehmenId, input.unternehmenId)];
       if (input.monat) conditions.push(eq(buchungen.periode, input.monat));
       if (input.jahr) conditions.push(eq(buchungen.wirtschaftsjahr, input.jahr));
       if (input.importReferenz) conditions.push(eq(buchungen.importReferenz, input.importReferenz));
 
+      // Gesamt-Summen (alle Buchungen)
       const result = await db
         .select({
           count: count(),
@@ -374,12 +384,51 @@ export const buchungenRouter = router({
         .from(buchungen)
         .where(and(...conditions));
 
+      // GuV-relevante Summen (nur Kontenklassen 4-7)
+      const guvResult = await db
+        .select({
+          count: count(),
+          netto: sum(buchungen.nettobetrag),
+          brutto: sum(buchungen.bruttobetrag),
+        })
+        .from(buchungen)
+        .where(
+          and(
+            ...conditions,
+            or(
+              // Erträge (Klasse 4)
+              sql`${buchungen.habenKonto} LIKE '4%'`,
+              sql`${buchungen.sachkonto} LIKE '4%'`,
+              // Aufwendungen (Klassen 5-7)
+              sql`${buchungen.sollKonto} LIKE '5%'`,
+              sql`${buchungen.sollKonto} LIKE '6%'`,
+              sql`${buchungen.sollKonto} LIKE '7%'`,
+              sql`${buchungen.sachkonto} LIKE '5%'`,
+              sql`${buchungen.sachkonto} LIKE '6%'`,
+              sql`${buchungen.sachkonto} LIKE '7%'`
+            )
+          )
+        );
+
       const row = result[0];
+      const guvRow = guvResult[0];
+
+      const netto = parseFloat(row.netto || "0");
+      const brutto = parseFloat(row.brutto || "0");
+      const guvNetto = parseFloat(guvRow.netto || "0");
+      const guvBrutto = parseFloat(guvRow.brutto || "0");
+
       return {
+        // Gesamt-Summen (alle Buchungen)
         count: row.count || 0,
-        netto: parseFloat(row.netto || "0"),
-        brutto: parseFloat(row.brutto || "0"),
-        steuer: parseFloat(row.brutto || "0") - parseFloat(row.netto || "0"),
+        netto,
+        brutto,
+        steuer: brutto - netto,
+        // GuV-relevante Summen
+        guvCount: guvRow.count || 0,
+        guvNetto,
+        guvBrutto,
+        guvSteuer: guvBrutto - guvNetto,
       };
     }),
 

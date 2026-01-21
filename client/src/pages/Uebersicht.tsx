@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -365,6 +366,7 @@ export default function Uebersicht() {
   const [filterSachkonto, setFilterSachkonto] = useState("");
   const [filterImportRef, setFilterImportRef] = useState("");
   const [filterGeschaeftspartner, setFilterGeschaeftspartner] = useState("");
+  const [showOnlyGuV, setShowOnlyGuV] = useState(false);
 
   // Modal states
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -444,26 +446,57 @@ export default function Uebersicht() {
   }, [unternehmenQuery.data, selectedUnternehmen]);
 
   const buchungen = buchungenQuery.data || [];
-  const stats = statsQuery.data || { count: 0, netto: 0, steuer: 0, brutto: 0 };
+  const stats = statsQuery.data || {
+    count: 0,
+    netto: 0,
+    steuer: 0,
+    brutto: 0,
+    guvCount: 0,
+    guvNetto: 0,
+    guvSteuer: 0,
+    guvBrutto: 0,
+  };
+
+  // Filtere Buchungen für GuV-Ansicht
+  const displayBuchungen = useMemo(() => {
+    if (!showOnlyGuV) return buchungen;
+
+    return buchungen.filter((b: any) => {
+      const sachkonto = b.sachkonto || "";
+      const sollKonto = b.sollKonto || "";
+      const habenKonto = b.habenKonto || "";
+
+      // Prüfe ob es ein GuV-Konto ist (Klassen 4-7)
+      const firstDigit = sachkonto.charAt(0);
+      const sollFirst = sollKonto.charAt(0);
+      const habenFirst = habenKonto.charAt(0);
+
+      return (
+        firstDigit >= "4" && firstDigit <= "7" ||
+        sollFirst >= "4" && sollFirst <= "7" ||
+        habenFirst >= "4" && habenFirst <= "7"
+      );
+    });
+  }, [buchungen, showOnlyGuV]);
 
   const monatName =
     MONATE.find((m) => m.value === String(selectedMonth))?.label || "";
 
-  // Gruppierungen nach Konto und Kreditor
+  // Gruppierungen nach Konto und Kreditor (basiert auf gefilterten Buchungen)
   const nachKonto = useMemo(() => {
     const grouped: Record<string, { bezeichnung: string; summe: number }> = {};
-    buchungen.forEach((b: any) => {
+    displayBuchungen.forEach((b: any) => {
       if (!grouped[b.sachkonto]) {
         grouped[b.sachkonto] = { bezeichnung: b.sachkonto, summe: 0 };
       }
       grouped[b.sachkonto].summe += parseFloat(b.bruttobetrag || "0");
     });
     return Object.entries(grouped).sort((a, b) => b[1].summe - a[1].summe);
-  }, [buchungen]);
+  }, [displayBuchungen]);
 
   const nachGeschaeftspartner = useMemo(() => {
     const grouped: Record<string, number> = {};
-    buchungen.forEach((b: any) => {
+    displayBuchungen.forEach((b: any) => {
       const partner = b.geschaeftspartner || "Unbekannt";
       if (!grouped[partner]) {
         grouped[partner] = 0;
@@ -471,7 +504,7 @@ export default function Uebersicht() {
       grouped[partner] += parseFloat(b.bruttobetrag || "0");
     });
     return Object.entries(grouped).sort((a, b) => b[1] - a[1]);
-  }, [buchungen]);
+  }, [displayBuchungen]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -579,11 +612,16 @@ export default function Uebersicht() {
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                   <FileText className="w-6 h-6 text-primary" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-sm text-muted-foreground">Buchungen</p>
                   <p className="text-2xl font-bold tabular-nums">
                     {stats.count}
                   </p>
+                  {stats.guvCount !== stats.count && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      davon GuV: {stats.guvCount}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -595,11 +633,16 @@ export default function Uebersicht() {
                 <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
                   <Euro className="w-6 h-6 text-accent" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-sm text-muted-foreground">Nettobetrag</p>
                   <p className="text-2xl font-bold tabular-nums font-mono">
                     {formatCurrency(stats.netto)} €
                   </p>
+                  {stats.guvNetto !== stats.netto && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      davon GuV: {formatCurrency(stats.guvNetto)} €
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -611,11 +654,16 @@ export default function Uebersicht() {
                 <div className="w-12 h-12 rounded-lg bg-yellow-500/10 flex items-center justify-center">
                   <TrendingUp className="w-6 h-6 text-yellow-600" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-sm text-muted-foreground">Vorsteuer</p>
                   <p className="text-2xl font-bold tabular-nums font-mono">
                     {formatCurrency(stats.steuer)} €
                   </p>
+                  {stats.guvSteuer !== stats.steuer && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      davon GuV: {formatCurrency(stats.guvSteuer)} €
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -627,11 +675,16 @@ export default function Uebersicht() {
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Euro className="w-6 h-6 text-primary" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-sm text-muted-foreground">Bruttobetrag</p>
                   <p className="text-2xl font-bold tabular-nums font-mono">
                     {formatCurrency(stats.brutto)} €
                   </p>
+                  {stats.guvBrutto !== stats.brutto && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      davon GuV: {formatCurrency(stats.guvBrutto)} €
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -652,13 +705,35 @@ export default function Uebersicht() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {/* GuV-Filter Toggle */}
+                <div className="flex items-center gap-2 mb-4 p-3 bg-muted/50 rounded-lg">
+                  <Checkbox
+                    id="guv-filter"
+                    checked={showOnlyGuV}
+                    onCheckedChange={(checked) => setShowOnlyGuV(checked as boolean)}
+                  />
+                  <Label
+                    htmlFor="guv-filter"
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    Nur GuV-relevante Konten anzeigen (Klassen 4-7)
+                  </Label>
+                  {showOnlyGuV && (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {displayBuchungen.length} von {buchungen.length} Buchungen
+                    </span>
+                  )}
+                </div>
+
                 {buchungenQuery.isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin" />
                   </div>
-                ) : buchungen.length === 0 ? (
+                ) : displayBuchungen.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    Keine Buchungen gefunden
+                    {showOnlyGuV && buchungen.length > 0
+                      ? "Keine GuV-relevanten Buchungen gefunden"
+                      : "Keine Buchungen gefunden"}
                   </div>
                 ) : (
                   <Table>
@@ -673,7 +748,7 @@ export default function Uebersicht() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {buchungen.map((b: any) => (
+                      {displayBuchungen.map((b: any) => (
                         <TableRow key={b.id}>
                           <TableCell>{formatDate(b.belegdatum)}</TableCell>
                           <TableCell className="font-mono text-sm">
