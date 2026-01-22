@@ -159,11 +159,11 @@ const STAMMDATEN_TYPEN = [
       { key: "eintrittsdatum", label: "Eintrittsdatum" },
     ]
   },
-  { 
-    value: "bankkonto", 
-    label: "Bankkonten", 
+  {
+    value: "bankkonto",
+    label: "Bankkonten",
     labelSingular: "Bankkonto",
-    icon: Landmark, 
+    icon: Landmark,
     color: "text-teal-600",
     bgColor: "bg-teal-100",
     kontobereich: "1200-1299",
@@ -177,7 +177,56 @@ const STAMMDATEN_TYPEN = [
       { key: "kreditlinie", label: "Kreditlinie (€)" },
     ]
   },
-  { 
+  {
+    value: "kreditkarte",
+    label: "Kreditkarten",
+    labelSingular: "Kreditkarte",
+    icon: CreditCard,
+    color: "text-pink-600",
+    bgColor: "bg-pink-100",
+    kontobereich: "1250-1259",
+    felder: [
+      { key: "name", label: "Kartenname", required: true },
+      { key: "provider", label: "Anbieter", required: true, options: ["Soldo Master", "Payhawk", "American Express", "Sonstiges"] },
+      { key: "lastFour", label: "Letzte 4 Stellen" },
+      { key: "creditLimit", label: "Kreditlimit (€)" },
+      { key: "billingDay", label: "Abrechnungstag (1-31)" },
+      { key: "currency", label: "Währung" },
+    ]
+  },
+  {
+    value: "zahlungsdienstleister",
+    label: "Zahlungsdienstleister",
+    labelSingular: "Zahlungsdienstleister",
+    icon: ArrowRightLeft,
+    color: "text-violet-600",
+    bgColor: "bg-violet-100",
+    kontobereich: "1260-1269",
+    felder: [
+      { key: "name", label: "Kontoname", required: true },
+      { key: "provider", label: "Anbieter", required: true, options: ["Sparkasse", "Sumup", "Stripe", "PayPal", "Sonstiges"] },
+      { key: "accountId", label: "Konto-ID/E-Mail" },
+      { key: "feePercent", label: "Gebühren (%)" },
+      { key: "currency", label: "Währung" },
+    ]
+  },
+  {
+    value: "brokerkonto",
+    label: "Brokerkonten",
+    labelSingular: "Brokerkonto",
+    icon: PiggyBank,
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-100",
+    kontobereich: "1270-1279",
+    felder: [
+      { key: "name", label: "Depotname", required: true },
+      { key: "broker", label: "Broker", required: true },
+      { key: "depotNumber", label: "Depotnummer" },
+      { key: "clearingAccount", label: "Verrechnungskonto" },
+      { key: "currency", label: "Währung" },
+    ]
+  },
+  {
     value: "kostenstelle", 
     label: "Kostenstellen", 
     labelSingular: "Kostenstelle",
