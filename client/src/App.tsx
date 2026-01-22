@@ -37,6 +37,7 @@ import Bankkonten from "./pages/Bankkonten";
 import Finanzkonten from "./pages/Finanzkonten";
 import Eroeffnungsbilanz from "./pages/Eroeffnungsbilanz";
 import Jahresabschluss from "./pages/Jahresabschluss";
+import Hilfe from "./pages/Hilfe";
 
 function Router() {
   return (
@@ -211,6 +212,12 @@ function Router() {
       <Route path={"/jahresabschluss"}>
         <ProtectedRoute>
           <Jahresabschluss />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/hilfe"}>
+        <ProtectedRoute>
+          <Hilfe />
         </ProtectedRoute>
       </Route>
 

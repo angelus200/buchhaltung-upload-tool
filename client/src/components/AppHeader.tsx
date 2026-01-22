@@ -35,7 +35,8 @@ import {
   Package,
   Warehouse,
   ClipboardList,
-  Calculator
+  Calculator,
+  HelpCircle
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -466,13 +467,23 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               </Button>
             </Link>
             <Link href="/admin">
-              <Button 
-                variant={isActive("/admin") ? "default" : "ghost"} 
-                size="sm" 
+              <Button
+                variant={isActive("/admin") ? "default" : "ghost"}
+                size="sm"
                 className="gap-1.5 h-8 text-xs"
                 style={isActive("/admin") ? { backgroundColor: firmenFarbe } : {}}
               >
                 <Shield className="w-3.5 h-3.5" />
+              </Button>
+            </Link>
+            <Link href="/hilfe">
+              <Button
+                variant={isActive("/hilfe") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/hilfe") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
               </Button>
             </Link>
 
