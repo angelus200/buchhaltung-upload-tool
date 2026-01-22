@@ -38,6 +38,7 @@ import {
   Calculator
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Link } from "wouter";
 
 interface Kapitel {
   id: string;
@@ -1291,6 +1292,12 @@ export default function Hilfe() {
                     <div className="text-xs text-slate-500 mt-2">Ausführliche Anleitungen & FAQs</div>
                   </div>
                 </div>
+                <h4 className="font-semibold mt-6 mb-2">Für Steuerberater:</h4>
+                <p>
+                  Sind Sie Steuerberater und betreuen Mandanten, die buchhaltung-ki.app nutzen?
+                  Unser <Link href="/steuerberater-handbuch" className="text-teal-600 hover:underline font-semibold">Steuerberater-Handbuch</Link> erklärt
+                  die DATEV-Schnittstelle, Datenübergabe und Zusammenarbeit im Detail.
+                </p>
                 <h4 className="font-semibold mt-6 mb-2">Technische Informationen:</h4>
                 <ul className="space-y-1">
                   <li><strong>Hosting:</strong> Railway (EU-Datacenter, GDPR-konform)</li>

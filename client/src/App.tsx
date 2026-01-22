@@ -38,12 +38,14 @@ import Finanzkonten from "./pages/Finanzkonten";
 import Eroeffnungsbilanz from "./pages/Eroeffnungsbilanz";
 import Jahresabschluss from "./pages/Jahresabschluss";
 import Hilfe from "./pages/Hilfe";
+import SteuerberaterHandbuch from "./pages/SteuerberaterHandbuch";
 
 function Router() {
   return (
     <Switch>
       {/* Öffentliche Seiten */}
       <Route path={"/login"} component={Login} />
+      <Route path={"/steuerberater-handbuch"} component={SteuerberaterHandbuch} />
 
       {/* Admin-Only Routen (nur für Benutzer mit role === 'admin') */}
       <Route path={"/admin"}>
