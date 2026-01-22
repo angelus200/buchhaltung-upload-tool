@@ -48,6 +48,10 @@ import {
   Trash2,
   Plus,
   Loader2,
+  Search,
+  AlertTriangle,
+  X,
+  CheckCircle2,
 } from "lucide-react";
 
 const MONATE = [
@@ -368,6 +372,23 @@ export default function Uebersicht() {
   const [filterGeschaeftspartner, setFilterGeschaeftspartner] = useState("");
   const [showOnlyGuV, setShowOnlyGuV] = useState(false);
 
+  // Erweiterte Suche
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [searchDateFrom, setSearchDateFrom] = useState("");
+  const [searchDateTo, setSearchDateTo] = useState("");
+  const [searchAmountMin, setSearchAmountMin] = useState("");
+  const [searchAmountMax, setSearchAmountMax] = useState("");
+  const [searchSollKonto, setSearchSollKonto] = useState("");
+  const [searchHabenKonto, setSearchHabenKonto] = useState("");
+  const [searchActive, setSearchActive] = useState(false);
+
+  // Duplikat-Erkennung
+  const [duplicatesDialogOpen, setDuplicatesDialogOpen] = useState(false);
+  const [selectedDuplicatePair, setSelectedDuplicatePair] = useState<any>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingBuchungId, setDeletingBuchungId] = useState<number | null>(null);
+
   // Modal states
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -438,6 +459,54 @@ export default function Uebersicht() {
     },
   });
 
+  // Erweiterte Suche
+  const searchQuery = trpc.buchungen.search.useQuery(
+    {
+      unternehmenId: selectedUnternehmen || 0,
+      searchText: searchText || undefined,
+      dateFrom: searchDateFrom || undefined,
+      dateTo: searchDateTo || undefined,
+      amountMin: searchAmountMin ? parseFloat(searchAmountMin) : undefined,
+      amountMax: searchAmountMax ? parseFloat(searchAmountMax) : undefined,
+      sollKonto: searchSollKonto || undefined,
+      habenKonto: searchHabenKonto || undefined,
+      sachkonto: filterSachkonto || undefined,
+    },
+    { enabled: searchActive && !!selectedUnternehmen }
+  );
+
+  // Duplikat-Erkennung
+  const duplicatesQuery = trpc.buchungen.findDuplicates.useQuery(
+    { unternehmenId: selectedUnternehmen || 0 },
+    { enabled: duplicatesDialogOpen && !!selectedUnternehmen }
+  );
+
+  const markAsCheckedMutation = trpc.buchungen.markAsChecked.useMutation({
+    onSuccess: () => {
+      toast.success("Als geprüft markiert");
+      duplicatesQuery.refetch();
+      setSelectedDuplicatePair(null);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const deleteDuplicateMutation = trpc.buchungen.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Buchung gelöscht");
+      buchungenQuery.refetch();
+      duplicatesQuery.refetch();
+      statsQuery.refetch();
+      setDeleteConfirmOpen(false);
+      setDeletingBuchungId(null);
+      setSelectedDuplicatePair(null);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
   // Set default Unternehmen
   useEffect(() => {
     if (unternehmenQuery.data && unternehmenQuery.data.length > 0 && !selectedUnternehmen) {
@@ -445,7 +514,8 @@ export default function Uebersicht() {
     }
   }, [unternehmenQuery.data, selectedUnternehmen]);
 
-  const buchungen = buchungenQuery.data || [];
+  // Verwende Suchergebnisse wenn Suche aktiv, sonst normale List
+  const buchungen = searchActive ? (searchQuery.data || []) : (buchungenQuery.data || []);
   const stats = statsQuery.data || {
     count: 0,
     netto: 0,
@@ -609,6 +679,26 @@ export default function Uebersicht() {
             onChange={(e) => setFilterGeschaeftspartner(e.target.value)}
             className="w-48"
           />
+
+          {/* Erweiterte Suche Button */}
+          <Button
+            variant={searchActive ? "default" : "outline"}
+            onClick={() => setSearchDialogOpen(true)}
+            disabled={!selectedUnternehmen}
+          >
+            <Search className="w-4 h-4 mr-2" />
+            {searchActive ? "Suche aktiv" : "Erweiterte Suche"}
+          </Button>
+
+          {/* Doppelbuchungen prüfen Button */}
+          <Button
+            variant="outline"
+            onClick={() => setDuplicatesDialogOpen(true)}
+            disabled={!selectedUnternehmen}
+          >
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            Doppelbuchungen prüfen
+          </Button>
 
           {/* Neue Buchung Button */}
           <Button
@@ -939,6 +1029,303 @@ export default function Uebersicht() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Erweiterte Suche Dialog */}
+      <Dialog open={searchDialogOpen} onOpenChange={setSearchDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Erweiterte Buchungssuche</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Text-Suche */}
+            <div>
+              <Label>Suchtext (Buchungstext, Belegnummer, Geschäftspartner)</Label>
+              <Input
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Suchbegriff eingeben..."
+              />
+            </div>
+
+            {/* Datumsbereich */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Datum von</Label>
+                <Input
+                  type="date"
+                  value={searchDateFrom}
+                  onChange={(e) => setSearchDateFrom(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Datum bis</Label>
+                <Input
+                  type="date"
+                  value={searchDateTo}
+                  onChange={(e) => setSearchDateTo(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Betragsbereich */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Betrag min (€)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={searchAmountMin}
+                  onChange={(e) => setSearchAmountMin(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <Label>Betrag max (€)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={searchAmountMax}
+                  onChange={(e) => setSearchAmountMax(e.target.value)}
+                  placeholder="999999.99"
+                />
+              </div>
+            </div>
+
+            {/* Konten-Filter */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Soll-Konto</Label>
+                <Input
+                  value={searchSollKonto}
+                  onChange={(e) => setSearchSollKonto(e.target.value)}
+                  placeholder="z.B. 120000"
+                />
+              </div>
+              <div>
+                <Label>Haben-Konto</Label>
+                <Input
+                  value={searchHabenKonto}
+                  onChange={(e) => setSearchHabenKonto(e.target.value)}
+                  placeholder="z.B. 400000"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                // Suche zurücksetzen
+                setSearchActive(false);
+                setSearchText("");
+                setSearchDateFrom("");
+                setSearchDateTo("");
+                setSearchAmountMin("");
+                setSearchAmountMax("");
+                setSearchSollKonto("");
+                setSearchHabenKonto("");
+                setSearchDialogOpen(false);
+              }}
+            >
+              Zurücksetzen
+            </Button>
+            <Button
+              onClick={() => {
+                setSearchActive(true);
+                setSearchDialogOpen(false);
+                toast.success("Suche gestartet");
+              }}
+            >
+              <Search className="w-4 h-4 mr-2" />
+              Suchen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Doppelbuchungen Dialog */}
+      <Dialog open={duplicatesDialogOpen} onOpenChange={setDuplicatesDialogOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Doppelbuchungen prüfen</DialogTitle>
+          </DialogHeader>
+
+          {duplicatesQuery.isLoading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <span className="ml-2">Prüfe Buchungen...</span>
+            </div>
+          )}
+
+          {duplicatesQuery.data && duplicatesQuery.data.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <CheckCircle2 className="w-12 h-12 mx-auto mb-4 text-green-600" />
+              <p>Keine Doppelbuchungen gefunden!</p>
+            </div>
+          )}
+
+          {duplicatesQuery.data && duplicatesQuery.data.length > 0 && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {duplicatesQuery.data.length} potenzielle Doppelbuchung(en) gefunden
+              </p>
+
+              {duplicatesQuery.data.map((pair: any, index: number) => (
+                <Card key={index} className="border-orange-200 bg-orange-50/50">
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-orange-600" />
+                      {pair.reason}
+                      <span className="ml-auto text-xs font-normal text-muted-foreground">
+                        Ähnlichkeit: {pair.similarity}%
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Buchung 1 */}
+                      <div className="border rounded-lg p-4 bg-white">
+                        <div className="text-xs text-muted-foreground mb-2">
+                          Buchung #{pair.buchung1.id}
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          <div>
+                            <strong>Datum:</strong> {formatDate(pair.buchung1.belegdatum)}
+                          </div>
+                          <div>
+                            <strong>Beleg:</strong> {pair.buchung1.belegnummer || pair.buchung1.datevBelegnummer || "-"}
+                          </div>
+                          <div>
+                            <strong>Betrag:</strong> {formatCurrency(parseFloat(pair.buchung1.bruttobetrag))} €
+                          </div>
+                          <div>
+                            <strong>Konto:</strong> {pair.buchung1.sachkonto || `${pair.buchung1.sollKonto}/${pair.buchung1.habenKonto}`}
+                          </div>
+                          <div>
+                            <strong>Text:</strong> {pair.buchung1.buchungstext || pair.buchung1.datevBuchungstext || "-"}
+                          </div>
+                          <div>
+                            <strong>Partner:</strong> {pair.buchung1.geschaeftspartner || "-"}
+                          </div>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="mt-4 w-full"
+                          onClick={() => {
+                            setDeletingBuchungId(pair.buchung1.id);
+                            setSelectedDuplicatePair(pair);
+                            setDeleteConfirmOpen(true);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3 mr-2" />
+                          Löschen
+                        </Button>
+                      </div>
+
+                      {/* Buchung 2 */}
+                      <div className="border rounded-lg p-4 bg-white">
+                        <div className="text-xs text-muted-foreground mb-2">
+                          Buchung #{pair.buchung2.id}
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          <div>
+                            <strong>Datum:</strong> {formatDate(pair.buchung2.belegdatum)}
+                          </div>
+                          <div>
+                            <strong>Beleg:</strong> {pair.buchung2.belegnummer || pair.buchung2.datevBelegnummer || "-"}
+                          </div>
+                          <div>
+                            <strong>Betrag:</strong> {formatCurrency(parseFloat(pair.buchung2.bruttobetrag))} €
+                          </div>
+                          <div>
+                            <strong>Konto:</strong> {pair.buchung2.sachkonto || `${pair.buchung2.sollKonto}/${pair.buchung2.habenKonto}`}
+                          </div>
+                          <div>
+                            <strong>Text:</strong> {pair.buchung2.buchungstext || pair.buchung2.datevBuchungstext || "-"}
+                          </div>
+                          <div>
+                            <strong>Partner:</strong> {pair.buchung2.geschaeftspartner || "-"}
+                          </div>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="mt-4 w-full"
+                          onClick={() => {
+                            setDeletingBuchungId(pair.buchung2.id);
+                            setSelectedDuplicatePair(pair);
+                            setDeleteConfirmOpen(true);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3 mr-2" />
+                          Löschen
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          markAsCheckedMutation.mutate({
+                            unternehmenId: selectedUnternehmen!,
+                            buchung1Id: pair.buchung1.id,
+                            buchung2Id: pair.buchung2.id,
+                          });
+                        }}
+                        disabled={markAsCheckedMutation.isPending}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Ist keine Doppelbuchung
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDuplicatesDialogOpen(false)}>
+              Schließen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lösch-Bestätigung für Duplikate */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Buchung wirklich löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchten Sie die Buchung #{deletingBuchungId} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteConfirmOpen(false);
+              setDeletingBuchungId(null);
+              setSelectedDuplicatePair(null);
+            }}>
+              Abbrechen
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletingBuchungId) {
+                  deleteDuplicateMutation.mutate({ id: deletingBuchungId });
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

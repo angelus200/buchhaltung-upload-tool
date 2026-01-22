@@ -1,4 +1,4 @@
-import { eq, desc, and, or, gte, lte, count, sum, sql } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, count, sum, sql, like } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -665,6 +665,215 @@ export const buchungenRouter = router({
         key: result.key,
         dateiName: input.dateiName,
       };
+    }),
+
+  // Erweiterte Suche in Buchungen
+  search: protectedProcedure
+    .input(
+      z.object({
+        unternehmenId: z.number(),
+        searchText: z.string().optional(), // Suche in Buchungstext, Belegnummer
+        dateFrom: z.string().optional(), // ISO date string
+        dateTo: z.string().optional(),
+        amountMin: z.number().optional(),
+        amountMax: z.number().optional(),
+        sollKonto: z.string().optional(),
+        habenKonto: z.string().optional(),
+        sachkonto: z.string().optional(),
+        limit: z.number().default(100),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const conditions = [eq(buchungen.unternehmenId, input.unternehmenId)];
+
+      // Text-Suche in buchungstext, belegnummer, geschaeftspartner
+      if (input.searchText && input.searchText.trim()) {
+        const searchPattern = `%${input.searchText.trim()}%`;
+        conditions.push(
+          or(
+            like(buchungen.buchungstext, searchPattern),
+            like(buchungen.datevBuchungstext, searchPattern),
+            like(buchungen.belegnummer, searchPattern),
+            like(buchungen.datevBelegnummer, searchPattern),
+            like(buchungen.geschaeftspartner, searchPattern)
+          )!
+        );
+      }
+
+      // Datumsbereich
+      if (input.dateFrom) {
+        conditions.push(gte(buchungen.belegdatum, new Date(input.dateFrom)));
+      }
+      if (input.dateTo) {
+        conditions.push(lte(buchungen.belegdatum, new Date(input.dateTo)));
+      }
+
+      // Betragsbereich
+      if (input.amountMin !== undefined) {
+        conditions.push(gte(buchungen.bruttobetrag, input.amountMin.toString()));
+      }
+      if (input.amountMax !== undefined) {
+        conditions.push(lte(buchungen.bruttobetrag, input.amountMax.toString()));
+      }
+
+      // Konto-Filter
+      if (input.sollKonto) {
+        conditions.push(eq(buchungen.sollKonto, input.sollKonto));
+      }
+      if (input.habenKonto) {
+        conditions.push(eq(buchungen.habenKonto, input.habenKonto));
+      }
+      if (input.sachkonto) {
+        conditions.push(eq(buchungen.sachkonto, input.sachkonto));
+      }
+
+      const results = await db
+        .select()
+        .from(buchungen)
+        .where(and(...conditions))
+        .orderBy(desc(buchungen.belegdatum))
+        .limit(input.limit);
+
+      return results;
+    }),
+
+  // Doppelbuchungen finden
+  findDuplicates: protectedProcedure
+    .input(z.object({ unternehmenId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      // Hole alle Buchungen des Unternehmens
+      const allBuchungen = await db
+        .select()
+        .from(buchungen)
+        .where(eq(buchungen.unternehmenId, input.unternehmenId))
+        .orderBy(desc(buchungen.belegdatum));
+
+      // Hole bereits geprüfte Paare
+      const checkedPairs = await db
+        .select()
+        .from(sql`checked_duplicates`)
+        .where(sql`unternehmenId = ${input.unternehmenId}`);
+
+      const checkedSet = new Set(
+        checkedPairs.map((p: any) => `${p.buchung1Id}-${p.buchung2Id}`)
+      );
+
+      interface DuplicatePair {
+        buchung1: any;
+        buchung2: any;
+        reason: string;
+        similarity: number;
+      }
+
+      const duplicates: DuplicatePair[] = [];
+
+      // Prüfe jedes Buchungspaar
+      for (let i = 0; i < allBuchungen.length; i++) {
+        for (let j = i + 1; j < allBuchungen.length; j++) {
+          const b1 = allBuchungen[i];
+          const b2 = allBuchungen[j];
+
+          // Überspringe wenn schon geprüft
+          const pairKey = `${Math.min(b1.id, b2.id)}-${Math.max(b1.id, b2.id)}`;
+          if (checkedSet.has(pairKey)) continue;
+
+          let isDuplicate = false;
+          let reason = "";
+          let similarity = 0;
+
+          // Kriterium 1: Gleicher Betrag + gleiches Datum + gleiches Konto
+          const sameBrutto = b1.bruttobetrag === b2.bruttobetrag;
+          const sameDate = b1.belegdatum.getTime() === b2.belegdatum.getTime();
+          const sameKonto =
+            b1.sachkonto === b2.sachkonto ||
+            (b1.sollKonto && b1.sollKonto === b2.sollKonto) ||
+            (b1.habenKonto && b1.habenKonto === b2.habenKonto);
+
+          if (sameBrutto && sameDate && sameKonto) {
+            isDuplicate = true;
+            reason = "Gleicher Betrag, Datum und Konto";
+            similarity = 100;
+          }
+
+          // Kriterium 2: Gleiche Belegnummer + unterschiedliche IDs
+          if (
+            !isDuplicate &&
+            b1.belegnummer &&
+            b2.belegnummer &&
+            (b1.belegnummer === b2.belegnummer ||
+              b1.datevBelegnummer === b2.datevBelegnummer)
+          ) {
+            isDuplicate = true;
+            reason = "Gleiche Belegnummer";
+            similarity = 95;
+          }
+
+          // Kriterium 3: Gleicher Buchungstext + Betrag + Datum innerhalb 3 Tage
+          if (!isDuplicate && sameBrutto) {
+            const daysDiff =
+              Math.abs(b1.belegdatum.getTime() - b2.belegdatum.getTime()) /
+              (1000 * 60 * 60 * 24);
+
+            const text1 = (b1.buchungstext || b1.datevBuchungstext || "").toLowerCase();
+            const text2 = (b2.buchungstext || b2.datevBuchungstext || "").toLowerCase();
+
+            if (daysDiff <= 3 && text1 && text2 && text1 === text2) {
+              isDuplicate = true;
+              reason = `Gleicher Text und Betrag (${Math.round(daysDiff)} Tage Abstand)`;
+              similarity = 85;
+            }
+          }
+
+          if (isDuplicate) {
+            duplicates.push({
+              buchung1: b1,
+              buchung2: b2,
+              reason,
+              similarity,
+            });
+          }
+
+          // Begrenze Ergebnis auf 50 Paare
+          if (duplicates.length >= 50) break;
+        }
+        if (duplicates.length >= 50) break;
+      }
+
+      return duplicates;
+    }),
+
+  // Buchungspaar als "keine Doppelbuchung" markieren
+  markAsChecked: protectedProcedure
+    .input(
+      z.object({
+        unternehmenId: z.number(),
+        buchung1Id: z.number(),
+        buchung2Id: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Datenbank nicht verfügbar");
+
+      // Sortiere IDs damit Reihenfolge egal ist
+      const [id1, id2] =
+        input.buchung1Id < input.buchung2Id
+          ? [input.buchung1Id, input.buchung2Id]
+          : [input.buchung2Id, input.buchung1Id];
+
+      await db.execute(
+        sql`INSERT INTO checked_duplicates (unternehmenId, buchung1Id, buchung2Id, checkedBy)
+            VALUES (${input.unternehmenId}, ${id1}, ${id2}, ${ctx.user.id})
+            ON DUPLICATE KEY UPDATE checkedAt = CURRENT_TIMESTAMP`
+      );
+
+      return { success: true };
     }),
 });
 
