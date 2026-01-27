@@ -1,5 +1,8 @@
 FROM node:18-alpine
 
+# Install poppler-utils for PDF OCR (pdftoppm command)
+RUN apk add --no-cache poppler-utils
+
 WORKDIR /app
 
 COPY package*.json ./
