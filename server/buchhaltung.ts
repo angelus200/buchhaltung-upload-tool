@@ -280,7 +280,7 @@ export const buchungenRouter = router({
         steuersatz: z.string(),
         bruttobetrag: z.string(),
         buchungstext: z.string().optional(),
-        belegUrl: z.string().optional(),
+        belegUrl: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -317,7 +317,7 @@ export const buchungenRouter = router({
         steuersatz: z.string().optional(),
         bruttobetrag: z.string().optional(),
         buchungstext: z.string().optional(),
-        belegUrl: z.string().optional(),
+        belegUrl: z.string().nullable().optional(),
         status: z.enum(["entwurf", "geprueft", "exportiert"]).optional(),
       })
     )
