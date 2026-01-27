@@ -1301,7 +1301,12 @@ export default function Home() {
                                     dateiBase64: base64,
                                     contentType: buchung.belegDatei.type,
                                   });
-                                  belegUrl = uploadResult.url;
+                                  belegUrl = uploadResult.url || undefined;
+
+                                  // Warnung anzeigen wenn Upload fehlgeschlagen
+                                  if (uploadResult.warning) {
+                                    toast.warning(uploadResult.warning);
+                                  }
                                 }
 
                                 // 2. Buchung in der Datenbank speichern
@@ -1591,14 +1596,19 @@ export default function Home() {
                             reader.onerror = reject;
                             reader.readAsDataURL(buchung.belegDatei!);
                           });
-                          
+
                           const uploadResult = await uploadBelegMutation.mutateAsync({
                             unternehmenId: selectedUnternehmenId,
                             dateiName: buchung.belegDatei.name,
                             dateiBase64: base64,
                             contentType: buchung.belegDatei.type,
                           });
-                          belegUrl = uploadResult.url;
+                          belegUrl = uploadResult.url || undefined;
+
+                          // Warnung anzeigen wenn Upload fehlgeschlagen
+                          if (uploadResult.warning) {
+                            toast.warning(uploadResult.warning);
+                          }
                         }
                         
                         // 2. Buchung in der Datenbank speichern

@@ -2,7 +2,7 @@ import { eq, desc, and, or, gte, lte, count, sum, sql, like } from "drizzle-orm"
 import { z } from "zod";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
-import { storagePut } from "./storage";
+import { storagePut, isStorageAvailable } from "./storage";
 import {
   unternehmen,
   userUnternehmen,
@@ -648,6 +648,16 @@ export const buchungenRouter = router({
       })
     )
     .mutation(async ({ input }) => {
+      // Prüfe ob Storage-Credentials vorhanden sind
+      if (!isStorageAvailable()) {
+        return {
+          url: null,
+          key: null,
+          dateiName: input.dateiName,
+          warning: "Beleg konnte nicht hochgeladen werden - Storage-Credentials fehlen",
+        };
+      }
+
       // Generiere eindeutigen Pfad
       const timestamp = Date.now();
       const safeName = input.dateiName.replace(/[^a-zA-Z0-9.-]/g, "_");
