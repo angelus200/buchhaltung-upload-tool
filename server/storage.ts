@@ -1,109 +1,65 @@
-// Preconfigured storage helpers for Manus WebDev templates
-// Uses the Biz-provided storage proxy (Authorization: Bearer <token>)
+// Local file storage for belege with Railway Volume support
+import fs from 'fs';
+import path from 'path';
 
-import { ENV } from './_core/env';
-
-type StorageConfig = { baseUrl: string; apiKey: string };
+// Railway Volume path in production, local fallback for development
+const BELEGE_BASE_PATH = process.env.NODE_ENV === 'production'
+  ? '/data/belege'
+  : path.join(process.cwd(), 'uploads', 'belege');
 
 /**
- * Prüft ob Storage-Credentials verfügbar sind
+ * Prüft ob Storage verfügbar ist (Ordner existiert oder kann erstellt werden)
  */
 export function isStorageAvailable(): boolean {
-  return !!(ENV.forgeApiUrl && ENV.forgeApiKey);
+  try {
+    // Versuche Ordner zu erstellen falls nicht vorhanden
+    if (!fs.existsSync(BELEGE_BASE_PATH)) {
+      fs.mkdirSync(BELEGE_BASE_PATH, { recursive: true });
+    }
+    return true;
+  } catch (error) {
+    console.error('Storage not available:', error);
+    return false;
+  }
 }
 
-function getStorageConfig(): StorageConfig {
-  const baseUrl = ENV.forgeApiUrl;
-  const apiKey = ENV.forgeApiKey;
+/**
+ * Upload einer Beleg-Datei zum lokalen Storage (Railway Volume oder lokales Filesystem)
+ */
+export async function uploadBelegLocal(
+  fileBuffer: Buffer,
+  filename: string,
+  unternehmenId: number
+): Promise<{ url: string; path: string }> {
+  const jahr = new Date().getFullYear();
+  const monat = String(new Date().getMonth() + 1).padStart(2, '0');
 
-  if (!baseUrl || !apiKey) {
-    throw new Error(
-      "Storage proxy credentials missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
-    );
+  // Ordnerstruktur: /data/belege/{unternehmenId}/{jahr}/{monat}/
+  const dirPath = path.join(BELEGE_BASE_PATH, String(unternehmenId), String(jahr), monat);
+
+  // Ordner erstellen falls nicht vorhanden
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
   }
 
-  return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
+  // Eindeutiger Dateiname mit Timestamp
+  const safeName = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const uniqueFilename = `${Date.now()}_${safeName}`;
+  const filePath = path.join(dirPath, uniqueFilename);
+
+  // Datei speichern
+  fs.writeFileSync(filePath, fileBuffer);
+
+  // URL für Frontend (wird von Express statisch ausgeliefert)
+  const url = `/belege/${unternehmenId}/${jahr}/${monat}/${uniqueFilename}`;
+
+  return { url, path: filePath };
 }
 
-function buildUploadUrl(baseUrl: string, relKey: string): URL {
-  const url = new URL("v1/storage/upload", ensureTrailingSlash(baseUrl));
-  url.searchParams.set("path", normalizeKey(relKey));
-  return url;
-}
-
-async function buildDownloadUrl(
-  baseUrl: string,
-  relKey: string,
-  apiKey: string
-): Promise<string> {
-  const downloadApiUrl = new URL(
-    "v1/storage/downloadUrl",
-    ensureTrailingSlash(baseUrl)
-  );
-  downloadApiUrl.searchParams.set("path", normalizeKey(relKey));
-  const response = await fetch(downloadApiUrl, {
-    method: "GET",
-    headers: buildAuthHeaders(apiKey),
-  });
-  return (await response.json()).url;
-}
-
-function ensureTrailingSlash(value: string): string {
-  return value.endsWith("/") ? value : `${value}/`;
-}
-
-function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
-}
-
-function toFormData(
-  data: Buffer | Uint8Array | string,
-  contentType: string,
-  fileName: string
-): FormData {
-  const blob =
-    typeof data === "string"
-      ? new Blob([data], { type: contentType })
-      : new Blob([data as any], { type: contentType });
-  const form = new FormData();
-  form.append("file", blob, fileName || "file");
-  return form;
-}
-
-function buildAuthHeaders(apiKey: string): HeadersInit {
-  return { Authorization: `Bearer ${apiKey}` };
-}
-
-export async function storagePut(
-  relKey: string,
-  data: Buffer | Uint8Array | string,
-  contentType = "application/octet-stream"
-): Promise<{ key: string; url: string }> {
-  const { baseUrl, apiKey } = getStorageConfig();
-  const key = normalizeKey(relKey);
-  const uploadUrl = buildUploadUrl(baseUrl, key);
-  const formData = toFormData(data, contentType, key.split("/").pop() ?? key);
-  const response = await fetch(uploadUrl, {
-    method: "POST",
-    headers: buildAuthHeaders(apiKey),
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
-    throw new Error(
-      `Storage upload failed (${response.status} ${response.statusText}): ${message}`
-    );
-  }
-  const url = (await response.json()).url;
-  return { key, url };
-}
-
-export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
-  const { baseUrl, apiKey } = getStorageConfig();
-  const key = normalizeKey(relKey);
-  return {
-    key,
-    url: await buildDownloadUrl(baseUrl, key, apiKey),
-  };
+/**
+ * Download-URL für eine Beleg-Datei generieren
+ */
+export async function getBelegUrl(relativeUrl: string): Promise<string> {
+  // URL ist bereits relativ und kann direkt verwendet werden
+  return relativeUrl;
 }

@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import path from "path";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { clerkMiddleware } from "@clerk/express";
 import { appRouter } from "../routers";
@@ -35,6 +36,13 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Clerk authentication middleware
   app.use(clerkMiddleware());
+
+  // Static file serving for uploaded belege (Railway Volume or local)
+  const BELEGE_BASE_PATH = process.env.NODE_ENV === 'production'
+    ? '/data/belege'
+    : path.join(process.cwd(), 'uploads', 'belege');
+  app.use('/belege', express.static(BELEGE_BASE_PATH));
+
   // tRPC API
   app.use(
     "/api/trpc",

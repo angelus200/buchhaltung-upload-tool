@@ -15,7 +15,7 @@
  *     }]
  *   });
  */
-import { storagePut } from "server/storage";
+import { uploadBelegLocal } from "../storage";
 import { ENV } from "./env";
 
 export type GenerateImageOptions = {
@@ -80,11 +80,11 @@ export async function generateImage(
   const base64Data = result.image.b64Json;
   const buffer = Buffer.from(base64Data, "base64");
 
-  // Save to S3
-  const { url } = await storagePut(
-    `generated/${Date.now()}.png`,
+  // Save to local storage
+  const { url } = await uploadBelegLocal(
     buffer,
-    result.image.mimeType
+    `generated_${Date.now()}.png`,
+    0 // unternehmenId = 0 für generierte Bilder
   );
   return {
     url,

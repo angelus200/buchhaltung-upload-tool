@@ -3,7 +3,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { finanzamtDokumente, aufgaben, finanzamtDokumentVersionen, type FinanzamtDokument, type FinanzamtDokumentVersion } from "../drizzle/schema";
 import { eq, and, desc, asc, or, sql } from "drizzle-orm";
-import { storagePut } from "./storage";
+import { uploadBelegLocal } from "./storage";
 
 // ============================================
 // FINANZAMT-DOKUMENTE ROUTER
@@ -284,21 +284,18 @@ export const finanzamtRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      // Generiere eindeutigen Pfad
-      const timestamp = Date.now();
-      const safeName = input.dateiName.replace(/[^a-zA-Z0-9.-]/g, "_");
-      const path = `finanzamt/${input.unternehmenId}/${timestamp}_${safeName}`;
-
       // Konvertiere Base64 zu Buffer
       const base64Data = input.dateiBase64.replace(/^data:[^;]+;base64,/, "");
       const buffer = Buffer.from(base64Data, "base64");
 
-      // Upload zu S3
-      const result = await storagePut(path, buffer, input.contentType);
+      // Upload zum lokalen Storage (Finanzamt-Ordner)
+      // Verwende "finanzamt_" Prefix für eindeutige Identifikation
+      const prefixedFilename = `finanzamt_${input.dateiName}`;
+      const result = await uploadBelegLocal(buffer, prefixedFilename, input.unternehmenId);
 
       return {
         url: result.url,
-        key: result.key,
+        path: result.path,
         dateiName: input.dateiName,
       };
     }),

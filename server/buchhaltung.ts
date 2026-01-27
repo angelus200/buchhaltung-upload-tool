@@ -2,7 +2,7 @@ import { eq, desc, and, or, gte, lte, count, sum, sql, like } from "drizzle-orm"
 import { z } from "zod";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
-import { storagePut, isStorageAvailable } from "./storage";
+import { uploadBelegLocal, isStorageAvailable } from "./storage";
 import {
   unternehmen,
   userUnternehmen,
@@ -647,7 +647,7 @@ export const buchungenRouter = router({
       return { csv, count: filteredBuchungen.length };
     }),
 
-  // Beleg-Datei zu S3 hochladen
+  // Beleg-Datei zum lokalen Storage hochladen (Railway Volume oder lokales Filesystem)
   uploadBeleg: protectedProcedure
     .input(
       z.object({
@@ -658,31 +658,26 @@ export const buchungenRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      // Prüfe ob Storage-Credentials vorhanden sind
+      // Prüfe ob Storage verfügbar ist
       if (!isStorageAvailable()) {
         return {
           url: null,
-          key: null,
+          path: null,
           dateiName: input.dateiName,
-          warning: "Beleg konnte nicht hochgeladen werden - Storage-Credentials fehlen",
+          warning: "Beleg konnte nicht hochgeladen werden - Storage nicht verfügbar",
         };
       }
-
-      // Generiere eindeutigen Pfad
-      const timestamp = Date.now();
-      const safeName = input.dateiName.replace(/[^a-zA-Z0-9.-]/g, "_");
-      const path = `belege/${input.unternehmenId}/${timestamp}_${safeName}`;
 
       // Konvertiere Base64 zu Buffer
       const base64Data = input.dateiBase64.replace(/^data:[^;]+;base64,/, "");
       const buffer = Buffer.from(base64Data, "base64");
 
-      // Upload zu S3
-      const result = await storagePut(path, buffer, input.contentType);
+      // Upload zum lokalen Storage
+      const result = await uploadBelegLocal(buffer, input.dateiName, input.unternehmenId);
 
       return {
         url: result.url,
-        key: result.key,
+        path: result.path,
         dateiName: input.dateiName,
       };
     }),
