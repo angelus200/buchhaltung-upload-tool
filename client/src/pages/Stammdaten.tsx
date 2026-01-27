@@ -1694,12 +1694,46 @@ export default function Stammdaten() {
                       {feld.label}
                       {feld.required && <span className="text-destructive ml-1">*</span>}
                     </Label>
-                    <Input
-                      id={feld.key}
-                      value={formData[feld.key] || ""}
-                      onChange={(e) => setFormData({ ...formData, [feld.key]: e.target.value })}
-                      className="mt-1"
-                    />
+                    {/* Spezielle Behandlung für Kontotyp bei Bankkonten */}
+                    {feld.key === "kontotyp" && activeTab === "bankkonto" ? (
+                      <Select
+                        value={formData[feld.key] || "girokonto"}
+                        onValueChange={(v) => setFormData({ ...formData, [feld.key]: v })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="girokonto">Girokonto</SelectItem>
+                          <SelectItem value="sparkonto">Sparkonto</SelectItem>
+                          <SelectItem value="festgeld">Festgeld</SelectItem>
+                          <SelectItem value="kreditkarte">Kreditkarte</SelectItem>
+                          <SelectItem value="sonstig">Sonstig</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : feld.key === "waehrung" && activeTab === "bankkonto" ? (
+                      <Select
+                        value={formData[feld.key] || "EUR"}
+                        onValueChange={(v) => setFormData({ ...formData, [feld.key]: v })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="EUR">EUR (€)</SelectItem>
+                          <SelectItem value="USD">USD ($)</SelectItem>
+                          <SelectItem value="CHF">CHF (Fr.)</SelectItem>
+                          <SelectItem value="GBP">GBP (£)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id={feld.key}
+                        value={formData[feld.key] || ""}
+                        onChange={(e) => setFormData({ ...formData, [feld.key]: e.target.value })}
+                        className="mt-1"
+                      />
+                    )}
                   </div>
                 ))}
               </div>
