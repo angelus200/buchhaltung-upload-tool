@@ -211,7 +211,7 @@ export default function Home() {
   });
 
   // Lade das ausgewählte Unternehmen (für Steuersätze)
-  const { data: selectedUnternehmenData } = trpc.unternehmen.getById.useQuery(
+  const { data: selectedUnternehmenData } = trpc.unternehmen.get.useQuery(
     { id: selectedUnternehmenId! },
     { enabled: !!selectedUnternehmenId }
   );
