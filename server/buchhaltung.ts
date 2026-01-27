@@ -281,6 +281,11 @@ export const buchungenRouter = router({
         bruttobetrag: z.string(),
         buchungstext: z.string().optional(),
         belegUrl: z.string().nullable().optional(),
+        // Fremdwährungsfelder
+        belegWaehrung: z.string().nullable().optional(),
+        belegBetragNetto: z.string().nullable().optional(),
+        belegBetragBrutto: z.string().nullable().optional(),
+        wechselkurs: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -318,6 +323,11 @@ export const buchungenRouter = router({
         bruttobetrag: z.string().optional(),
         buchungstext: z.string().optional(),
         belegUrl: z.string().nullable().optional(),
+        // Fremdwährungsfelder
+        belegWaehrung: z.string().nullable().optional(),
+        belegBetragNetto: z.string().nullable().optional(),
+        belegBetragBrutto: z.string().nullable().optional(),
+        wechselkurs: z.string().nullable().optional(),
         status: z.enum(["entwurf", "geprueft", "exportiert"]).optional(),
       })
     )

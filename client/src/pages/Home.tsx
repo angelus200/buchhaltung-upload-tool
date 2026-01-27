@@ -64,6 +64,11 @@ interface Buchung {
   buchungstext: string;
   belegDatei: File | null;
   status: "pending" | "complete" | "error";
+  // Fremdwährungsfelder
+  belegWaehrung: string | null;
+  belegBetragNetto: string;
+  belegBetragBrutto: string;
+  wechselkurs: string;
   // Zusätzliche erkannte Felder
   iban: string;
   ustIdNr: string;
@@ -339,6 +344,7 @@ export default function Home() {
     // Default-Steuersatz basierend auf Ländercode
     const landCode = selectedUnternehmenData?.landCode || 'DE';
     const defaultSteuersatz = landCode === 'CH' ? '8.1' : landCode === 'AT' ? '20' : '19';
+    const firmenWaehrung = selectedUnternehmenData?.waehrung || 'EUR';
 
     return {
       id: generateId(),
@@ -356,6 +362,11 @@ export default function Home() {
       buchungstext: "",
       belegDatei: null,
       status: "pending",
+      // Fremdwährungsfelder - Default: Firmenwährung (keine Umrechnung)
+      belegWaehrung: null,
+      belegBetragNetto: "",
+      belegBetragBrutto: "",
+      wechselkurs: "1.000000",
       iban: "",
       ustIdNr: "",
       zahlungsstatus: "offen",
@@ -366,7 +377,7 @@ export default function Home() {
       anSteuerberaterUebergeben: false,
       steuerberaterUebergabeId: null
     };
-  }, [getDefaultFaelligkeit, selectedUnternehmenData?.landCode]);
+  }, [getDefaultFaelligkeit, selectedUnternehmenData?.landCode, selectedUnternehmenData?.waehrung]);
 
   // OCR-Analyse für einen Beleg durchführen (Bilder und PDFs)
   const analyzeBeleg = useCallback(async (buchungId: string, file: File) => {
@@ -1104,6 +1115,92 @@ export default function Home() {
                           />
                         </div>
 
+                        {/* Belegwährung */}
+                        <div className="space-y-2">
+                          <Label>Belegwährung</Label>
+                          <Select
+                            value={buchung.belegWaehrung || (selectedUnternehmenData?.waehrung || 'EUR')}
+                            onValueChange={(v) => {
+                              const firmenWaehrung = selectedUnternehmenData?.waehrung || 'EUR';
+                              // Wenn Firmenwährung gewählt → belegWaehrung = null
+                              if (v === firmenWaehrung) {
+                                updateBuchung(buchung.id, "belegWaehrung", null);
+                                updateBuchung(buchung.id, "wechselkurs", "1.000000");
+                              } else {
+                                updateBuchung(buchung.id, "belegWaehrung", v);
+                                // Auto-Wechselkurs vorschlagen
+                                if (v === 'EUR' && firmenWaehrung === 'CHF') {
+                                  updateBuchung(buchung.id, "wechselkurs", "0.950000");
+                                } else if (v === 'CHF' && firmenWaehrung === 'EUR') {
+                                  updateBuchung(buchung.id, "wechselkurs", "1.050000");
+                                } else {
+                                  updateBuchung(buchung.id, "wechselkurs", "1.000000");
+                                }
+                              }
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="CHF">CHF (Schweizer Franken)</SelectItem>
+                              <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                              <SelectItem value="USD">USD (US-Dollar)</SelectItem>
+                              <SelectItem value="GBP">GBP (Britische Pfund)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Wenn Fremdwährung: Beleg-Bruttobetrag & Wechselkurs */}
+                        {buchung.belegWaehrung && buchung.belegWaehrung !== (selectedUnternehmenData?.waehrung || 'EUR') && (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor={`beleg-brutto-${buchung.id}`}>
+                                Beleg-Bruttobetrag ({buchung.belegWaehrung})
+                              </Label>
+                              <Input
+                                id={`beleg-brutto-${buchung.id}`}
+                                placeholder="0,00"
+                                value={buchung.belegBetragBrutto}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  updateBuchung(buchung.id, "belegBetragBrutto", value);
+                                  // Auto-Berechnung: Brutto in Firmenwährung
+                                  const belegBrutto = parseFloat(value.replace(",", ".")) || 0;
+                                  const kurs = parseFloat(buchung.wechselkurs) || 1;
+                                  const firmaBrutto = (belegBrutto * kurs).toFixed(2).replace(".", ",");
+                                  updateBuchung(buchung.id, "bruttobetrag", firmaBrutto);
+                                }}
+                                className="font-mono"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor={`wechselkurs-${buchung.id}`}>
+                                Wechselkurs (1 {buchung.belegWaehrung} = ? {selectedUnternehmenData?.waehrung || 'EUR'})
+                              </Label>
+                              <Input
+                                id={`wechselkurs-${buchung.id}`}
+                                placeholder="1.000000"
+                                value={buchung.wechselkurs}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  updateBuchung(buchung.id, "wechselkurs", value);
+                                  // Auto-Berechnung: Brutto in Firmenwährung
+                                  const belegBrutto = parseFloat(buchung.belegBetragBrutto.replace(",", ".")) || 0;
+                                  const kurs = parseFloat(value) || 1;
+                                  const firmaBrutto = (belegBrutto * kurs).toFixed(2).replace(".", ",");
+                                  updateBuchung(buchung.id, "bruttobetrag", firmaBrutto);
+                                }}
+                                className="font-mono"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Umgerechnet: {buchung.bruttobetrag} {selectedUnternehmenData?.waehrung || 'EUR'}
+                              </p>
+                            </div>
+                          </>
+                        )}
+
                         {/* Nettobetrag */}
                         <div className="space-y-2">
                           <Label htmlFor={`netto-${buchung.id}`}>Nettobetrag</Label>
@@ -1325,6 +1422,11 @@ export default function Home() {
                                   bruttobetrag: buchung.bruttobetrag.replace(",", "."),
                                   buchungstext: buchung.buchungstext || undefined,
                                   belegUrl: belegUrl,
+                                  // Fremdwährungsfelder
+                                  belegWaehrung: buchung.belegWaehrung || undefined,
+                                  belegBetragNetto: buchung.belegBetragNetto ? buchung.belegBetragNetto.replace(",", ".") : undefined,
+                                  belegBetragBrutto: buchung.belegBetragBrutto ? buchung.belegBetragBrutto.replace(",", ".") : undefined,
+                                  wechselkurs: buchung.wechselkurs || undefined,
                                 });
 
                                 // 3. Buchung aus der Liste entfernen
@@ -1627,6 +1729,11 @@ export default function Home() {
                           bruttobetrag: buchung.bruttobetrag.replace(",", "."),
                           buchungstext: buchung.buchungstext || undefined,
                           belegUrl: belegUrl,
+                          // Fremdwährungsfelder
+                          belegWaehrung: buchung.belegWaehrung || undefined,
+                          belegBetragNetto: buchung.belegBetragNetto ? buchung.belegBetragNetto.replace(",", ".") : undefined,
+                          belegBetragBrutto: buchung.belegBetragBrutto ? buchung.belegBetragBrutto.replace(",", ".") : undefined,
+                          wechselkurs: buchung.wechselkurs || undefined,
                         });
                         
                         // 3. Buchung zur Übergabe hinzufügen
