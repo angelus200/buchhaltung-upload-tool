@@ -1229,6 +1229,77 @@ export default function Home() {
 
                       {/* Action Buttons */}
                       <div className="flex flex-col gap-2">
+                        {/* Speichern Button - Nur für vollständige, noch nicht gespeicherte Buchungen */}
+                        {buchung.status === "complete" && !buchung.anSteuerberaterUebergeben && (
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white shadow-sm whitespace-nowrap"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!selectedUnternehmenId) {
+                                toast.error("Bitte wählen Sie ein Unternehmen aus");
+                                return;
+                              }
+
+                              try {
+                                let belegUrl: string | undefined = undefined;
+
+                                // 1. Falls Beleg vorhanden, zu S3 hochladen
+                                if (buchung.belegDatei) {
+                                  toast.info("Beleg wird hochgeladen...");
+                                  const base64 = await new Promise<string>((resolve, reject) => {
+                                    const reader = new FileReader();
+                                    reader.onload = () => resolve(reader.result as string);
+                                    reader.onerror = reject;
+                                    reader.readAsDataURL(buchung.belegDatei!);
+                                  });
+
+                                  const uploadResult = await uploadBelegMutation.mutateAsync({
+                                    unternehmenId: selectedUnternehmenId,
+                                    dateiName: buchung.belegDatei.name,
+                                    dateiBase64: base64,
+                                    contentType: buchung.belegDatei.type,
+                                  });
+                                  belegUrl = uploadResult.url;
+                                }
+
+                                // 2. Buchung in der Datenbank speichern
+                                toast.info("Buchung wird gespeichert...");
+                                await createBuchungMutation.mutateAsync({
+                                  unternehmenId: selectedUnternehmenId,
+                                  buchungsart: buchung.buchungsart,
+                                  belegdatum: buchung.belegdatum,
+                                  belegnummer: buchung.belegnummer,
+                                  geschaeftspartnerTyp: buchung.geschaeftspartnerTyp,
+                                  geschaeftspartner: buchung.geschaeftspartner,
+                                  geschaeftspartnerKonto: buchung.geschaeftspartnerKonto,
+                                  sachkonto: buchung.sachkonto,
+                                  nettobetrag: buchung.nettobetrag.replace(",", "."),
+                                  steuersatz: buchung.steuersatz,
+                                  bruttobetrag: buchung.bruttobetrag.replace(",", "."),
+                                  buchungstext: buchung.buchungstext || undefined,
+                                  belegUrl: belegUrl,
+                                });
+
+                                // 3. Buchung aus der Liste entfernen
+                                setBuchungen(prev => prev.filter(b => b.id !== buchung.id));
+
+                                const belegInfo = belegUrl ? " (inkl. Beleg)" : "";
+                                toast.success(`Buchung "${buchung.geschaeftspartner}" erfolgreich gespeichert${belegInfo}`);
+                              } catch (error: any) {
+                                toast.error(`Fehler beim Speichern: ${error.message}`);
+                              }
+                            }}
+                            disabled={createBuchungMutation.isPending || uploadBelegMutation.isPending}
+                          >
+                            {(createBuchungMutation.isPending || uploadBelegMutation.isPending) ? (
+                              <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Speichern...</>
+                            ) : (
+                              <><CheckCircle2 className="w-4 h-4 mr-1" />Speichern</>
+                            )}
+                          </Button>
+                        )}
+
                         {/* An Steuerberater Button */}
                         {buchung.status === "complete" && !buchung.anSteuerberaterUebergeben && (
                           <Button

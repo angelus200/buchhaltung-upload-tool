@@ -39,6 +39,7 @@ import Eroeffnungsbilanz from "./pages/Eroeffnungsbilanz";
 import Jahresabschluss from "./pages/Jahresabschluss";
 import Hilfe from "./pages/Hilfe";
 import SteuerberaterHandbuch from "./pages/SteuerberaterHandbuch";
+import MwstAbrechnung from "./pages/MwstAbrechnung";
 
 function Router() {
   return (
@@ -220,6 +221,12 @@ function Router() {
       <Route path={"/hilfe"}>
         <ProtectedRoute>
           <Hilfe />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/mwst-abrechnung"}>
+        <ProtectedRoute>
+          <MwstAbrechnung />
         </ProtectedRoute>
       </Route>
 
