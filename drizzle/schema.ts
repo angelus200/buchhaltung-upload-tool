@@ -385,6 +385,12 @@ export const buchungen = mysqlTable("buchungen", {
   bruttobetrag: decimal("bruttobetrag", { precision: 15, scale: 2 }).notNull(),
   buchungstext: text("buchungstext"),
   belegUrl: varchar("belegUrl", { length: 500 }),
+
+  // Fremdwährungsbuchungen
+  belegWaehrung: varchar("belegWaehrung", { length: 3 }), // "EUR", "USD", "CHF", null = Firmenwährung
+  belegBetragNetto: decimal("belegBetragNetto", { precision: 15, scale: 2 }), // Original Netto in Belegwährung
+  belegBetragBrutto: decimal("belegBetragBrutto", { precision: 15, scale: 2 }), // Original Brutto in Belegwährung
+  wechselkurs: decimal("wechselkurs", { precision: 10, scale: 6 }), // Wechselkurs (z.B. 0.950000 für EUR->CHF)
   status: mysqlEnum("status", ["entwurf", "geprueft", "exportiert"]).default("entwurf").notNull(),
   exportiertAm: timestamp("exportiertAm"),
   // Zahlungsstatus
