@@ -32,6 +32,56 @@ import {
 } from "../drizzle/schema";
 
 // ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Berechnet Wirtschaftsjahr und Periode aus Belegdatum
+ *
+ * @param belegdatum - Das Datum der Buchung
+ * @param wirtschaftsjahrBeginn - Monat (1-12), in dem das Geschäftsjahr beginnt
+ * @returns { wirtschaftsjahr, periode }
+ *
+ * Beispiel 1: wirtschaftsjahrBeginn = 1 (Kalenderjahr)
+ *   - 15.01.2026 → WJ 2026, Periode 1
+ *   - 15.12.2026 → WJ 2026, Periode 12
+ *
+ * Beispiel 2: wirtschaftsjahrBeginn = 7 (beginnt am 1. Juli)
+ *   - 15.01.2026 → WJ 2025, Periode 7 (7. Monat des am 1.7.2025 begonnenen GJ)
+ *   - 15.07.2026 → WJ 2026, Periode 1 (1. Monat des am 1.7.2026 begonnenen GJ)
+ */
+function calculateWirtschaftsjahrPeriode(
+  belegdatum: Date,
+  wirtschaftsjahrBeginn: number
+): { wirtschaftsjahr: number; periode: number } {
+  const jahr = belegdatum.getFullYear();
+  const monat = belegdatum.getMonth() + 1; // 1-12
+
+  if (wirtschaftsjahrBeginn === 1) {
+    // Einfacher Fall: Kalenderjahr = Geschäftsjahr
+    return {
+      wirtschaftsjahr: jahr,
+      periode: monat
+    };
+  }
+
+  // Geschäftsjahr beginnt in einem anderen Monat
+  if (monat >= wirtschaftsjahrBeginn) {
+    // Wir sind im aktuellen Geschäftsjahr (beginnt in diesem Kalenderjahr)
+    return {
+      wirtschaftsjahr: jahr,
+      periode: monat - wirtschaftsjahrBeginn + 1
+    };
+  } else {
+    // Wir sind noch im vorherigen Geschäftsjahr (begann im letzten Kalenderjahr)
+    return {
+      wirtschaftsjahr: jahr - 1,
+      periode: 12 - wirtschaftsjahrBeginn + monat + 1
+    };
+  }
+}
+
+// ============================================
 // UNTERNEHMEN ROUTER
 // ============================================
 export const unternehmenRouter = router({
@@ -292,12 +342,30 @@ export const buchungenRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Datenbank nicht verfügbar");
 
+      // Unternehmen laden um wirtschaftsjahrBeginn zu bekommen
+      const [company] = await db
+        .select()
+        .from(unternehmen)
+        .where(eq(unternehmen.id, input.unternehmenId))
+        .limit(1);
+
+      if (!company) throw new Error("Unternehmen nicht gefunden");
+
+      // Wirtschaftsjahr und Periode aus Belegdatum berechnen
+      const belegdatum = new Date(input.belegdatum);
+      const { wirtschaftsjahr, periode } = calculateWirtschaftsjahrPeriode(
+        belegdatum,
+        company.wirtschaftsjahrBeginn
+      );
+
       const values: InsertBuchung = {
         ...input,
-        belegdatum: new Date(input.belegdatum),
+        belegdatum,
         nettobetrag: input.nettobetrag,
         steuersatz: input.steuersatz,
         bruttobetrag: input.bruttobetrag,
+        wirtschaftsjahr,
+        periode,
         createdBy: ctx.user.id,
       };
 
@@ -337,8 +405,35 @@ export const buchungenRouter = router({
 
       const { id, belegdatum, ...updateData } = input;
       const finalData: Record<string, unknown> = { ...updateData };
+
+      // Wenn Belegdatum geändert wird, auch wirtschaftsjahr und periode neu berechnen
       if (belegdatum) {
         finalData.belegdatum = new Date(belegdatum);
+
+        // Buchung laden um unternehmenId zu bekommen
+        const [buchung] = await db
+          .select()
+          .from(buchungen)
+          .where(eq(buchungen.id, id))
+          .limit(1);
+
+        if (buchung) {
+          // Unternehmen laden um wirtschaftsjahrBeginn zu bekommen
+          const [company] = await db
+            .select()
+            .from(unternehmen)
+            .where(eq(unternehmen.id, buchung.unternehmenId))
+            .limit(1);
+
+          if (company) {
+            const { wirtschaftsjahr, periode } = calculateWirtschaftsjahrPeriode(
+              new Date(belegdatum),
+              company.wirtschaftsjahrBeginn
+            );
+            finalData.wirtschaftsjahr = wirtschaftsjahr;
+            finalData.periode = periode;
+          }
+        }
       }
 
       await db.update(buchungen).set(finalData).where(eq(buchungen.id, id));
