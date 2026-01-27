@@ -210,6 +210,12 @@ export default function Home() {
     return saved ? parseInt(saved) : null;
   });
 
+  // Lade das ausgewählte Unternehmen (für Steuersätze)
+  const { data: selectedUnternehmenData } = trpc.unternehmen.getById.useQuery(
+    { id: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId }
+  );
+
   // Lade Sachkonten für das ausgewählte Unternehmen
   const { data: sachkontenGrouped } = trpc.stammdaten.sachkonten.listGrouped.useQuery(
     { unternehmenId: selectedUnternehmenId! },
@@ -329,32 +335,38 @@ export default function Home() {
     return date.toISOString().split("T")[0];
   }, []);
 
-  const createEmptyBuchung = useCallback((): Buchung => ({
-    id: generateId(),
-    buchungsart: "aufwand",
-    belegdatum: new Date().toISOString().split("T")[0],
-    belegnummer: `RE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`,
-    geschaeftspartner: "",
-    geschaeftspartnerTyp: "kreditor",
-    geschaeftspartnerKonto: "70000",
-    sachkonto: "",
-    kostenstelle: "",
-    nettobetrag: "",
-    steuersatz: "19",
-    bruttobetrag: "",
-    buchungstext: "",
-    belegDatei: null,
-    status: "pending",
-    iban: "",
-    ustIdNr: "",
-    zahlungsstatus: "offen",
-    faelligkeitsdatum: getDefaultFaelligkeit(),
-    zahlungsdatum: "",
-    kreditorId: null,
-    kreditorMatch: "none",
-    anSteuerberaterUebergeben: false,
-    steuerberaterUebergabeId: null
-  }), [getDefaultFaelligkeit]);
+  const createEmptyBuchung = useCallback((): Buchung => {
+    // Default-Steuersatz basierend auf Ländercode
+    const landCode = selectedUnternehmenData?.landCode || 'DE';
+    const defaultSteuersatz = landCode === 'CH' ? '8.1' : landCode === 'AT' ? '20' : '19';
+
+    return {
+      id: generateId(),
+      buchungsart: "aufwand",
+      belegdatum: new Date().toISOString().split("T")[0],
+      belegnummer: `RE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`,
+      geschaeftspartner: "",
+      geschaeftspartnerTyp: "kreditor",
+      geschaeftspartnerKonto: "70000",
+      sachkonto: "",
+      kostenstelle: "",
+      nettobetrag: "",
+      steuersatz: defaultSteuersatz,
+      bruttobetrag: "",
+      buchungstext: "",
+      belegDatei: null,
+      status: "pending",
+      iban: "",
+      ustIdNr: "",
+      zahlungsstatus: "offen",
+      faelligkeitsdatum: getDefaultFaelligkeit(),
+      zahlungsdatum: "",
+      kreditorId: null,
+      kreditorMatch: "none",
+      anSteuerberaterUebergeben: false,
+      steuerberaterUebergabeId: null
+    };
+  }, [getDefaultFaelligkeit, selectedUnternehmenData?.landCode]);
 
   // OCR-Analyse für einen Beleg durchführen (Bilder und PDFs)
   const analyzeBeleg = useCallback(async (buchungId: string, file: File) => {
@@ -747,6 +759,35 @@ export default function Home() {
   // Prüfe ob Sachkonten aus der Datenbank verfügbar sind
   const hasDatabaseSachkonten = sachkontenGrouped && Object.keys(sachkontenGrouped).length > 0;
 
+  // Dynamische Steuersätze basierend auf Ländercode
+  const steuersaetze = useMemo(() => {
+    const landCode = selectedUnternehmenData?.landCode || 'DE';
+
+    switch (landCode) {
+      case 'CH': // Schweiz
+        return [
+          { satz: "8.1", bezeichnung: "8.1% MWST (Normalsatz)" },
+          { satz: "2.6", bezeichnung: "2.6% MWST (Reduziert)" },
+          { satz: "3.8", bezeichnung: "3.8% MWST (Beherbergung)" },
+          { satz: "0", bezeichnung: "0% (Steuerfrei)" },
+        ];
+      case 'AT': // Österreich
+        return [
+          { satz: "20", bezeichnung: "20% USt" },
+          { satz: "13", bezeichnung: "13% USt (Reduziert)" },
+          { satz: "10", bezeichnung: "10% USt (Ermäßigt)" },
+          { satz: "0", bezeichnung: "0% (Steuerfrei)" },
+        ];
+      case 'DE': // Deutschland
+      default:
+        return [
+          { satz: "19", bezeichnung: "19% USt/VSt" },
+          { satz: "7", bezeichnung: "7% USt/VSt (Ermäßigt)" },
+          { satz: "0", bezeichnung: "0% (Steuerfrei)" },
+        ];
+    }
+  }, [selectedUnternehmenData?.landCode]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header mit Firmenauswahl */}
@@ -1078,15 +1119,15 @@ export default function Home() {
                         {/* Steuersatz */}
                         <div className="space-y-2">
                           <Label>Steuersatz</Label>
-                          <Select 
-                            value={buchung.steuersatz} 
+                          <Select
+                            value={buchung.steuersatz}
                             onValueChange={(v) => updateBuchung(buchung.id, "steuersatz", v)}
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {KONTENRAHMEN_SKR03.steuer.map((s) => (
+                              {steuersaetze.map((s) => (
                                 <SelectItem key={s.satz} value={s.satz}>
                                   {s.bezeichnung}
                                 </SelectItem>
