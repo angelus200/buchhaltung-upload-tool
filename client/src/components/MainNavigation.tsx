@@ -58,8 +58,9 @@ export default function MainNavigation() {
 
   const isAdmin = user?.role === "admin";
 
-  // Debug: Navigation geladen
-  console.log("MainNavigation loaded with NAV_ITEMS:", NAV_ITEMS.length);
+  // Debug: Navigation geladen - BUILD TIMESTAMP
+  const buildTimestamp = "2026-02-03T22:30:00Z";
+  console.log(`MainNavigation loaded - BUILD: ${buildTimestamp} - Items: ${NAV_ITEMS.length}`);
 
   const isActive = (href: string) => {
     if (href === "/") return location === "/";
