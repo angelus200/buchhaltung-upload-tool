@@ -108,6 +108,18 @@ export default function Auszuege() {
     { unternehmenId: selectedUnternehmen! },
     { enabled: !!selectedUnternehmen }
   );
+  const { data: stats } = trpc.auszuege.stats.useQuery(
+    { unternehmenId: selectedUnternehmen! },
+    { enabled: !!selectedUnternehmen }
+  );
+  const { data: auszugDetail, refetch: refetchDetail } = trpc.auszuege.getById.useQuery(
+    { id: selectedAuszug! },
+    { enabled: !!selectedAuszug }
+  );
+  const { data: passendeBuchungen } = trpc.auszuege.findePassendeBuchungen.useQuery(
+    { positionId: selectedPosition?.id },
+    { enabled: !!selectedPosition }
+  );
 
   // Auto-select Unternehmen aus localStorage oder erstes Unternehmen
   useEffect(() => {
@@ -125,18 +137,6 @@ export default function Auszuege() {
       setSelectedUnternehmen(unternehmen[0].unternehmen.id);
     }
   }, [unternehmen, selectedUnternehmen]);
-  const { data: stats } = trpc.auszuege.stats.useQuery(
-    { unternehmenId: selectedUnternehmen! },
-    { enabled: !!selectedUnternehmen }
-  );
-  const { data: auszugDetail, refetch: refetchDetail } = trpc.auszuege.getById.useQuery(
-    { id: selectedAuszug! },
-    { enabled: !!selectedAuszug }
-  );
-  const { data: passendeBuchungen } = trpc.auszuege.findePassendeBuchungen.useQuery(
-    { positionId: selectedPosition?.id },
-    { enabled: !!selectedPosition }
-  );
 
   // Mutations
   const uploadMutation = trpc.auszuege.upload.useMutation({
