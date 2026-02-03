@@ -27,7 +27,8 @@ import {
   Euro,
   Calendar,
   ChevronRight,
-  Shield
+  Shield,
+  Receipt
 } from "lucide-react";
 
 interface Unternehmen {
@@ -242,6 +243,18 @@ export default function Dashboard() {
                       <div className="flex items-center gap-3">
                         <Bell className="w-5 h-5 text-slate-400" />
                         <span className="font-medium">Benachrichtigungen</span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-slate-400" />
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                <Link href="/auszuege">
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Receipt className="w-5 h-5 text-slate-400" />
+                        <span className="font-medium">Auszüge</span>
                       </div>
                       <ChevronRight className="w-5 h-5 text-slate-400" />
                     </CardContent>

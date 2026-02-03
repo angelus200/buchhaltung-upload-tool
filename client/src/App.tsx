@@ -40,6 +40,7 @@ import Jahresabschluss from "./pages/Jahresabschluss";
 import Hilfe from "./pages/Hilfe";
 import SteuerberaterHandbuch from "./pages/SteuerberaterHandbuch";
 import MwstAbrechnung from "./pages/MwstAbrechnung";
+import Auszuege from "./pages/Auszuege";
 
 function Router() {
   return (
@@ -227,6 +228,12 @@ function Router() {
       <Route path={"/mwst-abrechnung"}>
         <ProtectedRoute>
           <MwstAbrechnung />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/auszuege"}>
+        <ProtectedRoute>
+          <Auszuege />
         </ProtectedRoute>
       </Route>
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -545,7 +545,307 @@ export default function Auszuege() {
           </DialogContent>
         </Dialog>
 
-        {/* Detail Dialog - wird im nächsten Teil implementiert */}
+        {/* Detail Dialog */}
+        <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {auszugDetail && (
+                  <>
+                    {TYP_CONFIG[auszugDetail.auszug.typ].icon && (
+                      React.createElement(TYP_CONFIG[auszugDetail.auszug.typ].icon, {
+                        className: `w-5 h-5 ${TYP_CONFIG[auszugDetail.auszug.typ].color}`,
+                      })
+                    )}
+                    Auszug: {auszugDetail.auszug.kontoBezeichnung || "Ohne Bezeichnung"}
+                  </>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                {auszugDetail && (
+                  <>
+                    Zeitraum: {formatDate(auszugDetail.auszug.zeitraumVon)} -{" "}
+                    {formatDate(auszugDetail.auszug.zeitraumBis)}
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            {auszugDetail && (
+              <div className="space-y-4">
+                {/* Auszug-Info */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Status</p>
+                        <Badge variant="outline" className={STATUS_CONFIG[auszugDetail.auszug.status].color}>
+                          {STATUS_CONFIG[auszugDetail.auszug.status].label}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Saldo Anfang</p>
+                        <p className="font-mono font-medium">
+                          {auszugDetail.auszug.saldoAnfang
+                            ? `${formatCurrency(auszugDetail.auszug.saldoAnfang)} €`
+                            : "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Saldo Ende</p>
+                        <p className="font-mono font-medium">
+                          {auszugDetail.auszug.saldoEnde
+                            ? `${formatCurrency(auszugDetail.auszug.saldoEnde)} €`
+                            : "-"}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Aktionen */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => autoZuordnenMutation.mutate({ auszugId: auszugDetail.auszug.id })}
+                    disabled={autoZuordnenMutation.isPending}
+                  >
+                    {autoZuordnenMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Wird zugeordnet...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Auto-Zuordnen
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (auszugDetail.auszug.dateiUrl) {
+                        window.open(auszugDetail.auszug.dateiUrl, "_blank");
+                      }
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Datei öffnen
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      if (confirm("Auszug wirklich löschen?")) {
+                        deleteMutation.mutate({ id: auszugDetail.auszug.id });
+                      }
+                    }}
+                    className="ml-auto"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Löschen
+                  </Button>
+                </div>
+
+                {/* Positionen */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Positionen ({auszugDetail.positionen.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {auszugDetail.positionen.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileSpreadsheet className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>Keine Positionen gefunden</p>
+                        <p className="text-sm">
+                          Laden Sie eine CSV-Datei hoch oder fügen Sie Positionen manuell hinzu
+                        </p>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Datum</TableHead>
+                            <TableHead>Buchungstext</TableHead>
+                            <TableHead className="text-right">Betrag</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="w-[200px]">Aktionen</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {auszugDetail.positionen.map((position) => (
+                            <TableRow
+                              key={position.id}
+                              className={
+                                position.status === "zugeordnet"
+                                  ? "bg-green-50"
+                                  : position.status === "ignoriert"
+                                  ? "bg-gray-50"
+                                  : ""
+                              }
+                            >
+                              <TableCell>{formatDate(position.datum)}</TableCell>
+                              <TableCell className="max-w-xs truncate">{position.buchungstext}</TableCell>
+                              <TableCell className="text-right font-mono">
+                                <span
+                                  className={
+                                    parseFloat(position.betrag.toString()) >= 0
+                                      ? "text-green-600"
+                                      : "text-red-600"
+                                  }
+                                >
+                                  {formatCurrency(position.betrag)} €
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                {position.status === "zugeordnet" && (
+                                  <Badge variant="outline" className="bg-green-100 text-green-800">
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    Zugeordnet
+                                  </Badge>
+                                )}
+                                {position.status === "offen" && (
+                                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
+                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                    Offen
+                                  </Badge>
+                                )}
+                                {position.status === "ignoriert" && (
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-800">
+                                    <XCircle className="w-3 h-3 mr-1" />
+                                    Ignoriert
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  {position.status === "offen" && (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedPosition(position);
+                                          setZuordnungDialogOpen(true);
+                                        }}
+                                      >
+                                        <LinkIcon className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => ignorierenMutation.mutate({ positionId: position.id })}
+                                      >
+                                        <XCircle className="w-4 h-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                  {position.status === "zugeordnet" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        zuordnungAufhebenMutation.mutate({ positionId: position.id })
+                                      }
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Zuordnung Dialog */}
+        <Dialog open={zuordnungDialogOpen} onOpenChange={setZuordnungDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Buchung zuordnen</DialogTitle>
+              <DialogDescription>
+                {selectedPosition && (
+                  <>
+                    Position: {selectedPosition.buchungstext} • {formatCurrency(selectedPosition.betrag)} € •{" "}
+                    {formatDate(selectedPosition.datum)}
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {!passendeBuchungen || passendeBuchungen.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Keine passenden Buchungen gefunden</p>
+                  <p className="text-sm">
+                    Versuchen Sie, die Buchung manuell zu erfassen oder passen Sie den Zeitraum an
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Datum</TableHead>
+                      <TableHead>Beleg</TableHead>
+                      <TableHead>Geschäftspartner</TableHead>
+                      <TableHead className="text-right">Betrag</TableHead>
+                      <TableHead>Aktion</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {passendeBuchungen.map((buchung) => (
+                      <TableRow key={buchung.id}>
+                        <TableCell>{formatDate(buchung.belegdatum)}</TableCell>
+                        <TableCell className="font-mono text-sm">{buchung.belegnummer}</TableCell>
+                        <TableCell>{buchung.geschaeftspartner}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(parseFloat(buchung.bruttobetrag.toString()))} €
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (selectedPosition) {
+                                zuordnenMutation.mutate({
+                                  positionId: selectedPosition.id,
+                                  buchungId: buchung.id,
+                                });
+                              }
+                            }}
+                            disabled={zuordnenMutation.isPending}
+                          >
+                            <LinkIcon className="w-4 h-4 mr-1" />
+                            Zuordnen
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setZuordnungDialogOpen(false);
+                  setSelectedPosition(null);
+                }}
+              >
+                Schließen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
