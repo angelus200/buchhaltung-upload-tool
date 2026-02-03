@@ -1046,6 +1046,52 @@ export const stammdatenRouter = router({
         return await db.select().from(kreditoren).where(eq(kreditoren.unternehmenId, input.unternehmenId));
       }),
 
+    // Vorschläge aus Buchungen generieren
+    getSuggestions: protectedProcedure
+      .input(z.object({ unternehmenId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+
+        // Alle Geschäftspartner aus Buchungen mit Typ "kreditor"
+        const buchungenKreditoren = await db
+          .select({
+            geschaeftspartner: buchungen.geschaeftspartner,
+            geschaeftspartnerKonto: buchungen.geschaeftspartnerKonto,
+            count: sql<number>`COUNT(*)`,
+          })
+          .from(buchungen)
+          .where(
+            and(
+              eq(buchungen.unternehmenId, input.unternehmenId),
+              eq(buchungen.geschaeftspartnerTyp, "kreditor"),
+              sql`${buchungen.geschaeftspartner} IS NOT NULL`,
+              sql`${buchungen.geschaeftspartner} != ''`
+            )
+          )
+          .groupBy(buchungen.geschaeftspartner, buchungen.geschaeftspartnerKonto);
+
+        // Bestehende Kreditoren laden
+        const existingKreditoren = await db
+          .select()
+          .from(kreditoren)
+          .where(eq(kreditoren.unternehmenId, input.unternehmenId));
+
+        const existingKonten = new Set(existingKreditoren.map(k => k.kontonummer));
+
+        // Nur Vorschläge für noch nicht existierende Konten
+        const suggestions = buchungenKreditoren
+          .filter(b => b.geschaeftspartnerKonto && !existingKonten.has(b.geschaeftspartnerKonto))
+          .map(b => ({
+            name: b.geschaeftspartner,
+            kontonummer: b.geschaeftspartnerKonto,
+            buchungenCount: b.count,
+          }))
+          .sort((a, b) => b.buchungenCount - a.buchungenCount);
+
+        return suggestions;
+      }),
+
     create: protectedProcedure
       .input(
         z.object({
@@ -1139,6 +1185,52 @@ export const stammdatenRouter = router({
         const db = await getDb();
         if (!db) return [];
         return await db.select().from(debitoren).where(eq(debitoren.unternehmenId, input.unternehmenId));
+      }),
+
+    // Vorschläge aus Buchungen generieren
+    getSuggestions: protectedProcedure
+      .input(z.object({ unternehmenId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+
+        // Alle Geschäftspartner aus Buchungen mit Typ "debitor"
+        const buchungenDebitoren = await db
+          .select({
+            geschaeftspartner: buchungen.geschaeftspartner,
+            geschaeftspartnerKonto: buchungen.geschaeftspartnerKonto,
+            count: sql<number>`COUNT(*)`,
+          })
+          .from(buchungen)
+          .where(
+            and(
+              eq(buchungen.unternehmenId, input.unternehmenId),
+              eq(buchungen.geschaeftspartnerTyp, "debitor"),
+              sql`${buchungen.geschaeftspartner} IS NOT NULL`,
+              sql`${buchungen.geschaeftspartner} != ''`
+            )
+          )
+          .groupBy(buchungen.geschaeftspartner, buchungen.geschaeftspartnerKonto);
+
+        // Bestehende Debitoren laden
+        const existingDebitoren = await db
+          .select()
+          .from(debitoren)
+          .where(eq(debitoren.unternehmenId, input.unternehmenId));
+
+        const existingKonten = new Set(existingDebitoren.map(d => d.kontonummer));
+
+        // Nur Vorschläge für noch nicht existierende Konten
+        const suggestions = buchungenDebitoren
+          .filter(b => b.geschaeftspartnerKonto && !existingKonten.has(b.geschaeftspartnerKonto))
+          .map(b => ({
+            name: b.geschaeftspartner,
+            kontonummer: b.geschaeftspartnerKonto,
+            buchungenCount: b.count,
+          }))
+          .sort((a, b) => b.buchungenCount - a.buchungenCount);
+
+        return suggestions;
       }),
 
     create: protectedProcedure

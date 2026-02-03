@@ -56,11 +56,11 @@ interface Stammdatum {
 
 // Konfiguration für alle Stammdaten-Typen
 const STAMMDATEN_TYPEN = [
-  { 
-    value: "kreditor", 
-    label: "Kreditoren", 
+  {
+    value: "kreditor",
+    label: "Kreditoren",
     labelSingular: "Kreditor",
-    icon: Building2, 
+    icon: Building2,
     color: "text-blue-600",
     bgColor: "bg-blue-100",
     kontobereich: "70000-79999",
@@ -73,19 +73,20 @@ const STAMMDATEN_TYPEN = [
       { key: "telefon", label: "Telefon" },
       { key: "email", label: "E-Mail" },
       { key: "ustid", label: "USt-IdNr." },
+      { key: "vorsteuersatz", label: "Vorsteuersatz (%)" },
       { key: "iban", label: "IBAN" },
       { key: "zahlungsziel", label: "Zahlungsziel (Tage)" },
       { key: "standardSachkonto", label: "Standard-Sachkonto" },
     ]
   },
-  { 
-    value: "debitor", 
-    label: "Debitoren", 
+  {
+    value: "debitor",
+    label: "Debitoren",
     labelSingular: "Debitor",
-    icon: Users, 
+    icon: Users,
     color: "text-green-600",
     bgColor: "bg-green-100",
-    kontobereich: "10000-19999",
+    kontobereich: "1800",
     felder: [
       { key: "firma", label: "Firma/Name", required: true },
       { key: "ansprechpartner", label: "Ansprechpartner" },
@@ -95,6 +96,7 @@ const STAMMDATEN_TYPEN = [
       { key: "telefon", label: "Telefon" },
       { key: "email", label: "E-Mail" },
       { key: "ustid", label: "USt-IdNr." },
+      { key: "umsatzsteuersatz", label: "Umsatzsteuersatz (%)" },
       { key: "kreditlimit", label: "Kreditlimit (€)" },
       { key: "zahlungsziel", label: "Zahlungsziel (Tage)" },
     ]
@@ -315,6 +317,7 @@ export default function Stammdaten() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<Stammdatum | null>(null);
   const [editingSachkontoId, setEditingSachkontoId] = useState<number | null>(null);
+  const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
 
   // Formular-State
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -337,6 +340,18 @@ export default function Stammdaten() {
   const { data: debitorenList, refetch: refetchDebitoren } = trpc.stammdaten.debitoren.list.useQuery(
     { unternehmenId: selectedUnternehmenId! },
     { enabled: !!selectedUnternehmenId && activeTab === "debitor" }
+  );
+
+  // Lade Vorschläge für Kreditoren
+  const { data: kreditorenSuggestions } = trpc.stammdaten.kreditoren.getSuggestions.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId && suggestionsDialogOpen && activeTab === "kreditor" }
+  );
+
+  // Lade Vorschläge für Debitoren
+  const { data: debitorenSuggestions } = trpc.stammdaten.debitoren.getSuggestions.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId && suggestionsDialogOpen && activeTab === "debitor" }
   );
 
   // Lade Sachkonten für das ausgewählte Unternehmen
@@ -1034,7 +1049,16 @@ export default function Stammdaten() {
 
       <main className="container py-6">
         {/* Neuer Eintrag Button */}
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end gap-2 mb-4">
+          {(activeTab === "kreditor" || activeTab === "debitor") && selectedUnternehmenId && (
+            <Button
+              variant="outline"
+              onClick={() => setSuggestionsDialogOpen(true)}
+            >
+              <Search className="w-4 h-4 mr-2" />
+              Vorschläge aus Buchungen
+            </Button>
+          )}
           <Button onClick={openNewDialog}>
             <Plus className="w-4 h-4 mr-2" />
             {activeTypConfig.labelSingular} anlegen
@@ -1771,6 +1795,106 @@ export default function Stammdaten() {
             <Kontierungsregeln unternehmenId={selectedUnternehmenId} />
           </div>
         )}
+
+        {/* Vorschläge Dialog */}
+        <Dialog open={suggestionsDialogOpen} onOpenChange={setSuggestionsDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Search className="w-5 h-5" />
+                {activeTab === "kreditor" ? "Kreditoren" : "Debitoren"} aus Buchungen vorschlagen
+              </DialogTitle>
+              <DialogDescription>
+                Diese Geschäftspartner kommen in Ihren Buchungen vor, sind aber noch nicht als {activeTab === "kreditor" ? "Kreditor" : "Debitor"} angelegt.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              {activeTab === "kreditor" && kreditorenSuggestions?.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Keine neuen Kreditoren gefunden</p>
+                  <p className="text-sm">Alle Geschäftspartner aus den Buchungen sind bereits angelegt.</p>
+                </div>
+              )}
+              {activeTab === "debitor" && debitorenSuggestions?.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Keine neuen Debitoren gefunden</p>
+                  <p className="text-sm">Alle Geschäftspartner aus den Buchungen sind bereits angelegt.</p>
+                </div>
+              )}
+              {activeTab === "kreditor" && kreditorenSuggestions?.map((suggestion: any) => (
+                <Card key={suggestion.kontonummer} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{suggestion.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Konto: <span className="font-mono">{suggestion.kontonummer}</span>
+                        {" • "}
+                        {suggestion.buchungenCount} Buchung(en)
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        // Öffne neues Kreditor-Formular mit vorausgefüllten Daten
+                        openNewDialog();
+                        setSuggestionsDialogOpen(false);
+                        // Fülle das Formular vor
+                        setTimeout(() => {
+                          const nameInput = document.querySelector('input[placeholder*="Firma"]') as HTMLInputElement;
+                          const kontoInput = document.querySelector('input[placeholder*="70000"]') as HTMLInputElement;
+                          if (nameInput) nameInput.value = suggestion.name;
+                          if (kontoInput) kontoInput.value = suggestion.kontonummer;
+                        }, 100);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Anlegen
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+              {activeTab === "debitor" && debitorenSuggestions?.map((suggestion: any) => (
+                <Card key={suggestion.kontonummer} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{suggestion.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Konto: <span className="font-mono">{suggestion.kontonummer}</span>
+                        {" • "}
+                        {suggestion.buchungenCount} Buchung(en)
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        // Öffne neues Debitor-Formular mit vorausgefüllten Daten
+                        openNewDialog();
+                        setSuggestionsDialogOpen(false);
+                        // Fülle das Formular vor
+                        setTimeout(() => {
+                          const nameInput = document.querySelector('input[placeholder*="Firma"]') as HTMLInputElement;
+                          const kontoInput = document.querySelector('input[placeholder*="1800"]') as HTMLInputElement;
+                          if (nameInput) nameInput.value = suggestion.name;
+                          if (kontoInput) kontoInput.value = suggestion.kontonummer;
+                        }, 100);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Anlegen
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSuggestionsDialogOpen(false)}>
+                Schließen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
