@@ -515,17 +515,22 @@ export default function Uebersicht() {
   }, [unternehmenQuery.data, selectedUnternehmen]);
 
   // Verwende Suchergebnisse wenn Suche aktiv, sonst normale List
-  const buchungen = searchActive ? (searchQuery.data || []) : (buchungenQuery.data || []);
-  const stats = statsQuery.data || {
-    count: 0,
-    netto: 0,
-    steuer: 0,
-    brutto: 0,
-    guvCount: 0,
-    guvNetto: 0,
-    guvSteuer: 0,
-    guvBrutto: 0,
-  };
+  const buchungen = useMemo(() => {
+    return searchActive ? (searchQuery.data || []) : (buchungenQuery.data || []);
+  }, [searchActive, searchQuery.data, buchungenQuery.data]);
+
+  const stats = useMemo(() => {
+    return statsQuery.data || {
+      count: 0,
+      netto: 0,
+      steuer: 0,
+      brutto: 0,
+      guvCount: 0,
+      guvNetto: 0,
+      guvSteuer: 0,
+      guvBrutto: 0,
+    };
+  }, [statsQuery.data]);
 
   // Filtere Buchungen für GuV-Ansicht (SKR04 6-stellig)
   // WICHTIG: Muss identisch zur Backend-Logik in server/buchhaltung.ts sein!
