@@ -57,6 +57,37 @@ export async function uploadBelegLocal(
 }
 
 /**
+ * Upload eines Steuerberater-Rechnungsdokuments
+ * Ordnerstruktur: /data/belege/steuerberater/{unternehmenId}/
+ */
+export async function uploadSteuerberaterRechnung(
+  fileBuffer: Buffer,
+  filename: string,
+  unternehmenId: number
+): Promise<{ url: string; path: string }> {
+  // Ordnerstruktur: /data/belege/steuerberater/{unternehmenId}/
+  const dirPath = path.join(BELEGE_BASE_PATH, 'steuerberater', String(unternehmenId));
+
+  // Ordner erstellen falls nicht vorhanden
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+
+  // Eindeutiger Dateiname mit Timestamp
+  const safeName = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const uniqueFilename = `${Date.now()}_${safeName}`;
+  const filePath = path.join(dirPath, uniqueFilename);
+
+  // Datei speichern
+  fs.writeFileSync(filePath, fileBuffer);
+
+  // URL für Frontend
+  const url = `/belege/steuerberater/${unternehmenId}/${uniqueFilename}`;
+
+  return { url, path: filePath };
+}
+
+/**
  * Download-URL für eine Beleg-Datei generieren
  */
 export async function getBelegUrl(relativeUrl: string): Promise<string> {

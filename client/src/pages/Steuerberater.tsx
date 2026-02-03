@@ -80,6 +80,10 @@ export default function Steuerberater() {
     bruttobetrag: "",
     beschreibung: "",
   });
+
+  // Upload-State für Rechnungsdokument
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   
   const [neuePosition, setNeuePosition] = useState({
     beschreibung: "",
@@ -215,6 +219,7 @@ export default function Steuerberater() {
       bruttobetrag: "",
       beschreibung: "",
     });
+    setUploadedFile(null);
   };
   
   const resetPositionForm = () => {
@@ -229,20 +234,44 @@ export default function Steuerberater() {
     });
   };
   
-  const handleCreateRechnung = () => {
+  const handleCreateRechnung = async () => {
     if (!selectedUnternehmenId || !neueRechnung.rechnungsnummer || !neueRechnung.nettobetrag) return;
-    
-    createRechnungMutation.mutate({
-      unternehmenId: selectedUnternehmenId,
-      rechnungsnummer: neueRechnung.rechnungsnummer,
-      rechnungsdatum: neueRechnung.rechnungsdatum,
-      zeitraumVon: neueRechnung.zeitraumVon || undefined,
-      zeitraumBis: neueRechnung.zeitraumBis || undefined,
-      nettobetrag: neueRechnung.nettobetrag,
-      steuersatz: neueRechnung.steuersatz,
-      bruttobetrag: neueRechnung.bruttobetrag || (parseFloat(neueRechnung.nettobetrag) * 1.19).toFixed(2),
-      beschreibung: neueRechnung.beschreibung || undefined,
-    });
+
+    setUploading(true);
+    try {
+      let dateiBase64: string | undefined;
+      let dateiName: string | undefined;
+
+      // Upload Datei falls vorhanden
+      if (uploadedFile) {
+        // Konvertiere zu base64
+        dateiBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(uploadedFile);
+        });
+        dateiName = uploadedFile.name;
+      }
+
+      createRechnungMutation.mutate({
+        unternehmenId: selectedUnternehmenId,
+        rechnungsnummer: neueRechnung.rechnungsnummer,
+        rechnungsdatum: neueRechnung.rechnungsdatum,
+        zeitraumVon: neueRechnung.zeitraumVon || undefined,
+        zeitraumBis: neueRechnung.zeitraumBis || undefined,
+        nettobetrag: neueRechnung.nettobetrag,
+        steuersatz: neueRechnung.steuersatz,
+        bruttobetrag: neueRechnung.bruttobetrag || (parseFloat(neueRechnung.nettobetrag) * 1.19).toFixed(2),
+        beschreibung: neueRechnung.beschreibung || undefined,
+        dateiBase64,
+        dateiName,
+      });
+    } catch (error) {
+      console.error("Upload fehlgeschlagen:", error);
+    } finally {
+      setUploading(false);
+    }
   };
   
   const handleAddPosition = () => {
@@ -822,13 +851,50 @@ export default function Steuerberater() {
                             rows={2}
                           />
                         </div>
+
+                        {/* Dokument-Upload */}
+                        <div className="border-2 border-dashed border-muted rounded-lg p-4">
+                          <Label className="flex items-center gap-2 mb-2">
+                            <Upload className="w-4 h-4" />
+                            Rechnungsdokument hochladen (optional)
+                          </Label>
+                          <Input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setUploadedFile(file);
+                              }
+                            }}
+                            className="cursor-pointer"
+                          />
+                          {uploadedFile && (
+                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                              <File className="w-4 h-4" />
+                              <span>{uploadedFile.name}</span>
+                              <span className="text-xs">({(uploadedFile.size / 1024).toFixed(1)} KB)</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setUploadedFile(null)}
+                                className="ml-auto"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Unterstützte Formate: PDF, JPG, PNG (max. 10 MB)
+                          </p>
+                        </div>
                       </div>
                       <DialogFooter>
                         <Button variant="outline" onClick={() => setRechnungDialogOpen(false)}>
                           Abbrechen
                         </Button>
-                        <Button onClick={handleCreateRechnung} disabled={!neueRechnung.rechnungsnummer || !neueRechnung.nettobetrag || createRechnungMutation.isPending}>
-                          {createRechnungMutation.isPending ? "Wird erstellt..." : "Rechnung erfassen"}
+                        <Button onClick={handleCreateRechnung} disabled={!neueRechnung.rechnungsnummer || !neueRechnung.nettobetrag || createRechnungMutation.isPending || uploading}>
+                          {uploading ? "Lädt hoch..." : createRechnungMutation.isPending ? "Wird erstellt..." : "Rechnung erfassen"}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -1009,7 +1075,39 @@ export default function Steuerberater() {
                   <p className="font-semibold">{formatCurrency(rechnungDetail.rechnung?.bruttobetrag)}</p>
                 </div>
               </div>
-              
+
+              {/* Dokument-Download */}
+              {rechnungDetail.rechnung?.dateiUrl && (
+                <div className="border border-dashed border-muted rounded-lg p-3 bg-muted/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
+                      <File className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">
+                        {rechnungDetail.rechnung?.dateiName || "Rechnungsdokument"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Hochgeladenes Dokument
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const url = rechnungDetail.rechnung?.dateiUrl;
+                        if (url) {
+                          window.open(url, '_blank');
+                        }
+                      }}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Öffnen
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Positionen */}
               <div>
                 <div className="flex items-center justify-between mb-2">

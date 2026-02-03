@@ -476,13 +476,39 @@ export const steuerberaterRouter = router({
       steuersatz: z.string().optional(),
       bruttobetrag: z.string(),
       beschreibung: z.string().optional(),
-      dateiUrl: z.string().optional(),
+      dateiBase64: z.string().optional(),
       dateiName: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      
+
+      let dateiUrl: string | null = null;
+      let savedFileName: string | null = null;
+
+      // Upload Datei falls vorhanden
+      if (input.dateiBase64 && input.dateiName) {
+        try {
+          const { uploadSteuerberaterRechnung } = await import('./storage');
+
+          // Base64 zu Buffer konvertieren
+          const base64Data = input.dateiBase64.split(',')[1] || input.dateiBase64;
+          const buffer = Buffer.from(base64Data, 'base64');
+
+          const uploadResult = await uploadSteuerberaterRechnung(
+            buffer,
+            input.dateiName,
+            input.unternehmenId
+          );
+
+          dateiUrl = uploadResult.url;
+          savedFileName = input.dateiName;
+        } catch (error) {
+          console.error('File upload failed:', error);
+          // Fahre ohne Datei fort
+        }
+      }
+
       const [result] = await db.insert(steuerberaterRechnungen).values({
         unternehmenId: input.unternehmenId,
         rechnungsnummer: input.rechnungsnummer,
@@ -493,8 +519,8 @@ export const steuerberaterRouter = router({
         steuersatz: input.steuersatz || "19.00",
         bruttobetrag: input.bruttobetrag,
         beschreibung: input.beschreibung || null,
-        dateiUrl: input.dateiUrl || null,
-        dateiName: input.dateiName || null,
+        dateiUrl: dateiUrl,
+        dateiName: savedFileName,
         erstelltVon: ctx.user?.id || null,
       });
       
