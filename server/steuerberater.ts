@@ -687,12 +687,24 @@ export const steuerberaterRouter = router({
       
       // Gesamtkosten
       const gesamtkosten = rechnungen.reduce((sum, r) => sum + parseFloat(r.bruttobetrag || "0"), 0);
-      
+
       // Kosten nach Kategorie
       const kostenNachKategorie: Record<string, number> = {};
+
+      // Rechnungen, die Positionen haben
+      const rechnungenMitPositionen = new Set(positionen.map(p => p.rechnungId));
+
+      // Positionen zu Kategorien zuordnen
       positionen.forEach(p => {
         const kat = p.kategorie || "sonstig";
         kostenNachKategorie[kat] = (kostenNachKategorie[kat] || 0) + parseFloat(p.gesamtpreis || "0");
+      });
+
+      // Rechnungen ohne Positionen als "nicht_kategorisiert" hinzufügen
+      rechnungen.forEach(r => {
+        if (!rechnungenMitPositionen.has(r.id)) {
+          kostenNachKategorie["nicht_kategorisiert"] = (kostenNachKategorie["nicht_kategorisiert"] || 0) + parseFloat(r.bruttobetrag || "0");
+        }
       });
       
       // Vermeidbare Kosten
