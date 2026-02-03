@@ -88,6 +88,41 @@ export async function uploadSteuerberaterRechnung(
 }
 
 /**
+ * Upload eines Auszugs (Bank, Kreditkarte, Zahlungsdienstleister)
+ * Ordnerstruktur: /data/belege/{unternehmenId}/auszuege/{typ}/{jahr}/{monat}/
+ */
+export async function uploadAuszug(
+  fileBuffer: Buffer,
+  filename: string,
+  unternehmenId: number,
+  typ: 'bankkonto' | 'kreditkarte' | 'zahlungsdienstleister'
+): Promise<{ url: string; path: string }> {
+  const jahr = new Date().getFullYear();
+  const monat = String(new Date().getMonth() + 1).padStart(2, '0');
+
+  // Ordnerstruktur: /data/belege/{unternehmenId}/auszuege/{typ}/{jahr}/{monat}/
+  const dirPath = path.join(BELEGE_BASE_PATH, String(unternehmenId), 'auszuege', typ, String(jahr), monat);
+
+  // Ordner erstellen falls nicht vorhanden
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+
+  // Eindeutiger Dateiname mit Timestamp
+  const safeName = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const uniqueFilename = `${Date.now()}_${safeName}`;
+  const filePath = path.join(dirPath, uniqueFilename);
+
+  // Datei speichern
+  fs.writeFileSync(filePath, fileBuffer);
+
+  // URL für Frontend
+  const url = `/belege/${unternehmenId}/auszuege/${typ}/${jahr}/${monat}/${uniqueFilename}`;
+
+  return { url, path: filePath };
+}
+
+/**
  * Download-URL für eine Beleg-Datei generieren
  */
 export async function getBelegUrl(relativeUrl: string): Promise<string> {

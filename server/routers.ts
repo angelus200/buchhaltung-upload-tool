@@ -18,6 +18,7 @@ import { inventurMainRouter } from "./inventur";
 import { jahresabschlussRouter } from "./jahresabschluss";
 import { finanzkontenRouter } from "./finanzkonten";
 import { mwstRouter } from "./mwst";
+import { auszuegeRouter } from "./auszuege";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -84,6 +85,9 @@ export const appRouter = router({
 
   // MWST-Quartalsabrechnung (Schweiz)
   mwst: mwstRouter,
+
+  // Auszüge (Bankkonten, Kreditkarten, Zahlungsdienstleister)
+  auszuege: auszuegeRouter,
 });
 
 export type AppRouter = typeof appRouter;

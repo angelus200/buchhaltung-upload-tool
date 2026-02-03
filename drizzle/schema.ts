@@ -1385,3 +1385,75 @@ export const finanzkonten = mysqlTable("finanzkonten", {
 
 export type Finanzkonto = typeof finanzkonten.$inferSelect;
 export type InsertFinanzkonto = typeof finanzkonten.$inferInsert;
+
+/**
+ * Kontoauszüge, Kreditkartenauszüge, Zahlungsdienstleister-Auszüge
+ */
+export const auszuege = mysqlTable("auszuege", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+
+  // Typ des Auszugs
+  typ: mysqlEnum("typ", ["bankkonto", "kreditkarte", "zahlungsdienstleister"]).notNull(),
+
+  // Optionale Zuordnung zu bestehendem Konto
+  kontoId: int("kontoId"), // Foreign key zu finanzkonten
+  kontoBezeichnung: varchar("kontoBezeichnung", { length: 255 }), // Fallback wenn kein Konto zugeordnet
+
+  // Datei-Info
+  dateiUrl: varchar("dateiUrl", { length: 512 }).notNull(),
+  dateiname: varchar("dateiname", { length: 255 }).notNull(),
+
+  // Zeitraum
+  zeitraumVon: date("zeitraumVon").notNull(),
+  zeitraumBis: date("zeitraumBis").notNull(),
+
+  // Saldo-Info
+  saldoAnfang: decimal("saldoAnfang", { precision: 15, scale: 2 }),
+  saldoEnde: decimal("saldoEnde", { precision: 15, scale: 2 }),
+  waehrung: varchar("waehrung", { length: 3 }).default("EUR"),
+
+  // Status
+  status: mysqlEnum("status", ["neu", "in_bearbeitung", "abgeschlossen"]).default("neu").notNull(),
+
+  // Notizen
+  notizen: text("notizen"),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  erstelltVon: int("erstelltVon").references(() => users.id),
+});
+
+export type Auszug = typeof auszuege.$inferSelect;
+export type InsertAuszug = typeof auszuege.$inferInsert;
+
+/**
+ * Positionen eines Auszugs (einzelne Transaktionen)
+ */
+export const auszugPositionen = mysqlTable("auszug_positionen", {
+  id: int("id").autoincrement().primaryKey(),
+  auszugId: int("auszugId").references(() => auszuege.id).notNull(),
+
+  // Positions-Details
+  datum: date("datum").notNull(),
+  buchungstext: text("buchungstext").notNull(),
+  betrag: decimal("betrag", { precision: 15, scale: 2 }).notNull(),
+  saldo: decimal("saldo", { precision: 15, scale: 2 }), // Optional: Saldo nach dieser Transaktion
+
+  // Referenz-Informationen (von Bank/Kreditkarte)
+  referenz: varchar("referenz", { length: 255 }), // z.B. Transaktions-ID
+  kategorie: varchar("kategorie", { length: 100 }), // Optional: von Bank/Kreditkarte
+
+  // Zuordnung zu Buchung
+  zugeordneteBuchungId: int("zugeordneteBuchungId").references(() => buchungen.id),
+  status: mysqlEnum("status", ["offen", "zugeordnet", "ignoriert"]).default("offen").notNull(),
+
+  // Notizen
+  notizen: text("notizen"),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AuszugPosition = typeof auszugPositionen.$inferSelect;
+export type InsertAuszugPosition = typeof auszugPositionen.$inferInsert;
