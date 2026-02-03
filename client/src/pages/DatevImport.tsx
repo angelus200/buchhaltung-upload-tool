@@ -1,6 +1,17 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -77,6 +88,13 @@ export default function DatevImport() {
   const [fileName, setFileName] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
 
+  // Export Dialog State
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportDateFrom, setExportDateFrom] = useState("");
+  const [exportDateTo, setExportDateTo] = useState("");
+  const [exportSachkonten, setExportSachkonten] = useState("");
+  const [exportOnlyChecked, setExportOnlyChecked] = useState(true);
+
   // Get unternehmen list
   const { data: unternehmenList = [] } = trpc.unternehmen.list.useQuery();
 
@@ -111,15 +129,8 @@ export default function DatevImport() {
     },
   });
 
-  // Export mutation
-  const exportMutation = trpc.datev.export.useQuery(
-    {
-      unternehmenId: selectedUnternehmen!,
-    },
-    {
-      enabled: false,
-    }
-  );
+  // Export mutation - disabled initially, wird manuell über refetch getriggert
+  const trpcUtils = trpc.useUtils();
 
   // File dropzone
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -180,18 +191,32 @@ export default function DatevImport() {
     }
 
     try {
-      const result = await exportMutation.refetch();
-      if (result.data) {
+      // Parse Sachkonten-Filter (comma-separated)
+      const sachkontenArray = exportSachkonten
+        ? exportSachkonten.split(",").map((s) => s.trim()).filter(Boolean)
+        : undefined;
+
+      const result = await trpcUtils.datev.export.fetch({
+        unternehmenId: selectedUnternehmen,
+        datumVon: exportDateFrom || undefined,
+        datumBis: exportDateTo || undefined,
+        sachkonten: sachkontenArray,
+        status: exportOnlyChecked ? "geprueft" : undefined,
+      });
+
+      if (result) {
         // Download file
-        const blob = new Blob([result.data.content], { type: "text/csv;charset=utf-8;" });
+        const blob = new Blob([result.content], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = result.data.fileName;
+        link.download = result.fileName;
         link.click();
 
         toast.success("Export erfolgreich!", {
-          description: `${result.data.count} Buchungen exportiert`,
+          description: `${result.count} Buchungen exportiert`,
         });
+
+        setExportDialogOpen(false);
       }
     } catch (error) {
       toast.error("Export fehlgeschlagen", {
@@ -536,19 +561,107 @@ export default function DatevImport() {
           </CardHeader>
           <CardContent>
             <Button
-              onClick={handleExport}
-              disabled={!selectedUnternehmen || exportMutation.isFetching}
+              onClick={() => setExportDialogOpen(true)}
+              disabled={!selectedUnternehmen}
               variant="outline"
               className="gap-2"
             >
               <Download className="w-4 h-4" />
-              {exportMutation.isFetching ? "Exportiere..." : "Buchungen exportieren"}
+              Export konfigurieren
             </Button>
             <p className="text-sm text-muted-foreground mt-2">
-              Exportiert alle Buchungen des ausgewählten Unternehmens
+              Wählen Sie Zeitraum und Filter für den Export
             </p>
           </CardContent>
         </Card>
+
+        {/* Export Options Dialog */}
+        <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Download className="w-5 h-5" />
+                DATEV Export konfigurieren
+              </DialogTitle>
+              <DialogDescription>
+                Wählen Sie den Zeitraum und optional bestimmte Sachkonten für den Export.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Zeitraum */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="date-from">Datum von</Label>
+                  <Input
+                    id="date-from"
+                    type="date"
+                    value={exportDateFrom}
+                    onChange={(e) => setExportDateFrom(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="date-to">Datum bis</Label>
+                  <Input
+                    id="date-to"
+                    type="date"
+                    value={exportDateTo}
+                    onChange={(e) => setExportDateTo(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Sachkonten Filter */}
+              <div>
+                <Label htmlFor="sachkonten">
+                  Sachkonten (optional)
+                  <span className="text-xs text-muted-foreground ml-2">
+                    Komma-getrennt, z.B. 1200,1800,4000
+                  </span>
+                </Label>
+                <Input
+                  id="sachkonten"
+                  value={exportSachkonten}
+                  onChange={(e) => setExportSachkonten(e.target.value)}
+                  placeholder="z.B. 1200,1800,4000"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Leer lassen für alle Konten
+                </p>
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="only-checked"
+                  checked={exportOnlyChecked}
+                  onCheckedChange={(checked) => setExportOnlyChecked(checked as boolean)}
+                />
+                <Label htmlFor="only-checked" className="text-sm font-normal cursor-pointer">
+                  Nur geprüfte Buchungen exportieren
+                </Label>
+              </div>
+
+              {/* Info Box */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <p className="text-blue-900">
+                  💡 <strong>Hinweis:</strong> Wenn Sie keinen Zeitraum angeben, werden alle
+                  Buchungen des Unternehmens exportiert.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleExport} className="gap-2">
+                <Download className="w-4 h-4" />
+                Jetzt exportieren
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

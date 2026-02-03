@@ -178,8 +178,9 @@ export const datevRouter = router({
     .input(
       z.object({
         unternehmenId: z.number().int().positive(),
-        datumVon: z.date().optional(),
-        datumBis: z.date().optional(),
+        datumVon: z.string().optional(),
+        datumBis: z.string().optional(),
+        sachkonten: z.array(z.string()).optional(),
         status: z.enum(["entwurf", "geprueft", "exportiert"]).optional(),
       })
     )
@@ -212,15 +213,23 @@ export const datevRouter = router({
       const filters = [eq(buchungen.unternehmenId, input.unternehmenId)];
 
       if (input.datumVon) {
-        filters.push(sql`${buchungen.belegdatum} >= ${input.datumVon}`);
+        filters.push(sql`${buchungen.belegdatum} >= ${new Date(input.datumVon)}`);
       }
 
       if (input.datumBis) {
-        filters.push(sql`${buchungen.belegdatum} <= ${input.datumBis}`);
+        filters.push(sql`${buchungen.belegdatum} <= ${new Date(input.datumBis)}`);
       }
 
       if (input.status) {
         filters.push(eq(buchungen.status, input.status));
+      }
+
+      if (input.sachkonten && input.sachkonten.length > 0) {
+        // Filter für bestimmte Sachkonten
+        const sachkontenFilter = input.sachkonten.map(sk =>
+          sql`${buchungen.sachkonto} = ${sk}`
+        );
+        filters.push(sql`(${sql.join(sachkontenFilter, sql` OR `)})`);
       }
 
       // Get buchungen
@@ -253,8 +262,8 @@ export const datevRouter = router({
         beraternummer: company.beraternummer || undefined,
         mandantennummer: company.mandantennummer || undefined,
         wirtschaftsjahrBeginn: company.wirtschaftsjahrBeginn,
-        datumVon: input.datumVon,
-        datumBis: input.datumBis,
+        datumVon: input.datumVon ? new Date(input.datumVon) : undefined,
+        datumBis: input.datumBis ? new Date(input.datumBis) : undefined,
       });
 
       return {
