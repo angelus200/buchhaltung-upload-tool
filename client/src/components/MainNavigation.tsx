@@ -35,6 +35,7 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
+// Hauptnavigation Links
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Buchungen", icon: <Upload className="w-4 h-4" /> },
   { href: "/uebersicht", label: "Übersicht", icon: <BarChart3 className="w-4 h-4" /> },

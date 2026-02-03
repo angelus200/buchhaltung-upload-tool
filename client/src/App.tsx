@@ -42,6 +42,7 @@ import SteuerberaterHandbuch from "./pages/SteuerberaterHandbuch";
 import MwstAbrechnung from "./pages/MwstAbrechnung";
 import Auszuege from "./pages/Auszuege";
 
+// Router-Konfiguration
 function Router() {
   return (
     <Switch>
