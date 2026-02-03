@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,6 +108,23 @@ export default function Auszuege() {
     { unternehmenId: selectedUnternehmen! },
     { enabled: !!selectedUnternehmen }
   );
+
+  // Auto-select Unternehmen aus localStorage oder erstes Unternehmen
+  useEffect(() => {
+    if (unternehmen && unternehmen.length > 0 && !selectedUnternehmen) {
+      const savedId = localStorage.getItem("selectedUnternehmenId");
+      if (savedId) {
+        const id = parseInt(savedId);
+        const exists = unternehmen.find(u => u.unternehmen.id === id);
+        if (exists) {
+          setSelectedUnternehmen(id);
+          return;
+        }
+      }
+      // Fallback: erstes Unternehmen
+      setSelectedUnternehmen(unternehmen[0].unternehmen.id);
+    }
+  }, [unternehmen, selectedUnternehmen]);
   const { data: stats } = trpc.auszuege.stats.useQuery(
     { unternehmenId: selectedUnternehmen! },
     { enabled: !!selectedUnternehmen }
@@ -252,6 +269,38 @@ export default function Auszuege() {
       setUploading(false);
     }
   };
+
+  // Ladezustand
+  if (!unternehmen) {
+    return (
+      <div className="min-h-screen bg-background">
+        <AppHeader title="Auszüge" subtitle="Kontoauszüge, Kreditkartenauszüge & Zahlungsdienstleister" />
+        <main className="container py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Keine Unternehmen vorhanden
+  if (unternehmen.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <AppHeader title="Auszüge" subtitle="Kontoauszüge, Kreditkartenauszüge & Zahlungsdienstleister" />
+        <main className="container py-8">
+          <Card className="p-12 text-center">
+            <AlertCircle className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">Kein Unternehmen vorhanden</h2>
+            <p className="text-muted-foreground">
+              Sie müssen zuerst ein Unternehmen erstellen, um Auszüge zu verwalten.
+            </p>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
