@@ -14,6 +14,9 @@ COPY . .
 ARG VITE_CLERK_PUBLISHABLE_KEY
 ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 
+# Lösche Vite Build Cache - erzwingt kompletten Neu-Build
+RUN rm -rf node_modules/.vite node_modules/.cache .vite
+
 RUN npm run build
 
 EXPOSE 3000
