@@ -40,7 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Buchungen", icon: <Upload className="w-4 h-4" /> },
   { href: "/uebersicht", label: "Übersicht", icon: <BarChart3 className="w-4 h-4" /> },
   { href: "/stammdaten", label: "Stammdaten", icon: <Briefcase className="w-4 h-4" /> },
-  { href: "/auszuege", label: "Auszüge", icon: <Receipt className="w-4 h-4" /> },
+  { href: "/auszuege", label: "Kontoauszüge", icon: <Receipt className="w-4 h-4" /> },
   { href: "/notizen", label: "Notizen", icon: <StickyNote className="w-4 h-4" /> },
   { href: "/unternehmen", label: "Unternehmen", icon: <Building2 className="w-4 h-4" /> },
 ];
@@ -57,6 +57,9 @@ export default function MainNavigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isAdmin = user?.role === "admin";
+
+  // Debug: Navigation geladen
+  console.log("MainNavigation loaded with NAV_ITEMS:", NAV_ITEMS.length);
 
   const isActive = (href: string) => {
     if (href === "/") return location === "/";
