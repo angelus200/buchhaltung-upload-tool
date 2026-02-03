@@ -557,6 +557,37 @@ export const jahresabschlussRouter = router({
   // BANKKONTEN
   // ============================================
   bankkonten: router({
+    // Nächstes freies Sachkonto im Bereich 1200-1299 vorschlagen
+    suggestNextSachkonto: protectedProcedure
+      .input(z.object({ unternehmenId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return "1200";
+
+        // Alle existierenden Bankkonten-Sachkonten laden
+        const existingKonten = await db
+          .select({ sachkonto: bankkonten.sachkonto })
+          .from(bankkonten)
+          .where(eq(bankkonten.unternehmenId, input.unternehmenId));
+
+        // Alle belegten Sachkonten im Bereich 1200-1299
+        const belegteSachkonten = existingKonten
+          .map((k) => k.sachkonto)
+          .filter((sk) => sk && sk >= "1200" && sk < "1300")
+          .map((sk) => parseInt(sk || "0"))
+          .sort((a, b) => a - b);
+
+        // Nächstes freies Sachkonto finden
+        for (let i = 1200; i < 1300; i++) {
+          if (!belegteSachkonten.includes(i)) {
+            return String(i);
+          }
+        }
+
+        // Falls alle belegt, nehme 1299
+        return "1299";
+      }),
+
     // Liste aller Bankkonten mit Saldo
     list: protectedProcedure
       .input(

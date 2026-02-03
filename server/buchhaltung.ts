@@ -533,6 +533,51 @@ export const buchungenRouter = router({
       };
     }),
 
+  // Prüfe auf Doppelbuchungen (gleiche Belegnummer + Unternehmen + ähnliches Datum)
+  checkDuplicate: protectedProcedure
+    .input(
+      z.object({
+        unternehmenId: z.number(),
+        belegnummer: z.string(),
+        belegdatum: z.string(),
+        excludeId: z.number().optional(), // Bei Update: eigene ID ausschließen
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { isDuplicate: false, existingBuchungen: [] };
+
+      // Prüfe auf gleiche Belegnummer im selben Unternehmen
+      const belegdatum = new Date(input.belegdatum);
+      const datumVon = new Date(belegdatum);
+      datumVon.setDate(datumVon.getDate() - 3); // 3 Tage vor
+      const datumBis = new Date(belegdatum);
+      datumBis.setDate(datumBis.getDate() + 3); // 3 Tage nach
+
+      const conditions = [
+        eq(buchungen.unternehmenId, input.unternehmenId),
+        eq(buchungen.belegnummer, input.belegnummer),
+        gte(buchungen.belegdatum, datumVon),
+        lte(buchungen.belegdatum, datumBis),
+      ];
+
+      // Bei Update: eigene Buchung ausschließen
+      if (input.excludeId) {
+        conditions.push(sql`${buchungen.id} != ${input.excludeId}`);
+      }
+
+      const existingBuchungen = await db
+        .select()
+        .from(buchungen)
+        .where(and(...conditions))
+        .limit(5);
+
+      return {
+        isDuplicate: existingBuchungen.length > 0,
+        existingBuchungen,
+      };
+    }),
+
   // Zahlungsstatus aktualisieren
   updateZahlungsstatus: protectedProcedure
     .input(

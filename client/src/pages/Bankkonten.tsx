@@ -55,11 +55,12 @@ function formatCurrency(value: number): string {
 interface KontoFormProps {
   konto?: any;
   unternehmenId: number;
+  suggestedSachkonto?: string;
   onSave: (data: any) => void;
   onCancel: () => void;
 }
 
-function KontoForm({ konto, unternehmenId, onSave, onCancel }: KontoFormProps) {
+function KontoForm({ konto, unternehmenId, suggestedSachkonto, onSave, onCancel }: KontoFormProps) {
   const [formData, setFormData] = useState({
     unternehmenId,
     kontonummer: konto?.kontonummer || "",
@@ -67,7 +68,7 @@ function KontoForm({ konto, unternehmenId, onSave, onCancel }: KontoFormProps) {
     bankname: konto?.bankname || "",
     iban: konto?.iban || "",
     bic: konto?.bic || "",
-    sachkonto: konto?.sachkonto || "",
+    sachkonto: konto?.sachkonto || suggestedSachkonto || "",
     anfangsbestand: konto?.anfangsbestand || "0",
     kontotyp: konto?.kontotyp || "girokonto",
     waehrung: konto?.waehrung || "EUR",
@@ -196,6 +197,8 @@ export default function Bankkonten() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedKonto, setSelectedKonto] = useState<any>(null);
   const [stichtag, setStichtag] = useState(new Date().toISOString().split("T")[0]);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [createdKonto, setCreatedKonto] = useState<any>(null);
 
   // Queries
   const unternehmenQuery = trpc.unternehmen.list.useQuery(undefined, {
@@ -207,12 +210,25 @@ export default function Bankkonten() {
     { enabled: !!selectedUnternehmen }
   );
 
+  const suggestedSachkontoQuery = trpc.jahresabschluss.bankkonten.suggestNextSachkonto.useQuery(
+    { unternehmenId: selectedUnternehmen || 0 },
+    { enabled: !!selectedUnternehmen && createDialogOpen }
+  );
+
   // Mutations
   const createMutation = trpc.jahresabschluss.bankkonten.create.useMutation({
-    onSuccess: () => {
-      toast.success("Bankkonto erstellt");
-      kontenQuery.refetch();
+    onSuccess: async (result, variables) => {
+      // Konto neu laden um alle Details zu haben
+      await kontenQuery.refetch();
+
+      // Details des erstellten Kontos speichern
+      setCreatedKonto({
+        ...variables,
+        id: result.id,
+      });
+
       setCreateDialogOpen(false);
+      setSuccessDialogOpen(true);
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -423,10 +439,85 @@ export default function Bankkonten() {
           {selectedUnternehmen && (
             <KontoForm
               unternehmenId={selectedUnternehmen}
+              suggestedSachkonto={suggestedSachkontoQuery.data}
               onSave={(data) => createMutation.mutate(data)}
               onCancel={() => setCreateDialogOpen(false)}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog - Vorlage anzeigen */}
+      <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <Wallet className="w-5 h-5" />
+              Bankkonto erfolgreich erstellt
+            </DialogTitle>
+          </DialogHeader>
+          {createdKonto && (
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4 bg-green-50/50 space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Kontonummer</p>
+                    <p className="font-medium">{createdKonto.kontonummer}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Sachkonto</p>
+                    <p className="font-mono font-bold text-green-700">
+                      {createdKonto.sachkonto || "-"}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">Bezeichnung</p>
+                    <p className="font-medium">{createdKonto.bezeichnung}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Bankname</p>
+                    <p className="font-medium">{createdKonto.bankname || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Kontotyp</p>
+                    <Badge variant="outline">{createdKonto.kontotyp}</Badge>
+                  </div>
+                  {createdKonto.iban && (
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">IBAN</p>
+                      <p className="font-mono text-xs">{createdKonto.iban}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-muted-foreground">Anfangsbestand</p>
+                    <p className="font-mono font-bold">
+                      {formatCurrency(parseFloat(createdKonto.anfangsbestand || "0"))} €
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Währung</p>
+                    <p className="font-medium">{createdKonto.waehrung}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <p className="text-blue-900">
+                  💡 <strong>Hinweis:</strong> Das Sachkonto <strong className="font-mono">{createdKonto.sachkonto}</strong> wurde automatisch aus dem Bereich 1200-1299 vorgeschlagen.
+                  Sie können es jederzeit anpassen.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => {
+              setSuccessDialogOpen(false);
+              setCreatedKonto(null);
+              toast.success("Bankkonto wurde erfolgreich angelegt");
+            }}>
+              Schließen
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

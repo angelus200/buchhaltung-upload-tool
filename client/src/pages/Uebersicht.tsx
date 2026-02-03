@@ -395,7 +395,13 @@ export default function Uebersicht() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedBuchung, setSelectedBuchung] = useState<any>(null);
 
-  // tRPC Queries
+  // Doppelbuchungs-Warnung
+  const [duplicateWarningOpen, setDuplicateWarningOpen] = useState(false);
+  const [pendingBuchungData, setPendingBuchungData] = useState<any>(null);
+  const [duplicateData, setDuplicateData] = useState<any>(null);
+
+  // tRPC Queries & Utils
+  const trpcUtils = trpc.useUtils();
   const unternehmenQuery = trpc.unternehmen.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -558,6 +564,86 @@ export default function Uebersicht() {
 
   const monatName =
     MONATE.find((m) => m.value === String(selectedMonth))?.label || "";
+
+  // Funktion zum Prüfen und Speichern einer neuen Buchung
+  const handleCreateBuchung = async (data: any) => {
+    if (!data.belegnummer || !data.belegdatum) {
+      createMutation.mutate(data);
+      return;
+    }
+
+    // Prüfe auf Doppelbuchungen
+    try {
+      const result = await trpcUtils.buchungen.checkDuplicate.fetch({
+        unternehmenId: data.unternehmenId,
+        belegnummer: data.belegnummer,
+        belegdatum: data.belegdatum,
+      });
+
+      if (result.isDuplicate) {
+        // Zeige Warnung
+        setPendingBuchungData(data);
+        setDuplicateData(result.existingBuchungen);
+        setDuplicateWarningOpen(true);
+      } else {
+        // Keine Doppelbuchung, speichern
+        createMutation.mutate(data);
+      }
+    } catch (error) {
+      // Bei Fehler trotzdem speichern
+      console.error("Duplikatprüfung fehlgeschlagen:", error);
+      createMutation.mutate(data);
+    }
+  };
+
+  // Funktion zum Prüfen und Speichern einer bestehenden Buchung
+  const handleUpdateBuchung = async (id: number, data: any) => {
+    if (!data.belegnummer || !data.belegdatum) {
+      updateMutation.mutate({ id, ...data });
+      return;
+    }
+
+    // Prüfe auf Doppelbuchungen (eigene ID ausschließen)
+    try {
+      const buchung = selectedBuchung;
+      const result = await trpcUtils.buchungen.checkDuplicate.fetch({
+        unternehmenId: buchung.unternehmenId,
+        belegnummer: data.belegnummer,
+        belegdatum: data.belegdatum,
+        excludeId: id,
+      });
+
+      if (result.isDuplicate) {
+        // Zeige Warnung
+        setPendingBuchungData({ id, ...data });
+        setDuplicateData(result.existingBuchungen);
+        setDuplicateWarningOpen(true);
+      } else {
+        // Keine Doppelbuchung, speichern
+        updateMutation.mutate({ id, ...data });
+      }
+    } catch (error) {
+      // Bei Fehler trotzdem speichern
+      console.error("Duplikatprüfung fehlgeschlagen:", error);
+      updateMutation.mutate({ id, ...data });
+    }
+  };
+
+  // Bestätigte Buchung trotz Duplikat speichern
+  const handleConfirmDuplicateSave = () => {
+    if (pendingBuchungData) {
+      if (pendingBuchungData.id) {
+        // Update
+        updateMutation.mutate(pendingBuchungData);
+      } else {
+        // Create
+        createMutation.mutate(pendingBuchungData);
+      }
+    }
+    setDuplicateWarningOpen(false);
+    setPendingBuchungData(null);
+    setDuplicateData(null);
+  };
 
   // Statistik-Werte basierend auf Toggle-State
   const displayStats = showOnlyGuV
@@ -988,9 +1074,7 @@ export default function Uebersicht() {
           {selectedBuchung && (
             <EditBuchungForm
               buchung={selectedBuchung}
-              onSave={(data) =>
-                updateMutation.mutate({ id: selectedBuchung.id, ...data })
-              }
+              onSave={(data) => handleUpdateBuchung(selectedBuchung.id, data)}
               onCancel={() => setEditDialogOpen(false)}
             />
           )}
@@ -1028,7 +1112,7 @@ export default function Uebersicht() {
           {selectedUnternehmen && (
             <CreateBuchungForm
               unternehmenId={selectedUnternehmen}
-              onSave={(data) => createMutation.mutate(data)}
+              onSave={(data) => handleCreateBuchung(data)}
               onCancel={() => setCreateDialogOpen(false)}
             />
           )}
@@ -1327,6 +1411,62 @@ export default function Uebersicht() {
               className="bg-red-600 hover:bg-red-700"
             >
               Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Doppelbuchungs-Warnung */}
+      <AlertDialog open={duplicateWarningOpen} onOpenChange={setDuplicateWarningOpen}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-orange-600">
+              <AlertTriangle className="w-5 h-5" />
+              Mögliche Doppelbuchung erkannt
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              <p>
+                Eine Buchung mit der gleichen Belegnummer wurde bereits erfasst.
+                Möchten Sie die Buchung trotzdem speichern?
+              </p>
+              {duplicateData && duplicateData.length > 0 && (
+                <div className="border rounded-lg p-4 bg-orange-50/50 space-y-3">
+                  <p className="font-medium text-sm text-orange-900">
+                    Vorhandene Buchung(en):
+                  </p>
+                  {duplicateData.map((b: any) => (
+                    <div
+                      key={b.id}
+                      className="text-sm border-l-2 border-orange-400 pl-3 space-y-1"
+                    >
+                      <div>
+                        <strong>Buchung #{b.id}</strong>
+                      </div>
+                      <div>Datum: {formatDate(b.belegdatum)}</div>
+                      <div>Belegnummer: {b.belegnummer}</div>
+                      <div>Betrag: {formatCurrency(parseFloat(b.bruttobetrag))} €</div>
+                      <div>Geschäftspartner: {b.geschaeftspartner || "-"}</div>
+                      <div>Sachkonto: {b.sachkonto || `${b.sollKonto}/${b.habenKonto}`}</div>
+                      {b.buchungstext && <div>Text: {b.buchungstext}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDuplicateWarningOpen(false);
+              setPendingBuchungData(null);
+              setDuplicateData(null);
+            }}>
+              Abbrechen
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDuplicateSave}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              Trotzdem speichern
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
