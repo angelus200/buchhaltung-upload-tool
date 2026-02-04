@@ -470,6 +470,7 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
 **WICHTIG**: Prüfe das Bild SEHR GRÜNDLICH! Oft sind Werte da, aber an unerwarteten Stellen!`;
 
   try {
+    // Gemini verwendet ein anderes Format für Images als OpenAI/Anthropic
     const messages: Message[] = [
       {
         role: "system",
@@ -485,28 +486,45 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
           {
             type: "image_url",
             image_url: {
-              url: `data:${mimeType};base64,${imageBase64}`,
-              detail: "high"
+              url: `data:${mimeType};base64,${imageBase64}`
             }
           }
         ]
       }
     ];
 
+    console.log("[OCR] Sende Anfrage an Gemini Vision API...");
+    console.log("[OCR] Image MIME Type:", mimeType);
+    console.log("[OCR] Image Base64 Länge:", imageBase64.length);
+
     const response = await invokeLLM({ messages });
-    
+    console.log("[OCR] ✅ Gemini Response erhalten");
+    console.log("[OCR] 📦 Response Structure:", JSON.stringify({
+      hasChoices: !!response.choices,
+      choicesLength: response.choices?.length,
+      hasMessage: !!response.choices?.[0]?.message,
+      hasContent: !!response.choices?.[0]?.message?.content,
+      contentType: typeof response.choices?.[0]?.message?.content,
+    }, null, 2));
+
     const content = response.choices[0]?.message?.content;
     if (!content || typeof content !== "string") {
+      console.error("[OCR] ❌ Keine valide Antwort:", { content, type: typeof content });
       throw new Error("Keine Antwort von Vision-AI erhalten");
     }
+
+    console.log("[OCR] 📝 Raw Content (erste 500 Zeichen):", content.substring(0, 500));
 
     // Parse JSON aus der Antwort
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error("[OCR] ❌ Kein JSON gefunden in:", content);
       throw new Error("Keine JSON-Antwort gefunden");
     }
 
+    console.log("[OCR] 🔍 JSON Match gefunden:", jsonMatch[0].substring(0, 200));
     const parsed = JSON.parse(jsonMatch[0]);
+    console.log("[OCR] ✅ JSON geparsed:", JSON.stringify(parsed, null, 2));
     
     // Erstelle OcrResult aus der Vision-Antwort
     const result: OcrResult = {
@@ -584,38 +602,64 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
 // PDF ZU BILD KONVERTIERUNG
 // ============================================
 async function convertPdfToImage(pdfBase64: string): Promise<{ imageBase64: string; mimeType: string }> {
+  console.log("[PDF→IMG] 🚀 Starte Konvertierung...");
+
   // Erstelle temporäres Verzeichnis
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "pdf-ocr-"));
+  console.log("[PDF→IMG] 📁 Temp-Verzeichnis:", tempDir);
+
   const pdfPath = path.join(tempDir, "input.pdf");
   const outputPrefix = path.join(tempDir, "page");
-  
+
   try {
     // Schreibe PDF in temporäre Datei
     const pdfBuffer = Buffer.from(pdfBase64, "base64");
+    console.log("[PDF→IMG] 💾 Schreibe PDF (Größe:", pdfBuffer.length, "bytes)...");
     await fs.promises.writeFile(pdfPath, pdfBuffer);
-    
+    console.log("[PDF→IMG] ✅ PDF geschrieben:", pdfPath);
+
     // Konvertiere erste Seite zu PNG mit pdftoppm
     // -png: Output als PNG
     // -f 1 -l 1: Nur erste Seite
     // -r 200: 200 DPI für gute Qualität
-    await execAsync(`pdftoppm -png -f 1 -l 1 -r 200 "${pdfPath}" "${outputPrefix}"`);
-    
+    const command = `pdftoppm -png -f 1 -l 1 -r 200 "${pdfPath}" "${outputPrefix}"`;
+    console.log("[PDF→IMG] 🔧 Führe aus:", command);
+
+    const { stdout, stderr } = await execAsync(command);
+    if (stdout) console.log("[PDF→IMG] 📤 stdout:", stdout);
+    if (stderr) console.log("[PDF→IMG] ⚠️ stderr:", stderr);
+
+    console.log("[PDF→IMG] ✅ pdftoppm abgeschlossen");
+
     // Finde die generierte Bilddatei
     const files = await fs.promises.readdir(tempDir);
+    console.log("[PDF→IMG] 📂 Dateien im Temp-Verzeichnis:", files);
+
     const imageFile = files.find(f => f.startsWith("page") && f.endsWith(".png"));
-    
+
     if (!imageFile) {
+      console.error("[PDF→IMG] ❌ Keine PNG-Datei gefunden!");
       throw new Error("PDF-Konvertierung fehlgeschlagen: Keine Bilddatei generiert");
     }
-    
+
+    console.log("[PDF→IMG] 🖼️ Gefundenes Bild:", imageFile);
+
     const imagePath = path.join(tempDir, imageFile);
     const imageBuffer = await fs.promises.readFile(imagePath);
+    console.log("[PDF→IMG] 📖 Bild gelesen (Größe:", imageBuffer.length, "bytes)");
+
     const imageBase64 = imageBuffer.toString("base64");
-    
+    console.log("[PDF→IMG] ✅ Base64-Konvertierung abgeschlossen (Länge:", imageBase64.length, ")");
+
     return {
       imageBase64,
       mimeType: "image/png"
     };
+  } catch (error) {
+    console.error("[PDF→IMG] ❌ FEHLER:", error);
+    console.error("[PDF→IMG] ❌ Error Message:", error instanceof Error ? error.message : "Unknown");
+    console.error("[PDF→IMG] ❌ Error Stack:", error instanceof Error ? error.stack : "No stack");
+    throw error;
   } finally {
     // Aufräumen: Lösche temporäre Dateien
     try {
@@ -728,24 +772,41 @@ export const ocrRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      console.log("[OCR] PDF-Analyse gestartet...");
-      
+      console.log("[OCR] 🚀 PDF-Analyse gestartet...");
+      console.log("[OCR] 📄 PDF Base64 Länge:", input.pdfBase64.length);
+      console.log("[OCR] 🔧 Kontenrahmen:", input.kontenrahmen);
+
       try {
         // Konvertiere PDF zu Bild
+        console.log("[OCR] 🔄 Starte PDF→Bild Konvertierung...");
         const { imageBase64, mimeType } = await convertPdfToImage(input.pdfBase64);
-        console.log("[OCR] PDF erfolgreich zu Bild konvertiert");
-        
+        console.log("[OCR] ✅ PDF erfolgreich zu Bild konvertiert");
+        console.log("[OCR] 🖼️ Bild MIME Type:", mimeType);
+        console.log("[OCR] 🖼️ Bild Base64 Länge:", imageBase64.length);
+
         // Analysiere das Bild mit Vision-AI
-        const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen) 
-          ? input.kontenrahmen 
+        const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen)
+          ? input.kontenrahmen
           : "SKR03";
-        
+
+        console.log("[OCR] 🤖 Rufe analyzeImageWithVision auf...");
         const result = await analyzeImageWithVision(imageBase64, mimeType, effectiveKontenrahmen);
-        console.log("[OCR] PDF-Analyse abgeschlossen, Konfidenz:", result.konfidenz);
-        
+
+        console.log("[OCR] ✅ PDF-Analyse abgeschlossen!");
+        console.log("[OCR] 📊 Ergebnis:", JSON.stringify({
+          konfidenz: result.konfidenz,
+          erkannteFelder: result.erkannteFelder,
+          belegdatum: result.belegdatum,
+          belegnummer: result.belegnummer,
+          nettobetrag: result.nettobetrag,
+          bruttobetrag: result.bruttobetrag,
+          geschaeftspartner: result.geschaeftspartner,
+        }, null, 2));
+
         return result;
       } catch (error) {
-        console.error("[OCR] PDF-Analyse Fehler:", error);
+        console.error("[OCR] ❌ PDF-Analyse Fehler:", error);
+        console.error("[OCR] ❌ Error Stack:", error instanceof Error ? error.stack : "No stack");
         throw new Error(`PDF-Analyse fehlgeschlagen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`);
       }
     }),
