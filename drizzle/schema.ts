@@ -112,9 +112,6 @@ export const unternehmen = mysqlTable("unternehmen", {
   telefon: varchar("telefon", { length: 50 }),
   email: varchar("email", { length: 320 }),
   website: varchar("website", { length: 255 }),
-  // Dropbox Integration (Shared Folder Link)
-  dropboxFolderLink: varchar("dropboxFolderLink", { length: 500 }),
-  dropboxLastSync: timestamp("dropboxLastSync"),
   // Erweiterte Kontenrahmen für alle Länder
   kontenrahmen: mysqlEnum("kontenrahmen", [
     "SKR03", "SKR04",           // Deutschland
