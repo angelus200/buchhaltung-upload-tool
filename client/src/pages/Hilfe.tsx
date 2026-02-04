@@ -37,7 +37,9 @@ import {
   Lock,
   Calculator,
   Receipt,
-  Banknote
+  Banknote,
+  Cloud,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
@@ -119,6 +121,35 @@ const KAPITEL: Kapitel[] = [
       { id: "ai-vertragsanalyse", titel: "AI-Vertragsanalyse" },
       { id: "zahlungsplan", titel: "Zahlungsplan" },
       { id: "buchungsintegration", titel: "Buchungsintegration" },
+    ],
+  },
+  {
+    id: "buchungsvorschlaege",
+    titel: "Buchungsvorschläge",
+    icon: Sparkles,
+    unterkapitel: [
+      { id: "vorschlaege-uebersicht", titel: "Übersicht" },
+      { id: "vorschlaege-workflow", titel: "Workflow" },
+      { id: "kreditor-matching", titel: "Kreditor-Matching" },
+    ],
+  },
+  {
+    id: "dropbox",
+    titel: "Dropbox-Integration",
+    icon: Cloud,
+    unterkapitel: [
+      { id: "dropbox-einrichten", titel: "Einrichten" },
+      { id: "dropbox-verarbeitung", titel: "Automatische Verarbeitung" },
+    ],
+  },
+  {
+    id: "elster",
+    titel: "ELSTER USt-Voranmeldung",
+    icon: Calculator,
+    unterkapitel: [
+      { id: "elster-uebersicht", titel: "Übersicht" },
+      { id: "elster-berechnung", titel: "Kennzahlen berechnen" },
+      { id: "elster-xml", titel: "XML-Export" },
     ],
   },
   {
@@ -1214,6 +1245,479 @@ export default function Hilfe() {
                       <li>Zahlungsplan generieren lassen</li>
                       <li>Buchungsvorlage erstellen</li>
                       <li>Jeden Monat: Vorlage aufrufen → Buchung erstellen</li>
+                    </ol>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <Separator className="my-8" />
+
+            {/* ========== BUCHUNGSVORSCHLÄGE ========== */}
+            <section id="vorschlaege-uebersicht" className="scroll-mt-20">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-teal-600" />
+                    <CardTitle>Buchungsvorschläge - Übersicht</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Das Modul <strong>Buchungsvorschläge</strong> nutzt künstliche Intelligenz, um aus hochgeladenen
+                    Belegen automatisch fertige Buchungen vorzuschlagen. Sie prüfen nur noch kurz die Daten und
+                    akzeptieren die Buchung – die manuelle Eingabe entfällt.
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">Was macht das Modul?</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>AI-Beleganalyse:</strong> Extrahiert alle wichtigen Daten aus PDF/Bildern</li>
+                    <li><strong>Kreditor-Matching:</strong> Erkennt Lieferanten anhand von IBAN und Name</li>
+                    <li><strong>Automatische Kontierung:</strong> Schlägt passende Sachkonten vor</li>
+                    <li><strong>Workflow-Unterstützung:</strong> Prüfen → Akzeptieren → Fertig</li>
+                  </ul>
+
+                  <h4 className="font-semibold mt-4 mb-2">Navigation:</h4>
+                  <p>
+                    Klicken Sie im Header auf <strong>„Mehr" → „Buchungsvorschläge"</strong> (unter Finanzen).
+                  </p>
+
+                  <div className="bg-green-50 p-4 rounded-lg mt-4">
+                    <strong className="text-green-700">✨ Zeitersparnis:</strong>
+                    <p className="text-sm mt-1">
+                      Statt 3-5 Minuten pro Beleg verbringen Sie nur noch 10-20 Sekunden mit Prüfen und Klicken!
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="vorschlaege-workflow" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Workflow: Vorschlag → Buchung</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <h4 className="font-semibold mb-2">So funktioniert's:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li><strong>Beleg hochladen:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Ziehen Sie PDF/Bild in die Upload-Zone auf der Buchungsseite</li>
+                        <li>Oder fügen Sie einen Dropbox-Link ein (siehe Dropbox-Integration)</li>
+                      </ul>
+                    </li>
+                    <li><strong>AI-Analyse läuft automatisch:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Extrahiert: Datum, Rechnungsnr., Betrag, Lieferant, IBAN, USt-ID</li>
+                        <li>Matched Kreditor aus Stammdaten (via IBAN oder Name)</li>
+                        <li>Erstellt Buchungsvorschlag mit Sachkonto</li>
+                      </ul>
+                    </li>
+                    <li><strong>Vorschlag erscheint in Liste:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Status: "Vorschlag" (gelb markiert)</li>
+                        <li>Alle Felder vorausgefüllt</li>
+                        <li>Beleg-Vorschau rechts daneben</li>
+                      </ul>
+                    </li>
+                    <li><strong>Prüfen & Akzeptieren:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Prüfen Sie die vorgeschlagenen Werte</li>
+                        <li>Korrigieren Sie falls nötig (Sachkonto, Betrag, etc.)</li>
+                        <li>Klicken Sie auf <strong>„Akzeptieren"</strong></li>
+                      </ul>
+                    </li>
+                    <li><strong>Buchung wird erstellt:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Der Vorschlag wird zur fertigen Buchung</li>
+                        <li>Beleg wird verknüpft und gespeichert</li>
+                        <li>Status wechselt auf "Gebucht" (grün)</li>
+                      </ul>
+                    </li>
+                  </ol>
+
+                  <h4 className="font-semibold mt-4 mb-2">Alternative Aktionen:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>Bearbeiten:</strong> Vorschlag öffnen und Felder manuell anpassen</li>
+                    <li><strong>Ablehnen:</strong> Vorschlag löschen und manuell neu erfassen</li>
+                  </ul>
+
+                  <div className="bg-blue-50 p-4 rounded-lg mt-4">
+                    <strong className="text-blue-700">💡 Tipp:</strong>
+                    <p className="text-sm mt-1">
+                      Nutzen Sie die <strong>Dropbox-Integration</strong>, um Belege direkt aus Ihrer Dropbox zu
+                      verarbeiten – ohne manuellen Upload!
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="kreditor-matching" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Automatisches Kreditor-Matching</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Die AI erkennt Ihre Lieferanten automatisch anhand von <strong>IBAN</strong> und
+                    <strong>Firmenname</strong> – und ordnet das richtige Personenkonto und Sachkonto zu.
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">Match-Typen:</h4>
+                  <div className="space-y-2 mt-2">
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <strong className="text-green-700">✓ Exakt-Match (IBAN):</strong>
+                      <p className="text-sm mt-1">
+                        Die IBAN auf dem Beleg stimmt mit einem Kreditor in den Stammdaten überein.
+                        <br />
+                        → Personenkonto, Name und Standard-Sachkonto werden automatisch übernommen.
+                      </p>
+                    </div>
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <strong className="text-yellow-700">≈ Partieller Match (Name):</strong>
+                      <p className="text-sm mt-1">
+                        Der Firmenname auf dem Beleg ähnelt einem Kreditor (z.B. "Telekom" → "Deutsche Telekom AG").
+                        <br />
+                        → Personenkonto wird vorgeschlagen, sollte geprüft werden.
+                      </p>
+                    </div>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                      <strong className="text-slate-700">✗ Kein Match:</strong>
+                      <p className="text-sm mt-1">
+                        Kreditor ist noch nicht in den Stammdaten angelegt.
+                        <br />
+                        → Personenkonto muss manuell eingegeben werden (oder Kreditor zuerst anlegen).
+                      </p>
+                    </div>
+                  </div>
+
+                  <h4 className="font-semibold mt-4 mb-2">Vorteile:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Keine doppelte Erfassung von Lieferanten</li>
+                    <li>Konsistente Kontierung durch Standard-Sachkonten</li>
+                    <li>Schnellere Verarbeitung wiederkehrender Belege</li>
+                  </ul>
+
+                  <div className="bg-teal-50 p-4 rounded-lg mt-4">
+                    <strong className="text-teal-700">🎯 Best Practice:</strong>
+                    <p className="text-sm mt-1">
+                      Pflegen Sie Ihre <strong>Kreditoren-Stammdaten</strong> sorgfältig:
+                      IBAN und Standard-Sachkonto hinterlegen → maximale Automatisierung!
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <Separator className="my-8" />
+
+            {/* ========== DROPBOX-INTEGRATION ========== */}
+            <section id="dropbox-einrichten" className="scroll-mt-20">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Cloud className="w-5 h-5 text-teal-600" />
+                    <CardTitle>Dropbox-Integration - Einrichten</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Mit der <strong>Dropbox-Integration</strong> können Sie Belege direkt aus Ihrer Dropbox verarbeiten –
+                    ohne manuelles Herunterladen und Hochladen. Einfach einen <strong>Shared Link</strong> einfügen,
+                    fertig!
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">Was Sie benötigen:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Einen <strong>Dropbox-Account</strong> (kostenlos oder kostenpflichtig)</li>
+                    <li>Belege, die Sie in Dropbox gespeichert haben</li>
+                    <li>Keine API-Tokens, keine OAuth-Einrichtung – es funktioniert mit <strong>einfachen Links</strong>!</li>
+                  </ul>
+
+                  <h4 className="font-semibold mt-4 mb-2">So geht's:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Navigieren Sie zu <strong>Mehr → Dropbox</strong> (unter „Finanzen")</li>
+                    <li>Öffnen Sie Dropbox im Browser und suchen Sie die Beleg-Datei</li>
+                    <li>Rechtsklick auf die Datei → <strong>„Link kopieren"</strong> oder <strong>„Freigeben"</strong></li>
+                    <li>Fügen Sie den Link in das Eingabefeld ein (z.B. <code>https://www.dropbox.com/scl/fi/...</code>)</li>
+                    <li>Klicken Sie auf <strong>„Verarbeiten"</strong></li>
+                  </ol>
+
+                  <div className="bg-green-50 p-4 rounded-lg mt-4">
+                    <strong className="text-green-700">✨ Kein Setup nötig:</strong>
+                    <p className="text-sm mt-1">
+                      Im Gegensatz zu anderen Tools benötigt buchhaltung-ki.app <strong>keine App-Autorisierung</strong>
+                      oder Zugriff auf Ihre Dropbox. Sie teilen nur einzelne Dateien via Link!
+                    </p>
+                  </div>
+
+                  <h4 className="font-semibold mt-4 mb-2">Unterstützte Link-Typen:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>Shared Links:</strong> <code>https://www.dropbox.com/scl/fi/...</code></li>
+                    <li><strong>Direkte Links:</strong> <code>https://dl.dropboxusercontent.com/...</code></li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="dropbox-verarbeitung" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Automatische Verarbeitung</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Nachdem Sie einen Dropbox-Link eingefügt haben, läuft die Verarbeitung vollautomatisch ab:
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">Ablauf:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li><strong>Download:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Die App lädt die Datei von Dropbox herunter</li>
+                        <li>Unterstützt: PDF, JPG, PNG</li>
+                      </ul>
+                    </li>
+                    <li><strong>Upload:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Die Datei wird in Ihr Belegarchiv hochgeladen</li>
+                        <li>Dateiname wird übernommen</li>
+                      </ul>
+                    </li>
+                    <li><strong>AI-Analyse:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Claude AI extrahiert alle relevanten Daten</li>
+                        <li>Datum, Rechnungsnr., Betrag, Lieferant, IBAN, USt-ID</li>
+                      </ul>
+                    </li>
+                    <li><strong>Kreditor-Matching:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Automatische Zuordnung zu bestehendem Kreditor</li>
+                        <li>Personenkonto und Sachkonto werden gesetzt</li>
+                      </ul>
+                    </li>
+                    <li><strong>Buchungsvorschlag erstellen:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Ein fertiger Buchungsvorschlag erscheint auf der Buchungsseite</li>
+                        <li>Status: "Vorschlag" → Sie müssen nur noch prüfen und akzeptieren</li>
+                      </ul>
+                    </li>
+                  </ol>
+
+                  <h4 className="font-semibold mt-4 mb-2">Ergebnis:</h4>
+                  <p>
+                    Der Buchungsvorschlag ist nun auf der <Link href="/" className="text-teal-600 hover:underline">
+                    Buchungsseite</Link> sichtbar. Sie können ihn dort prüfen, ggf. anpassen und akzeptieren.
+                  </p>
+
+                  <div className="bg-blue-50 p-4 rounded-lg mt-4">
+                    <strong className="text-blue-700">⚡ Workflow-Beispiel:</strong>
+                    <ol className="list-decimal pl-5 mt-2 text-sm space-y-1">
+                      <li>Rechnung kommt per E-Mail → in Dropbox speichern</li>
+                      <li>Dropbox-Link kopieren → in buchhaltung-ki.app einfügen</li>
+                      <li>AI erstellt Buchungsvorschlag automatisch</li>
+                      <li>Buchungsseite öffnen → Vorschlag prüfen → Akzeptieren → Fertig!</li>
+                    </ol>
+                    <p className="text-sm mt-2 text-blue-600">
+                      <strong>Zeitersparnis:</strong> Von 5 Minuten auf 30 Sekunden pro Beleg! 🚀
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <Separator className="my-8" />
+
+            {/* ========== ELSTER UST-VORANMELDUNG ========== */}
+            <section id="elster-uebersicht" className="scroll-mt-20">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Calculator className="w-5 h-5 text-teal-600" />
+                    <CardTitle>ELSTER USt-Voranmeldung - Übersicht</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Das Modul <strong>ELSTER USt-Voranmeldung</strong> ermöglicht deutschen Unternehmen die automatische
+                    Berechnung der Umsatzsteuer-Voranmeldung aus ihren SKR04-Buchungen – mit XML-Export für ELSTER.
+                  </p>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                    <div className="flex gap-2">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <strong>Nur für deutsche Firmen:</strong> Dieses Modul ist nur für Unternehmen mit
+                        <strong> Ländercode = DE</strong> verfügbar. Für Schweizer Firmen verwenden Sie
+                        die <Link href="/mwst-abrechnung" className="text-teal-600 hover:underline">MWST-Quartalsabrechnung</Link>.
+                      </div>
+                    </div>
+                  </div>
+
+                  <h4 className="font-semibold mt-4 mb-2">Funktionen:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>Automatische Berechnung:</strong> Kennzahlen (KZ 81, 86, 66, etc.) werden aus Buchungen ermittelt</li>
+                    <li><strong>SKR04-Mapping:</strong> Konten werden automatisch den richtigen Kennzahlen zugeordnet</li>
+                    <li><strong>Monat oder Quartal:</strong> Flexibel wählbar je nach Ihrer Abgabepflicht</li>
+                    <li><strong>XML-Export:</strong> ERiC-kompatibles XML für Upload in Mein ELSTER</li>
+                    <li><strong>Testmodus:</strong> Prüfung ohne echte Abgabe</li>
+                  </ul>
+
+                  <h4 className="font-semibold mt-4 mb-2">Navigation:</h4>
+                  <p>
+                    Klicken Sie im Header auf <strong>„Mehr" → „USt-Voranmeldung"</strong> (unter „Behörden")
+                    oder gehen Sie zu <Link href="/finanzamt/ustva" className="text-teal-600 hover:underline">
+                    /finanzamt/ustva</Link>.
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">Voraussetzungen:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Ihre Firma muss auf <strong>SKR04</strong> basieren (wird automatisch geprüft)</li>
+                    <li>Buchungen müssen korrekt kontiert sein</li>
+                    <li>Steuernummer muss in den Firmenstammdaten hinterlegt sein</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="elster-berechnung" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Kennzahlen berechnen</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <h4 className="font-semibold mb-2">Schritt-für-Schritt:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Navigieren Sie zu <strong>USt-Voranmeldung</strong></li>
+                    <li>Wählen Sie das <strong>Jahr</strong> (z.B. 2025)</li>
+                    <li>Wählen Sie den <strong>Zeitraum</strong>:
+                      <ul className="list-disc pl-5 mt-1">
+                        <li><strong>Monat:</strong> 01-12 (für monatliche Abgabe)</li>
+                        <li><strong>Quartal:</strong> Q1-Q4 (für quartalsweise Abgabe)</li>
+                      </ul>
+                    </li>
+                    <li>Aktivieren Sie <strong>Testmodus</strong>, wenn Sie nur prüfen möchten (empfohlen beim ersten Mal)</li>
+                    <li>Klicken Sie auf <strong>„Kennzahlen berechnen"</strong></li>
+                  </ol>
+
+                  <h4 className="font-semibold mt-4 mb-2">Die App berechnet automatisch:</h4>
+                  <table className="w-full text-sm border-collapse mt-2">
+                    <thead>
+                      <tr className="bg-slate-100">
+                        <th className="border p-2 text-left">Kennzahl</th>
+                        <th className="border p-2 text-left">Beschreibung</th>
+                        <th className="border p-2 text-left">SKR04-Konten</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border p-2"><strong>KZ 81</strong></td>
+                        <td className="border p-2">Umsätze 19% (netto)</td>
+                        <td className="border p-2">4000, 4100, 4110, 4120, 4200</td>
+                      </tr>
+                      <tr>
+                        <td className="border p-2"><strong>KZ 86</strong></td>
+                        <td className="border p-2">Umsätze 7% (netto)</td>
+                        <td className="border p-2">4300, 4310, 4320</td>
+                      </tr>
+                      <tr>
+                        <td className="border p-2"><strong>KZ 66</strong></td>
+                        <td className="border p-2">Abziehbare Vorsteuer</td>
+                        <td className="border p-2">1400, 1401, 1405, 1406, 1576</td>
+                      </tr>
+                      <tr>
+                        <td className="border p-2"><strong>KZ 35</strong></td>
+                        <td className="border p-2">Steuerfreie Umsätze</td>
+                        <td className="border p-2">4125, 4126</td>
+                      </tr>
+                      <tr>
+                        <td className="border p-2"><strong>KZ 21</strong></td>
+                        <td className="border p-2">EU-Lieferungen steuerfrei</td>
+                        <td className="border p-2">4125 (mit EU-Länder-Erkennung)</td>
+                      </tr>
+                      <tr>
+                        <td className="border p-2"><strong>KZ 83</strong></td>
+                        <td className="border p-2">Vorauszahlung (USt - VSt)</td>
+                        <td className="border p-2">(berechnet)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <h4 className="font-semibold mt-4 mb-2">Ergebnis-Anzeige:</h4>
+                  <p>Die berechneten Kennzahlen werden in einer übersichtlichen Tabelle angezeigt, inkl.:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Umsätze (netto)</li>
+                    <li>Steuerbeträge (19%, 7%)</li>
+                    <li>Vorsteuer</li>
+                    <li>Vorauszahlung (kann negativ sein = Erstattung)</li>
+                  </ul>
+
+                  <div className="bg-blue-50 p-4 rounded-lg mt-4">
+                    <strong className="text-blue-700">💡 Tipp:</strong>
+                    <p className="text-sm mt-1">
+                      Prüfen Sie die Kennzahlen auf Plausibilität, bevor Sie das XML exportieren!
+                      Stimmen die Umsätze mit Ihren Erwartungen überein?
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="elster-xml" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>XML-Export für ELSTER</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Nachdem Sie die Kennzahlen berechnet und geprüft haben, können Sie ein
+                    <strong> ERiC-kompatibles XML</strong> generieren, das Sie in <strong>Mein ELSTER</strong> hochladen.
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">XML generieren:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Klicken Sie auf <strong>„XML generieren"</strong></li>
+                    <li>Wählen Sie <strong>Testmodus</strong> für erste Tests (empfohlen)</li>
+                    <li>Die Datei wird generiert: <code>UStVA_[Firma]_[Jahr]_[Zeitraum].xml</code></li>
+                    <li>Laden Sie die Datei herunter</li>
+                  </ol>
+
+                  <h4 className="font-semibold mt-4 mb-2">Upload in Mein ELSTER:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Loggen Sie sich in <a href="https://www.elster.de" target="_blank" rel="noopener" className="text-teal-600 hover:underline">Mein ELSTER</a> ein</li>
+                    <li>Navigieren Sie zu <strong>„Alle Formulare" → „Umsatzsteuer-Voranmeldung"</strong></li>
+                    <li>Wählen Sie <strong>„Datenübertragung mit authentifizierter Versendung"</strong></li>
+                    <li>Laden Sie die XML-Datei hoch</li>
+                    <li>ELSTER prüft die Datei und zeigt eine Vorschau</li>
+                    <li>Bestätigen Sie die Übermittlung</li>
+                  </ol>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                    <div className="flex gap-2">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <strong>Wichtig:</strong> Das XML-Format ist kompatibel mit dem ELSTER-System, aber die
+                        <strong> tatsächliche Übermittlung</strong> erfolgt über Mein ELSTER. buchhaltung-ki.app
+                        übermittelt nicht direkt an das Finanzamt.
+                      </div>
+                    </div>
+                  </div>
+
+                  <h4 className="font-semibold mt-4 mb-2">Testmodus vs. Echtmodus:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>Testmodus:</strong> XML enthält Testmerker (Code: 700000004) → ELSTER akzeptiert die
+                      Übermittlung, speichert sie aber nicht ab. Ideal zum Testen!</li>
+                    <li><strong>Echtmodus:</strong> Echte Übermittlung ans Finanzamt (Code: 000000000) →
+                      Nur verwenden, wenn Sie sicher sind!</li>
+                  </ul>
+
+                  <div className="bg-green-50 p-4 rounded-lg mt-4">
+                    <strong className="text-green-700">✅ Best Practice:</strong>
+                    <ol className="list-decimal pl-5 mt-2 text-sm space-y-1">
+                      <li>Erste USt-VA: <strong>Testmodus</strong> verwenden und in ELSTER prüfen</li>
+                      <li>Kennzahlen mit Ihrem Steuerberater/Finanzamt abgleichen</li>
+                      <li>Wenn alles stimmt: <strong>Echtmodus</strong> verwenden für echte Abgabe</li>
                     </ol>
                   </div>
                 </CardContent>
