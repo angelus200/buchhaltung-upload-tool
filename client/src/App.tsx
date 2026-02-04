@@ -45,6 +45,7 @@ import Finanzierungen from "./pages/Finanzierungen";
 import Buchungsvorschlaege from "./pages/Buchungsvorschlaege";
 import DropboxEinstellungen from "./pages/DropboxEinstellungen";
 import UStVoranmeldung from "./pages/UStVoranmeldung";
+import DatevExport from "./pages/DatevExport";
 
 // Router-Konfiguration
 function Router() {
@@ -167,6 +168,12 @@ function Router() {
       <Route path={"/datev-import"}>
         <ProtectedRoute>
           <DatevImport />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/datev-export"}>
+        <ProtectedRoute>
+          <DatevExport />
         </ProtectedRoute>
       </Route>
 

@@ -43,6 +43,13 @@ import {
   Cloud,
   MoreHorizontal,
   Banknote,
+  Download,
+  CalendarCheck,
+  FileCheck,
+  Wallet,
+  Building,
+  Percent,
+  BookOpen,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -278,6 +285,16 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                 <DropdownMenuLabel className="text-xs text-slate-500">Weitere Module</DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
+                {/* Dashboard */}
+                <Link href="/dashboard">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    Dashboard
+                  </DropdownMenuItem>
+                </Link>
+
+                <DropdownMenuSeparator />
+
                 {/* Finanzen Gruppe */}
                 <div className="px-2 py-1">
                   <p className="text-xs font-medium text-slate-400 mb-1">Finanzen</p>
@@ -288,10 +305,28 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                     Kontoauszüge
                   </DropdownMenuItem>
                 </Link>
+                <Link href="/bankkonten">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Building className="w-4 h-4 mr-2" />
+                    Bankkonten
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/finanzkonten">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Finanzkonten
+                  </DropdownMenuItem>
+                </Link>
                 <Link href="/finanzierungen">
                   <DropdownMenuItem className="cursor-pointer">
                     <Banknote className="w-4 h-4 mr-2" />
                     Kredite & Leasing
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/anlagevermoegen">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Building2 className="w-4 h-4 mr-2" />
+                    Anlagevermögen
                   </DropdownMenuItem>
                 </Link>
                 <Link href="/buchungsvorschlaege">
@@ -304,6 +339,81 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                   <DropdownMenuItem className="cursor-pointer">
                     <Cloud className="w-4 h-4 mr-2" />
                     Dropbox
+                  </DropdownMenuItem>
+                </Link>
+
+                <DropdownMenuSeparator />
+
+                {/* Abschlüsse Gruppe */}
+                <div className="px-2 py-1">
+                  <p className="text-xs font-medium text-slate-400 mb-1">Abschlüsse</p>
+                </div>
+                <Link href="/eroeffnungsbilanz">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Eröffnungsbilanz
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/monatsabschluss">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <CalendarCheck className="w-4 h-4 mr-2" />
+                    Monatsabschluss
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/jahresabschluss">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <FileCheck className="w-4 h-4 mr-2" />
+                    Jahresabschluss
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/mwst-abrechnung">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Percent className="w-4 h-4 mr-2" />
+                    MwSt-Abrechnung
+                  </DropdownMenuItem>
+                </Link>
+
+                <DropdownMenuSeparator />
+
+                {/* Import/Export Gruppe */}
+                <div className="px-2 py-1">
+                  <p className="text-xs font-medium text-slate-400 mb-1">Import/Export</p>
+                </div>
+                <Link href="/datev-import">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Upload className="w-4 h-4 mr-2" />
+                    DATEV Import
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/datev-export">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Download className="w-4 h-4 mr-2" />
+                    DATEV Export
+                  </DropdownMenuItem>
+                </Link>
+
+                <DropdownMenuSeparator />
+
+                {/* Lager Gruppe */}
+                <div className="px-2 py-1">
+                  <p className="text-xs font-medium text-slate-400 mb-1">Lager</p>
+                </div>
+                <Link href="/artikel">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Package className="w-4 h-4 mr-2" />
+                    Artikel
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/lager">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Warehouse className="w-4 h-4 mr-2" />
+                    Lager
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/inventur">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    Inventur
                   </DropdownMenuItem>
                 </Link>
 
@@ -325,10 +435,10 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                     Notizen
                   </DropdownMenuItem>
                 </Link>
-                <Link href="/artikel">
+                <Link href="/vorlagen">
                   <DropdownMenuItem className="cursor-pointer">
-                    <Package className="w-4 h-4 mr-2" />
-                    Lager & Inventur
+                    <BookTemplate className="w-4 h-4 mr-2" />
+                    Vorlagen
                   </DropdownMenuItem>
                 </Link>
 
@@ -414,6 +524,12 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                   <DropdownMenuItem className="cursor-pointer">
                     <HelpCircle className="w-4 h-4 mr-2" />
                     Hilfe
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/steuerberater-handbuch">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Steuerberater-Handbuch
                   </DropdownMenuItem>
                 </Link>
 
