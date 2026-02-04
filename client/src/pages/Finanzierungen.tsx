@@ -219,6 +219,44 @@ export default function Finanzierungen() {
     },
   });
 
+  const analyzeVertragMutation = trpc.finanzierungen.analyzeVertrag.useMutation({
+    onSuccess: (data) => {
+      toast.success("Vertrag erfolgreich analysiert!");
+
+      // Formular mit analysierten Daten befüllen
+      setFormData((prev) => ({
+        ...prev,
+        typ: data.typ || prev.typ,
+        kreditgeber: data.kreditgeber || prev.kreditgeber,
+        gesamtbetrag: data.gesamtbetrag ? data.gesamtbetrag.toString() : prev.gesamtbetrag,
+        zinssatz: data.zinssatz ? data.zinssatz.toString() : prev.zinssatz,
+        vertragsBeginn: data.vertragsBeginn || prev.vertragsBeginn,
+        vertragsEnde: data.vertragsEnde || prev.vertragsEnde,
+        ratenBetrag: data.ratenBetrag ? data.ratenBetrag.toString() : prev.ratenBetrag,
+        ratenTyp: data.ratenTyp || prev.ratenTyp,
+        objektBezeichnung: data.objektBezeichnung || prev.objektBezeichnung,
+        vertragsnummer: data.vertragsnummer || prev.vertragsnummer,
+      }));
+
+      // SKR04-Konten anzeigen
+      if (data.kontenVorschlag) {
+        toast.info(`SKR04-Konten: ${data.kontenVorschlag.beschreibung}`);
+      }
+    },
+    onError: (error) => {
+      toast.error(`AI-Analyse fehlgeschlagen: ${error.message}`);
+    },
+  });
+
+  const createBuchungsvorlageMutation = trpc.finanzierungen.createBuchungsvorlage.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Buchungsvorlage "${data.vorlagenName}" erstellt`);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       typ: "kredit",
@@ -265,6 +303,23 @@ export default function Finanzierungen() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  // AI-Vertragsanalyse Handler
+  const handleAnalyzeVertrag = async (file: File) => {
+    toast.info("Vertrag wird analysiert...");
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target?.result?.toString().split(",")[1];
+      if (!base64) return;
+
+      await analyzeVertragMutation.mutateAsync({
+        documentBase64: base64,
+        mimeType: file.type,
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = () => {
@@ -512,6 +567,39 @@ export default function Finanzierungen() {
               Erfassen Sie einen neuen Kredit- oder Leasingvertrag
             </DialogDescription>
           </DialogHeader>
+
+          {/* AI-Vertragsanalyse */}
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-1">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    AI-Vertragsanalyse
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Laden Sie Ihren Vertrag hoch (PDF/Bild) und lassen Sie ihn automatisch analysieren.
+                    Das Formular wird mit den erkannten Daten befüllt.
+                  </p>
+                  <Input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleAnalyzeVertrag(file);
+                    }}
+                    disabled={analyzeVertragMutation.isPending}
+                  />
+                  {analyzeVertragMutation.isPending && (
+                    <div className="flex items-center gap-2 mt-2 text-sm text-blue-600">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Vertrag wird analysiert...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="space-y-4">
             {/* Typ */}
@@ -874,21 +962,41 @@ export default function Finanzierungen() {
                 </div>
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="flex justify-between">
                 <Button
-                  variant="destructive"
+                  variant="outline"
                   onClick={() => {
-                    if (confirm("Finanzierung wirklich löschen?")) {
-                      deleteMutation.mutate({ id: detail.finanzierung.id });
-                    }
+                    if (!selectedUnternehmen) return;
+                    createBuchungsvorlageMutation.mutate({
+                      finanzierungId: detail.finanzierung.id,
+                      unternehmenId: selectedUnternehmen,
+                    });
                   }}
+                  disabled={createBuchungsvorlageMutation.isPending}
                 >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Löschen
+                  {createBuchungsvorlageMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4 mr-2" />
+                  )}
+                  Buchungsvorlage erstellen
                 </Button>
-                <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
-                  Schließen
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      if (confirm("Finanzierung wirklich löschen?")) {
+                        deleteMutation.mutate({ id: detail.finanzierung.id });
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Löschen
+                  </Button>
+                  <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
+                    Schließen
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           )}
