@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { dropboxConnections, dropboxSyncLog, InsertDropboxConnection, InsertDropboxSyncLog } from "../drizzle/schema";
+import { dropboxConnections, dropboxSyncLog, buchungsvorschlaege, kreditoren, InsertDropboxConnection, InsertDropboxSyncLog } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { uploadBelegLocal } from "./storage";
+import { analyzeBelegAndCreateVorschlag, findKreditorByName } from "./buchungsvorschlaege";
 
 /**
  * Dropbox API Helper
@@ -368,6 +369,78 @@ export const dropboxRouter = router({
             connection.unternehmenId
           );
 
+          // MIME-Type ermitteln
+          const ext = entry.name.toLowerCase().split(".").pop();
+          const mimeTypeMap: Record<string, string> = {
+            pdf: "application/pdf",
+            jpg: "image/jpeg",
+            jpeg: "image/jpeg",
+            png: "image/png",
+            gif: "image/gif",
+          };
+          const mimeType = mimeTypeMap[ext || ""] || "application/octet-stream";
+
+          let vorschlagId: number | null = null;
+          let syncStatus: "uploaded" | "analyzed" | "fehler" = "uploaded";
+          let fehlerMeldung: string | null = null;
+
+          // Erstelle Buchungsvorschlag (wenn aktiviert)
+          if (connection.autoCreateVorschlaege) {
+            try {
+              // Konvertiere Buffer zu Base64
+              const imageBase64 = buffer.toString("base64");
+
+              // AI-Analyse
+              const vorschlagData = await analyzeBelegAndCreateVorschlag(
+                imageBase64,
+                mimeType,
+                connection.unternehmenId,
+                belegUrl
+              );
+
+              // Suche passenden Kreditor
+              if (vorschlagData.lieferant) {
+                const kreditorId = await findKreditorByName(
+                  vorschlagData.lieferant,
+                  connection.unternehmenId
+                );
+
+                if (kreditorId) {
+                  vorschlagData.kreditorId = kreditorId;
+
+                  // Lade Kreditor-Daten
+                  const [kreditor] = await db
+                    .select()
+                    .from(kreditoren)
+                    .where(eq(kreditoren.id, kreditorId))
+                    .limit(1);
+
+                  if (kreditor) {
+                    // Verwende Kreditor-Personenkonto
+                    vorschlagData.geschaeftspartnerKonto = kreditor.kontonummer || null;
+
+                    // Verwende Standard-Sachkonto wenn vorhanden
+                    if (kreditor.standardSachkonto) {
+                      vorschlagData.sollKonto = kreditor.standardSachkonto;
+                      vorschlagData.confidence = "0.95"; // Höhere Confidence bei bekanntem Kreditor
+                      vorschlagData.aiNotizen = (vorschlagData.aiNotizen || "") +
+                        ` | Kreditor erkannt: ${kreditor.name}, Standard-Sachkonto verwendet.`;
+                    }
+                  }
+                }
+              }
+
+              // Speichere Vorschlag
+              const [insertResult] = await db.insert(buchungsvorschlaege).values(vorschlagData);
+              vorschlagId = insertResult.insertId;
+              syncStatus = "analyzed";
+            } catch (aiError) {
+              console.error("AI-Analyse fehlgeschlagen:", aiError);
+              fehlerMeldung = aiError instanceof Error ? aiError.message : "AI-Analyse fehlgeschlagen";
+              syncStatus = "fehler";
+            }
+          }
+
           // Log Sync
           await db.insert(dropboxSyncLog).values({
             connectionId: input.connectionId,
@@ -376,14 +449,10 @@ export const dropboxRouter = router({
             fileName: entry.name,
             fileSize: entry.size,
             belegUrl,
-            status: "uploaded",
+            vorschlagId,
+            status: syncStatus,
+            fehlerMeldung,
           } as InsertDropboxSyncLog);
-
-          // Erstelle Buchungsvorschlag (wenn aktiviert)
-          if (connection.autoCreateVorschlaege) {
-            // TODO: Trigger Buchungsvorschlag-Erstellung
-            // (Rufe buchungsvorschlaege.createFromBeleg auf)
-          }
 
           neueeDateien++;
         }

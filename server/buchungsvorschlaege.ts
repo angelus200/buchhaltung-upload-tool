@@ -34,7 +34,7 @@ const SKR04_AUFWANDSKONTEN = {
 /**
  * Analysiert einen Beleg mit AI und erstellt Buchungsvorschlag
  */
-async function analyzeBelegAndCreateVorschlag(
+export async function analyzeBelegAndCreateVorschlag(
   imageBase64: string,
   mimeType: string,
   unternehmenId: number,
@@ -162,7 +162,7 @@ Wichtig:
 /**
  * Sucht passenden Kreditor anhand des Namens
  */
-async function findKreditorByName(
+export async function findKreditorByName(
   lieferantName: string,
   unternehmenId: number
 ): Promise<number | null> {
