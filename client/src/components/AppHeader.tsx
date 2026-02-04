@@ -36,7 +36,8 @@ import {
   Warehouse,
   ClipboardList,
   Calculator,
-  HelpCircle
+  HelpCircle,
+  Receipt
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -255,14 +256,25 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               </Button>
             </Link>
             <Link href="/zahlungen">
-              <Button 
-                variant={isActive("/zahlungen") ? "default" : "ghost"} 
-                size="sm" 
+              <Button
+                variant={isActive("/zahlungen") ? "default" : "ghost"}
+                size="sm"
                 className="gap-1.5 h-8 text-xs"
                 style={isActive("/zahlungen") ? { backgroundColor: firmenFarbe } : {}}
               >
                 <CreditCard className="w-3.5 h-3.5" />
                 Zahlungen
+              </Button>
+            </Link>
+            <Link href="/auszuege">
+              <Button
+                variant={isActive("/auszuege") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/auszuege") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                Kontoauszüge
               </Button>
             </Link>
             <Link href="/kalender">
