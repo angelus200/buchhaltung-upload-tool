@@ -85,7 +85,22 @@ export default function Steuerberater() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  
+
+  // 🔥 FALLBACK: Automatische Analyse beim File-Upload (useEffect)
+  // Falls onChange aus irgendeinem Grund nicht triggert
+  useEffect(() => {
+    console.log("🔥 useEffect TRIGGERED - uploadedFile changed:", uploadedFile);
+    if (uploadedFile && !analyzing) {
+      console.log("🔥 Starting automatic analysis via useEffect...");
+      console.log("🔥 File:", uploadedFile.name, "Type:", uploadedFile.type, "Size:", uploadedFile.size);
+      analyzeUploadedFile(uploadedFile);
+    } else if (!uploadedFile) {
+      console.log("🔥 No file uploaded yet");
+    } else if (analyzing) {
+      console.log("🔥 Analysis already running, skipping...");
+    }
+  }, [uploadedFile]);
+
   const [neuePosition, setNeuePosition] = useState({
     beschreibung: "",
     kategorie: "sonstig",
