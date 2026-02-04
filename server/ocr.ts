@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
-import { invokeLLM, type Message } from "./_core/llm";
+import Anthropic from "@anthropic-ai/sdk";
+import { ENV } from "./_core/env";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
@@ -351,6 +352,20 @@ async function analyzeImageWithVision(
   mimeType: string,
   kontenrahmen: string = "SKR03"
 ): Promise<OcrResult> {
+  console.log("[OCR] 🚀 Starte Claude Vision Analyse...");
+  console.log("[OCR] 🖼️ Image MIME Type:", mimeType);
+  console.log("[OCR] 🖼️ Image Base64 Länge:", imageBase64.length);
+
+  // Initialize Anthropic client
+  const anthropic = new Anthropic({
+    apiKey: ENV.anthropicApiKey,
+  });
+
+  if (!ENV.anthropicApiKey) {
+    console.error("[OCR] ❌ ANTHROPIC_API_KEY nicht konfiguriert!");
+    throw new Error("ANTHROPIC_API_KEY ist nicht konfiguriert");
+  }
+
   const systemPrompt = `Du bist ein Experte für die OCR-Analyse von deutschen Geschäftsbelegen, Rechnungen und Quittungen.
 Deine Aufgabe ist es, alle relevanten Buchhaltungsdaten aus dem Beleg zu extrahieren.
 
@@ -421,7 +436,6 @@ Deine Aufgabe ist es, alle relevanten Buchhaltungsdaten aus dem Beleg zu extrahi
 
 Antworte NUR mit diesem JSON-Objekt (keine zusätzlichen Texte davor oder danach):
 
-\`\`\`json
 {
   "belegdatum": "YYYY-MM-DD" oder null,
   "belegnummer": "RE-2025-001" oder null,
@@ -434,7 +448,6 @@ Antworte NUR mit diesem JSON-Objekt (keine zusätzlichen Texte davor oder danach
   "ustIdNr": "DE123456789" oder null,
   "erkannterText": "Vollständiger OCR-Text aus dem Beleg..."
 }
-\`\`\`
 
 ## BEISPIEL
 
@@ -447,7 +460,6 @@ Für eine Rechnung mit:
 - Brutto: 100,00 €
 
 Antwort:
-\`\`\`json
 {
   "belegdatum": "2025-01-15",
   "belegnummer": "RE-2025-001",
@@ -460,7 +472,6 @@ Antwort:
   "ustIdNr": null,
   "erkannterText": "..."
 }
-\`\`\`
 
 ## FEHLERBEHANDLUNG
 
@@ -470,49 +481,51 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
 **WICHTIG**: Prüfe das Bild SEHR GRÜNDLICH! Oft sind Werte da, aber an unerwarteten Stellen!`;
 
   try {
-    // Gemini verwendet ein anderes Format für Images als OpenAI/Anthropic
-    const messages: Message[] = [
-      {
-        role: "system",
-        content: systemPrompt
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Analysiere diesen Beleg und extrahiere die Rechnungsdaten:"
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: `data:${mimeType};base64,${imageBase64}`
-            }
-          }
-        ]
-      }
-    ];
+    console.log("[OCR] 📤 Sende Anfrage an Claude Vision API...");
 
-    console.log("[OCR] Sende Anfrage an Gemini Vision API...");
-    console.log("[OCR] Image MIME Type:", mimeType);
-    console.log("[OCR] Image Base64 Länge:", imageBase64.length);
+    // Call Claude Vision API with proper format
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2048,
+      system: systemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+                data: imageBase64,
+              },
+            },
+            {
+              type: "text",
+              text: "Analysiere diesen Beleg und extrahiere die Rechnungsdaten als JSON:",
+            },
+          ],
+        },
+      ],
+    });
 
-    const response = await invokeLLM({ messages });
-    console.log("[OCR] ✅ Gemini Response erhalten");
+    console.log("[OCR] ✅ Claude Response erhalten");
     console.log("[OCR] 📦 Response Structure:", JSON.stringify({
-      hasChoices: !!response.choices,
-      choicesLength: response.choices?.length,
-      hasMessage: !!response.choices?.[0]?.message,
-      hasContent: !!response.choices?.[0]?.message?.content,
-      contentType: typeof response.choices?.[0]?.message?.content,
+      id: message.id,
+      model: message.model,
+      role: message.role,
+      contentLength: message.content?.length,
+      stopReason: message.stop_reason,
     }, null, 2));
 
-    const content = response.choices[0]?.message?.content;
-    if (!content || typeof content !== "string") {
-      console.error("[OCR] ❌ Keine valide Antwort:", { content, type: typeof content });
-      throw new Error("Keine Antwort von Vision-AI erhalten");
+    // Extract text from Claude response
+    const textContent = message.content.find((block) => block.type === "text");
+    if (!textContent || textContent.type !== "text") {
+      console.error("[OCR] ❌ Keine Text-Antwort von Claude");
+      throw new Error("Keine Text-Antwort von Claude erhalten");
     }
 
+    const content = textContent.text;
     console.log("[OCR] 📝 Raw Content (erste 500 Zeichen):", content.substring(0, 500));
 
     // Parse JSON aus der Antwort
