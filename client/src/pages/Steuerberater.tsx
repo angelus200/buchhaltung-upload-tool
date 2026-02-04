@@ -204,18 +204,29 @@ export default function Steuerberater() {
 
   // Automatische AI-Analyse beim Datei-Upload
   const analyzeUploadedFile = async (file: File) => {
-    if (!file) return;
+    console.log("🚀 analyzeUploadedFile FUNCTION CALLED!");
+    console.log("🚀 Received file:", file);
 
+    if (!file) {
+      console.error("🚀 NO FILE! Returning...");
+      return;
+    }
+
+    console.log("🚀 File OK, checking type...");
     const isPdf = file.type === "application/pdf";
     const isImage = file.type.startsWith("image/");
+    console.log("🚀 isPdf:", isPdf, "| isImage:", isImage, "| file.type:", file.type);
 
     if (!isPdf && !isImage) {
-      console.warn("Datei-Typ nicht unterstützt:", file.type);
+      console.warn("🚀 Datei-Typ nicht unterstützt:", file.type);
+      console.warn("🚀 EXITING - unsupported file type");
       return; // Nur PDFs und Bilder analysieren
     }
 
     console.log("🔍 Starte AI-Analyse für:", file.name, "Typ:", file.type);
+    console.log("🔍 Calling setAnalyzing(true)...");
     setAnalyzing(true);
+    console.log("🔍 analyzing state set to true");
 
     try {
       // Datei zu Base64 konvertieren
@@ -1041,11 +1052,25 @@ export default function Steuerberater() {
                             type="file"
                             accept=".pdf,.jpg,.jpeg,.png"
                             onChange={(e) => {
+                              console.log("🎯 FILE UPLOAD TRIGGERED!");
+                              console.log("🎯 Event:", e);
+                              console.log("🎯 Files:", e.target.files);
                               const file = e.target.files?.[0];
+                              console.log("🎯 Selected File:", file);
                               if (file) {
+                                console.log("🎯 File Details:", {
+                                  name: file.name,
+                                  type: file.type,
+                                  size: file.size,
+                                });
+                                console.log("🎯 Calling setUploadedFile...");
                                 setUploadedFile(file);
+                                console.log("🎯 Calling analyzeUploadedFile...");
                                 // Starte automatische AI-Analyse
                                 analyzeUploadedFile(file);
+                                console.log("🎯 analyzeUploadedFile called!");
+                              } else {
+                                console.warn("🎯 NO FILE SELECTED!");
                               }
                             }}
                             className="cursor-pointer"
