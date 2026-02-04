@@ -40,7 +40,9 @@ import {
   Receipt,
   FileText,
   Sparkles,
-  Cloud
+  Cloud,
+  MoreHorizontal,
+  Banknote,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -81,7 +83,7 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
     const savedFarbe = localStorage.getItem("selectedUnternehmenFarbe");
     const savedName = localStorage.getItem("selectedUnternehmenName");
     const savedLogo = localStorage.getItem("selectedUnternehmenLogo");
-    
+
     if (savedId) setSelectedId(parseInt(savedId));
     if (savedFarbe) setFirmenFarbe(savedFarbe);
     if (savedName) setFirmenName(savedName);
@@ -102,26 +104,20 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
 
   const handleUnternehmenChange = (value: string) => {
     const id = parseInt(value);
-    setSelectedId(id);
-    localStorage.setItem("selectedUnternehmenId", value);
-    
     const selected = unternehmenList?.find((item: UnternehmenData) => item.unternehmen.id === id);
+
     if (selected) {
-      const farbe = selected.unternehmen.farbe || "#0d9488";
-      const name = selected.unternehmen.name;
-      const logo = selected.unternehmen.logoUrl || "";
-      
-      setFirmenFarbe(farbe);
-      setFirmenName(name);
-      setFirmenLogo(logo);
-      
-      localStorage.setItem("selectedUnternehmenFarbe", farbe);
-      localStorage.setItem("selectedUnternehmenName", name);
-      if (logo) {
-        localStorage.setItem("selectedUnternehmenLogo", logo);
-      } else {
-        localStorage.removeItem("selectedUnternehmenLogo");
-      }
+      setSelectedId(id);
+      setFirmenFarbe(selected.unternehmen.farbe || "#0d9488");
+      setFirmenName(selected.unternehmen.name);
+      setFirmenLogo(selected.unternehmen.logoUrl || "");
+
+      localStorage.setItem("selectedUnternehmenId", id.toString());
+      localStorage.setItem("selectedUnternehmenFarbe", selected.unternehmen.farbe || "#0d9488");
+      localStorage.setItem("selectedUnternehmenName", selected.unternehmen.name);
+      localStorage.setItem("selectedUnternehmenLogo", selected.unternehmen.logoUrl || "");
+
+      window.dispatchEvent(new Event("storage"));
     }
   };
 
@@ -143,467 +139,314 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
     return user.name.substring(0, 2).toUpperCase();
   };
 
+  // Firmenname truncaten
+  const truncateName = (name: string, maxLength: number = 25) => {
+    if (name.length <= maxLength) return name;
+    return name.substring(0, maxLength) + "...";
+  };
+
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200">
       {/* Farbiger Balken oben */}
-      <div 
-        className="h-1 w-full transition-colors duration-300"
+      <div
+        className="h-0.5 w-full transition-colors duration-300"
         style={{ backgroundColor: firmenFarbe }}
       />
-      
-      <div className="container py-3">
-        <div className="flex items-center justify-between">
-          {/* Links: Logo/Icon + Titel + Firmenauswahl */}
-          <div className="flex items-center gap-4">
+
+      <div className="container py-2.5">
+        <div className="flex items-center justify-between gap-4">
+          {/* Links: Logo + Firmenname + Firmenauswahl */}
+          <div className="flex items-center gap-3 min-w-0">
             {/* Firmenlogo oder Icon */}
             {firmenLogo ? (
-              <img 
-                src={firmenLogo} 
+              <img
+                src={firmenLogo}
                 alt={firmenName}
-                className="w-10 h-10 object-contain rounded-lg border border-slate-200"
+                className="w-8 h-8 object-contain rounded border border-slate-200 flex-shrink-0"
               />
             ) : (
-              <div 
-                className="w-10 h-10 rounded-lg flex items-center justify-center shadow-lg transition-colors duration-300"
+              <div
+                className="w-8 h-8 rounded flex items-center justify-center shadow-sm transition-colors duration-300 flex-shrink-0"
                 style={{ backgroundColor: firmenFarbe }}
               >
-                <Building2 className="w-5 h-5 text-white" />
+                <Building2 className="w-4 h-4 text-white" />
               </div>
             )}
-            
-            <div className="flex flex-col">
-              {/* Firmenname prominent */}
-              {firmenName ? (
-                <>
-                  <h1 className="text-lg font-semibold text-slate-900 tracking-tight flex items-center gap-2">
-                    {firmenName}
-                    <span 
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: firmenFarbe }}
-                    />
-                  </h1>
-                  <p className="text-xs text-slate-500">{title || "Buchhaltung Upload Tool"}</p>
-                </>
-              ) : (
-                <>
-                  <h1 className="text-lg font-semibold text-slate-900 tracking-tight">
-                    {title || "Buchhaltung Upload Tool"}
-                  </h1>
-                  <p className="text-xs text-slate-500">{subtitle || "Belege erfassen und DATEV-Export erstellen"}</p>
-                </>
-              )}
-            </div>
 
-            {/* Unternehmensauswahl Dropdown */}
-            {unternehmenList && unternehmenList.length > 0 && (
-              <div className="ml-4 pl-4 border-l border-slate-200">
-                <Select 
-                  value={selectedId?.toString() || ""} 
-                  onValueChange={handleUnternehmenChange}
+            {/* Firmenname - truncated */}
+            {firmenName && (
+              <div className="min-w-0 flex-shrink">
+                <h1
+                  className="text-sm font-semibold text-slate-900 tracking-tight truncate"
+                  title={firmenName}
                 >
-                  <SelectTrigger className="w-[200px] h-8 text-sm">
-                    <SelectValue placeholder="Firma auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {unternehmenList.map((item: UnternehmenData) => (
-                      <SelectItem key={item.unternehmen.id} value={item.unternehmen.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: item.unternehmen.farbe || "#0d9488" }}
-                          />
-                          <span>{item.unternehmen.name}</span>
-                          <span className="text-xs text-slate-400">({item.unternehmen.kontenrahmen})</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {truncateName(firmenName)}
+                </h1>
               </div>
+            )}
+
+            {/* Unternehmensauswahl Dropdown - kompakt */}
+            {unternehmenList && unternehmenList.length > 1 && (
+              <Select
+                value={selectedId?.toString() || ""}
+                onValueChange={handleUnternehmenChange}
+              >
+                <SelectTrigger className="w-[140px] h-7 text-xs border-slate-300">
+                  <SelectValue placeholder="Firma" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unternehmenList.map((item: UnternehmenData) => (
+                    <SelectItem key={item.unternehmen.id} value={item.unternehmen.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: item.unternehmen.farbe || "#0d9488" }}
+                        />
+                        <span className="truncate">{item.unternehmen.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
-          
-          {/* Rechts: Navigation + Benutzer-Menü */}
-          <div className="flex items-center gap-1">
+
+          {/* Mitte: Haupt-Navigation (wichtige Items) */}
+          <nav className="flex items-center gap-0.5">
             <Link href="/">
-              <Button 
-                variant={isActive("/") ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1.5 h-8 text-xs"
+              <Button
+                variant={isActive("/") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-7 text-xs px-2"
                 style={isActive("/") ? { backgroundColor: firmenFarbe } : {}}
               >
                 <Upload className="w-3.5 h-3.5" />
-                Buchungen
+                <span className="hidden lg:inline">Buchungen</span>
               </Button>
             </Link>
+
             <Link href="/uebersicht">
-              <Button 
-                variant={isActive("/uebersicht") ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1.5 h-8 text-xs"
+              <Button
+                variant={isActive("/uebersicht") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-7 text-xs px-2"
                 style={isActive("/uebersicht") ? { backgroundColor: firmenFarbe } : {}}
               >
-                <BarChart3 className="w-3.5 h-3.5" />
-                Übersicht
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Übersicht</span>
               </Button>
             </Link>
+
             <Link href="/kennzahlen">
-              <Button 
-                variant={isActive("/kennzahlen") ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1.5 h-8 text-xs"
+              <Button
+                variant={isActive("/kennzahlen") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-7 text-xs px-2"
                 style={isActive("/kennzahlen") ? { backgroundColor: firmenFarbe } : {}}
               >
                 <TrendingUp className="w-3.5 h-3.5" />
-                Kennzahlen
+                <span className="hidden lg:inline">Kennzahlen</span>
               </Button>
             </Link>
+
             <Link href="/zahlungen">
               <Button
                 variant={isActive("/zahlungen") ? "default" : "ghost"}
                 size="sm"
-                className="gap-1.5 h-8 text-xs"
+                className="gap-1.5 h-7 text-xs px-2"
                 style={isActive("/zahlungen") ? { backgroundColor: firmenFarbe } : {}}
               >
                 <CreditCard className="w-3.5 h-3.5" />
-                Zahlungen
+                <span className="hidden lg:inline">Zahlungen</span>
               </Button>
             </Link>
-            <Link href="/auszuege">
-              <Button
-                variant={isActive("/auszuege") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/auszuege") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Receipt className="w-3.5 h-3.5" />
-                Kontoauszüge
-              </Button>
-            </Link>
-            <Link href="/finanzierungen">
-              <Button
-                variant={isActive("/finanzierungen") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/finanzierungen") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                Kredite & Leasing
-              </Button>
-            </Link>
-            <Link href="/buchungsvorschlaege">
-              <Button
-                variant={isActive("/buchungsvorschlaege") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs relative"
-                style={isActive("/buchungsvorschlaege") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                Vorschläge
-              </Button>
-            </Link>
-            <Link href="/kalender">
-              <Button
-                variant={isActive("/kalender") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/kalender") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                Kalender
-              </Button>
-            </Link>
+
             <Link href="/stammdaten">
               <Button
                 variant={isActive("/stammdaten") ? "default" : "ghost"}
                 size="sm"
-                className="gap-1.5 h-8 text-xs"
+                className="gap-1.5 h-7 text-xs px-2"
                 style={isActive("/stammdaten") ? { backgroundColor: firmenFarbe } : {}}
               >
                 <Briefcase className="w-3.5 h-3.5" />
-                Stammdaten
+                <span className="hidden lg:inline">Stammdaten</span>
               </Button>
             </Link>
 
-            <Link href="/einstellungen/dropbox">
-              <Button
-                variant={isActive("/einstellungen/dropbox") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/einstellungen/dropbox") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Cloud className="w-3.5 h-3.5" />
-                Dropbox
-              </Button>
-            </Link>
-
-            {/* Lager Dropdown */}
+            {/* "Mehr" Dropdown für sekundäre Items */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant={
-                    isActive("/artikel") || isActive("/lager") || isActive("/inventur")
-                      ? "default"
-                      : "ghost"
-                  }
+                  variant="ghost"
                   size="sm"
-                  className="gap-1.5 h-8 text-xs"
-                  style={
-                    isActive("/artikel") || isActive("/lager") || isActive("/inventur")
-                      ? { backgroundColor: firmenFarbe }
-                      : {}
-                  }
+                  className="gap-1 h-7 text-xs px-2"
                 >
-                  <Package className="w-3.5 h-3.5" />
-                  Lager
-                  <ChevronDown className="w-3 h-3 ml-0.5" />
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                  <span className="hidden lg:inline">Mehr</span>
+                  <ChevronDown className="w-3 h-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Lagerverwaltung</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel>Weitere Module</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+
+                <Link href="/auszuege">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Receipt className="w-4 h-4 mr-2" />
+                    Kontoauszüge
+                  </DropdownMenuItem>
+                </Link>
+
+                <Link href="/finanzierungen">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Banknote className="w-4 h-4 mr-2" />
+                    Kredite & Leasing
+                  </DropdownMenuItem>
+                </Link>
+
+                <Link href="/buchungsvorschlaege">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Buchungsvorschläge
+                  </DropdownMenuItem>
+                </Link>
+
+                <Link href="/einstellungen/dropbox">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Cloud className="w-4 h-4 mr-2" />
+                    Dropbox
+                  </DropdownMenuItem>
+                </Link>
+
+                <DropdownMenuSeparator />
+
+                <Link href="/kalender">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Kalender
+                  </DropdownMenuItem>
+                </Link>
+
+                <Link href="/notizen">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <StickyNote className="w-4 h-4 mr-2" />
+                    Notizen
+                  </DropdownMenuItem>
+                </Link>
+
                 <Link href="/artikel">
                   <DropdownMenuItem className="cursor-pointer">
                     <Package className="w-4 h-4 mr-2" />
-                    Artikel
+                    Lager & Inventur
                   </DropdownMenuItem>
                 </Link>
-                <Link href="/lager">
+
+                <DropdownMenuSeparator />
+
+                <Link href="/finanzamt">
                   <DropdownMenuItem className="cursor-pointer">
-                    <Warehouse className="w-4 h-4 mr-2" />
-                    Bestandsübersicht
+                    <Landmark className="w-4 h-4 mr-2" />
+                    Finanzamt
                   </DropdownMenuItem>
                 </Link>
-                <Link href="/inventur">
+
+                <Link href="/finanzamt/ustva">
                   <DropdownMenuItem className="cursor-pointer">
-                    <ClipboardList className="w-4 h-4 mr-2" />
-                    Inventur
+                    <FileText className="w-4 h-4 mr-2" />
+                    USt-Voranmeldung
+                  </DropdownMenuItem>
+                </Link>
+
+                <Link href="/aufgaben">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <ListTodo className="w-4 h-4 mr-2" />
+                    Aufgaben
+                  </DropdownMenuItem>
+                </Link>
+
+                <Link href="/steuerberater">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Send className="w-4 h-4 mr-2" />
+                    Steuerberater
                   </DropdownMenuItem>
                 </Link>
               </DropdownMenuContent>
             </DropdownMenu>
+          </nav>
 
-            <Link href="/notizen">
-              <Button 
-                variant={isActive("/notizen") ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/notizen") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <StickyNote className="w-3.5 h-3.5" />
-                Notizen
-              </Button>
-            </Link>
-            <Link href="/finanzamt">
-              <Button
-                variant={isActive("/finanzamt") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/finanzamt") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Landmark className="w-3.5 h-3.5" />
-                Finanzamt
-              </Button>
-            </Link>
-            <Link href="/finanzamt/ustva">
-              <Button
-                variant={isActive("/finanzamt/ustva") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/finanzamt/ustva") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                USt-VA
-              </Button>
-            </Link>
-            <Link href="/aufgaben">
-              <Button 
-                variant={isActive("/aufgaben") ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/aufgaben") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <ListTodo className="w-3.5 h-3.5" />
-                Aufgaben
-              </Button>
-            </Link>
-            <Link href="/steuerberater">
-              <Button
-                variant={isActive("/steuerberater") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/steuerberater") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Send className="w-3.5 h-3.5" />
-                Steuerberater
-              </Button>
-            </Link>
-            <Link href="/datev-import">
-              <Button
-                variant={isActive("/datev-import") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/datev-import") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                DATEV Import
-              </Button>
-            </Link>
-            <Link href="/vorlagen">
-              <Button
-                variant={isActive("/vorlagen") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/vorlagen") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <BookTemplate className="w-3.5 h-3.5" />
-                Vorlagen
-              </Button>
-            </Link>
-            <Link href="/monatsabschluss">
-              <Button
-                variant={isActive("/monatsabschluss") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/monatsabschluss") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Lock className="w-3.5 h-3.5" />
-                Monatsabschluss
-              </Button>
-            </Link>
-            <Link href="/jahresabschluss">
-              <Button
-                variant={isActive("/jahresabschluss") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/jahresabschluss") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Calculator className="w-3.5 h-3.5" />
-                Jahresabschluss
-              </Button>
-            </Link>
-            <Link href="/unternehmen">
-              <Button 
-                variant={isActive("/unternehmen") ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/unternehmen") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Building2 className="w-3.5 h-3.5" />
-                Unternehmen
-              </Button>
-            </Link>
-            
-            <div className="w-px h-6 bg-slate-200 mx-1" />
-            
-            <Link href="/benachrichtigungen">
-              <Button 
-                variant={isActive("/benachrichtigungen") ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/benachrichtigungen") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Bell className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
-            <Link href="/benutzerverwaltung">
-              <Button 
-                variant={isActive("/benutzerverwaltung") ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/benutzerverwaltung") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Users className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button 
-                variant={isActive("/dashboard") ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/dashboard") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
-            <Link href="/admin">
-              <Button
-                variant={isActive("/admin") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/admin") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <Shield className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
-            <Link href="/hilfe">
-              <Button
-                variant={isActive("/hilfe") ? "default" : "ghost"}
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                style={isActive("/hilfe") ? { backgroundColor: firmenFarbe } : {}}
-              >
-                <HelpCircle className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
+          {/* Rechts: Benutzer-Menü */}
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 h-7 px-2"
+                >
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium text-white"
+                    style={{ backgroundColor: firmenFarbe }}
+                  >
+                    {getUserInitials()}
+                  </div>
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{user?.name || "Benutzer"}</span>
+                    <span className="text-xs text-slate-500">{user?.email || ""}</span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <Link href="/unternehmen">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Building2 className="w-4 h-4 mr-2" />
+                    Firmenverwaltung
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/benutzerverwaltung">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Users className="w-4 h-4 mr-2" />
+                    Benutzerverwaltung
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/benachrichtigungen">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Bell className="w-4 h-4 mr-2" />
+                    Benachrichtigungen
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/hilfe">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <HelpCircle className="w-4 h-4 mr-2" />
+                    Hilfe
+                  </DropdownMenuItem>
+                </Link>
 
-            {/* Benutzer-Menü mit Logout */}
-            <div className="w-px h-6 bg-slate-200 mx-2" />
-            
-            {isAuthenticated && user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="gap-2 h-8 px-2"
-                  >
-                    <div 
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                      style={{ backgroundColor: firmenFarbe }}
-                    >
-                      {getUserInitials()}
-                    </div>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{user.name || "Benutzer"}</span>
-                      <span className="text-xs text-slate-500 font-normal">{user.email || ""}</span>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => setLocation("/dashboard")}>
-                    <User className="w-4 h-4 mr-2" />
-                    Mein Dashboard
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => setLocation("/admin")}>
-                    <Settings className="w-4 h-4 mr-2" />
-                    Einstellungen
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Abmelden
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                onClick={() => window.location.href = "/login"}
-              >
-                <User className="w-3.5 h-3.5" />
-                Anmelden
-              </Button>
-            )}
+                {user?.role === 'admin' && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <Link href="/admin">
+                      <DropdownMenuItem className="cursor-pointer">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Admin-Panel
+                      </DropdownMenuItem>
+                    </Link>
+                  </>
+                )}
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer text-red-600 focus:text-red-600"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Abmelden
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
