@@ -50,6 +50,13 @@
       "when": 1769520233607,
       "tag": "0006_narrow_firedrake",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1770191943915,
+      "tag": "0007_spotty_lightspeed",
+      "breakpoints": true
     }
   ]
 }
