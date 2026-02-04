@@ -35,7 +35,9 @@ import {
   ShieldCheck,
   Globe,
   Lock,
-  Calculator
+  Calculator,
+  Receipt,
+  Banknote
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
@@ -98,6 +100,28 @@ const KAPITEL: Kapitel[] = [
     ],
   },
   {
+    id: "kontoauszuege",
+    titel: "Kontoauszüge",
+    icon: Receipt,
+    unterkapitel: [
+      { id: "auszuege-uebersicht", titel: "Übersicht & Navigation" },
+      { id: "auszuege-importieren", titel: "Auszüge importieren" },
+      { id: "auszuege-abgleichen", titel: "Mit Buchungen abgleichen" },
+    ],
+  },
+  {
+    id: "kredite-leasing",
+    titel: "Kredite & Leasing",
+    icon: Banknote,
+    unterkapitel: [
+      { id: "finanzierungen-uebersicht", titel: "Übersicht" },
+      { id: "vertrag-anlegen", titel: "Vertrag anlegen" },
+      { id: "ai-vertragsanalyse", titel: "AI-Vertragsanalyse" },
+      { id: "zahlungsplan", titel: "Zahlungsplan" },
+      { id: "buchungsintegration", titel: "Buchungsintegration" },
+    ],
+  },
+  {
     id: "datev",
     titel: "DATEV Integration",
     icon: FileSpreadsheet,
@@ -124,6 +148,8 @@ const KAPITEL: Kapitel[] = [
     unterkapitel: [
       { id: "kalender", titel: "Kalender" },
       { id: "zahlungen", titel: "Zahlungen" },
+      { id: "kontoauszuege-modul", titel: "Kontoauszüge" },
+      { id: "kredite-leasing-modul", titel: "Kredite & Leasing" },
       { id: "lager", titel: "Lager" },
       { id: "notizen", titel: "Notizen" },
       { id: "finanzamt", titel: "Finanzamt" },
@@ -866,6 +892,333 @@ export default function Hilfe() {
                 </ol>
               </CardContent>
             </Card>
+
+            <Separator className="my-8" />
+
+            {/* ========== KONTOAUSZÜGE ========== */}
+            <section id="auszuege-uebersicht" className="scroll-mt-20">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-5 h-5 text-teal-600" />
+                    <CardTitle>Kontoauszüge - Übersicht</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Das Modul <strong>Kontoauszüge</strong> ermöglicht die zentrale Verwaltung und den Abgleich
+                    von Bank-, Kreditkarten- und Zahlungsdienstleister-Auszügen mit Ihren Buchungen.
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">Funktionen:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>Import:</strong> PDF- oder CSV-Auszüge hochladen</li>
+                    <li><strong>Automatische Erkennung:</strong> KI-gestützte Extraktion von Transaktionen</li>
+                    <li><strong>Abgleich:</strong> Automatisches Matching mit bestehenden Buchungen</li>
+                    <li><strong>Lücken-Erkennung:</strong> Fehlende Buchungen identifizieren</li>
+                  </ul>
+
+                  <h4 className="font-semibold mt-4 mb-2">Navigation:</h4>
+                  <p>
+                    Klicken Sie in der Hauptnavigation auf <strong>„Kontoauszüge"</strong> (zwischen Zahlungen und Kredite & Leasing).
+                  </p>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="auszuege-importieren" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Auszüge importieren</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <h4 className="font-semibold mb-2">Schritt-für-Schritt:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Wählen Sie das <strong>Finanzkonto</strong> (Bank, Kreditkarte, etc.)</li>
+                    <li>Klicken Sie auf <strong>„Auszug hochladen"</strong></li>
+                    <li>Wählen Sie die Datei (PDF oder CSV)</li>
+                    <li>Die KI extrahiert automatisch alle Transaktionen</li>
+                    <li>Prüfen Sie die erkannten Buchungen</li>
+                    <li>Bestätigen Sie den Import</li>
+                  </ol>
+
+                  <h4 className="font-semibold mt-4 mb-2">Unterstützte Formate:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>PDF:</strong> Kontoauszüge von allen gängigen Banken</li>
+                    <li><strong>CSV:</strong> Export aus Online-Banking</li>
+                    <li><strong>MT940:</strong> SWIFT-Format für Geschäftskonten</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="auszuege-abgleichen" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Mit Buchungen abgleichen</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Nach dem Import werden die Auszugspositionen automatisch mit bestehenden Buchungen abgeglichen.
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">Abgleich-Status:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><span className="text-green-600">✓ Abgeglichen:</span> Buchung gefunden und verknüpft</li>
+                    <li><span className="text-yellow-600">⚠ Vorschlag:</span> Mögliche Buchung gefunden (zur Prüfung)</li>
+                    <li><span className="text-red-600">✗ Offen:</span> Keine passende Buchung - neue Buchung erforderlich</li>
+                  </ul>
+
+                  <h4 className="font-semibold mt-4 mb-2">Neue Buchung aus Auszug erstellen:</h4>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    <li>Klicken Sie auf eine offene Position</li>
+                    <li>Wählen Sie „Buchung erstellen"</li>
+                    <li>Das Formular wird mit den Auszugsdaten vorausgefüllt</li>
+                    <li>Ergänzen Sie Gegenkonto und Steuersatz</li>
+                    <li>Speichern Sie die Buchung</li>
+                  </ol>
+                </CardContent>
+              </Card>
+            </section>
+
+            <Separator className="my-8" />
+
+            {/* ========== KREDITE & LEASING ========== */}
+            <section id="finanzierungen-uebersicht" className="scroll-mt-20">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Banknote className="w-5 h-5 text-teal-600" />
+                    <CardTitle>Kredite & Leasing - Übersicht</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Verwalten Sie alle <strong>Finanzierungsverträge</strong> zentral: Kredite, Leasingverträge,
+                    Mietkauf und Factoring. Die App berechnet automatisch Zahlungspläne und erstellt
+                    Buchungsvorlagen für Ihre monatlichen Raten.
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">Unterstützte Vertragstypen:</h4>
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <strong className="text-blue-700">🏦 Kredit</strong>
+                      <p className="text-sm text-slate-600 mt-1">Bankdarlehen, Betriebsmittelkredite, Investitionskredite</p>
+                    </div>
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <strong className="text-green-700">🚗 Leasing</strong>
+                      <p className="text-sm text-slate-600 mt-1">Fahrzeuge, Maschinen, IT-Equipment</p>
+                    </div>
+                    <div className="p-3 bg-orange-50 rounded-lg">
+                      <strong className="text-orange-700">🔑 Mietkauf</strong>
+                      <p className="text-sm text-slate-600 mt-1">Anlagen mit Kaufoption</p>
+                    </div>
+                    <div className="p-3 bg-purple-50 rounded-lg">
+                      <strong className="text-purple-700">📄 Factoring</strong>
+                      <p className="text-sm text-slate-600 mt-1">Forderungsverkauf</p>
+                    </div>
+                  </div>
+
+                  <h4 className="font-semibold mt-4 mb-2">Statistik-Übersicht:</h4>
+                  <p>Die Hauptseite zeigt Ihnen auf einen Blick:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>Monatliche Belastung:</strong> Summe aller fälligen Raten</li>
+                    <li><strong>Gesamtverbindlichkeiten:</strong> Offene Restschulden</li>
+                    <li><strong>Aktive Verträge:</strong> Anzahl laufender Finanzierungen</li>
+                  </ul>
+
+                  <h4 className="font-semibold mt-4 mb-2">Navigation:</h4>
+                  <p>
+                    Klicken Sie in der Hauptnavigation auf <strong>„Kredite & Leasing"</strong>
+                    (zwischen Kontoauszüge und Kalender).
+                  </p>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="vertrag-anlegen" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Vertrag anlegen</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <h4 className="font-semibold mb-2">Manuell anlegen:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Klicken Sie auf <strong>„+ Neu anlegen"</strong></li>
+                    <li>Wählen Sie den <strong>Vertragstyp</strong> (Kredit, Leasing, Mietkauf, Factoring)</li>
+                    <li>Geben Sie die Vertragsdaten ein:
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Bezeichnung (z.B. „Sparkassen-Darlehen Betriebsmittel")</li>
+                        <li>Vertragsnummer</li>
+                        <li>Kreditgeber / Leasinggeber</li>
+                        <li>Gesamtbetrag</li>
+                        <li>Zinssatz (% p.a.)</li>
+                        <li>Vertragsbeginn und -ende</li>
+                        <li>Ratenbetrag und Zahlweise (monatlich/quartalsweise/etc.)</li>
+                      </ul>
+                    </li>
+                    <li>Klicken Sie auf <strong>„Speichern"</strong></li>
+                  </ol>
+
+                  <div className="bg-teal-50 p-4 rounded-lg mt-4">
+                    <strong className="text-teal-700">💡 Tipp:</strong>
+                    <p className="text-sm mt-1">
+                      Nutzen Sie die <strong>AI-Vertragsanalyse</strong> (siehe nächstes Kapitel), um das
+                      Formular automatisch aus Ihrem Vertragsdokument auszufüllen!
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="ai-vertragsanalyse" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>🤖 AI-Vertragsanalyse</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Die <strong>AI-Vertragsanalyse</strong> extrahiert automatisch alle relevanten Daten
+                    aus Ihrem Vertragsdokument (PDF oder Bild).
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">So funktioniert's:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Klicken Sie auf <strong>„+ Neu anlegen"</strong></li>
+                    <li>Im Dialog oben: <strong>„Datei auswählen"</strong> unter „AI-Vertragsanalyse"</li>
+                    <li>Wählen Sie Ihr Vertragsdokument (PDF, JPG oder PNG)</li>
+                    <li>Die KI analysiert den Vertrag und extrahiert:
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Vertragstyp (Kredit/Leasing/etc.)</li>
+                        <li>Kreditgeber/Leasinggeber</li>
+                        <li>Gesamtbetrag und Ratenbetrag</li>
+                        <li>Zinssatz</li>
+                        <li>Vertragslaufzeit (Beginn/Ende)</li>
+                        <li>Vertragsnummer</li>
+                        <li>Objektbezeichnung (bei Leasing)</li>
+                      </ul>
+                    </li>
+                    <li>Das Formular wird automatisch ausgefüllt</li>
+                    <li>Prüfen und ergänzen Sie die Daten bei Bedarf</li>
+                    <li>Klicken Sie auf <strong>„Speichern"</strong></li>
+                  </ol>
+
+                  <div className="bg-yellow-50 p-4 rounded-lg mt-4">
+                    <strong className="text-yellow-700">⚠️ Hinweis:</strong>
+                    <p className="text-sm mt-1">
+                      Die KI-Erkennung ist sehr genau, aber prüfen Sie die extrahierten Werte
+                      vor dem Speichern – besonders bei komplexen Vertragswerken.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="zahlungsplan" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Zahlungsplan</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Für jeden Finanzierungsvertrag kann ein <strong>Zahlungsplan</strong> generiert werden,
+                    der alle fälligen Raten über die Vertragslaufzeit anzeigt.
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">Zahlungsplan generieren:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Öffnen Sie die Detailansicht eines Vertrags (auf Zeile klicken)</li>
+                    <li>Klicken Sie auf <strong>„Zahlungsplan generieren"</strong></li>
+                    <li>Die App berechnet alle Raten basierend auf:
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Ratenbetrag und Zahlweise</li>
+                        <li>Vertragsbeginn und -ende</li>
+                        <li>Fälligkeitstag im Monat</li>
+                      </ul>
+                    </li>
+                  </ol>
+
+                  <h4 className="font-semibold mt-4 mb-2">Zahlungsplan-Ansicht:</h4>
+                  <p>Der Zahlungsplan zeigt für jede Rate:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><strong>Fälligkeitsdatum</strong></li>
+                    <li><strong>Ratenbetrag</strong></li>
+                    <li><strong>Status:</strong> Offen, Bezahlt, Überfällig</li>
+                  </ul>
+
+                  <h4 className="font-semibold mt-4 mb-2">Bei Krediten (Annuitätendarlehen):</h4>
+                  <p>
+                    Die App kann optional die <strong>Zins-/Tilgungs-Aufteilung</strong> berechnen,
+                    wenn ein Zinssatz hinterlegt ist.
+                  </p>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section id="buchungsintegration" className="scroll-mt-20 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Buchungsintegration</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-slate max-w-none">
+                  <p>
+                    Verknüpfen Sie Ihre Finanzierungsverträge direkt mit der Buchhaltung durch
+                    automatische <strong>Buchungsvorlagen</strong>.
+                  </p>
+
+                  <h4 className="font-semibold mt-4 mb-2">Buchungsvorlage erstellen:</h4>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Öffnen Sie die Detailansicht eines Vertrags</li>
+                    <li>Klicken Sie auf <strong>„Buchungsvorlage erstellen"</strong></li>
+                    <li>Die Vorlage wird automatisch mit den richtigen SKR04-Konten erstellt</li>
+                    <li>Nutzen Sie die Vorlage für die monatliche Ratenbuchung</li>
+                  </ol>
+
+                  <h4 className="font-semibold mt-4 mb-2">SKR04-Kontenzuordnung:</h4>
+                  <table className="w-full text-sm border-collapse mt-2">
+                    <thead>
+                      <tr className="bg-slate-100">
+                        <th className="border p-2 text-left">Vertragstyp</th>
+                        <th className="border p-2 text-left">Aufwandskonto</th>
+                        <th className="border p-2 text-left">Verbindlichkeitskonto</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border p-2">Kredit</td>
+                        <td className="border p-2">7300 Zinsaufwand</td>
+                        <td className="border p-2">0650 Verbindl. Kreditinstitute</td>
+                      </tr>
+                      <tr>
+                        <td className="border p-2">Leasing</td>
+                        <td className="border p-2">6520 Leasingaufwendungen</td>
+                        <td className="border p-2">1576 Geleistete Anzahlungen</td>
+                      </tr>
+                      <tr>
+                        <td className="border p-2">Mietkauf</td>
+                        <td className="border p-2">6310 Miete</td>
+                        <td className="border p-2">0620 Verbindl. aus L&L</td>
+                      </tr>
+                      <tr>
+                        <td className="border p-2">Factoring</td>
+                        <td className="border p-2">7380 Sonst. Finanzierungsaufw.</td>
+                        <td className="border p-2">-</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div className="bg-blue-50 p-4 rounded-lg mt-4">
+                    <strong className="text-blue-700">💼 Workflow-Beispiel (Kredit):</strong>
+                    <ol className="list-decimal pl-5 mt-2 text-sm">
+                      <li>Kreditvertrag mit AI-Analyse hochladen</li>
+                      <li>Zahlungsplan generieren lassen</li>
+                      <li>Buchungsvorlage erstellen</li>
+                      <li>Jeden Monat: Vorlage aufrufen → Buchung erstellen</li>
+                    </ol>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
 
             <Separator className="my-8" />
 
