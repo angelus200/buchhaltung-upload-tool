@@ -1,9 +1,6 @@
 FROM node:20-alpine
 
-# WICHTIG: NO_CACHE=1 muss als Environment Variable in Railway Dashboard gesetzt werden
-# Dashboard → Variables → NO_CACHE=1 hinzufügen → Deploy
-
-# Install poppler-utils for PDF OCR (pdftoppm command)
+# Install poppler-utils for PDF OCR
 RUN apk add --no-cache poppler-utils
 
 WORKDIR /app
@@ -13,16 +10,23 @@ RUN npm install
 
 COPY . .
 
-# Clerk Publishable Key für Vite Build (zur Build-Zeit benötigt)
+# WICHTIG: Clerk Key muss als Build-Argument UND als Variable in Railway gesetzt sein
+# In Railway: Settings → Build → Build Arguments → VITE_CLERK_PUBLISHABLE_KEY
 ARG VITE_CLERK_PUBLISHABLE_KEY
 ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 
-# Lösche Vite Build Cache - erzwingt kompletten Neu-Build
-RUN rm -rf node_modules/.vite node_modules/.cache .vite
+# Debug: Zeige ob der Key gesetzt ist (nur erste Zeichen)
+RUN echo "VITE_CLERK_KEY starts with: ${VITE_CLERK_PUBLISHABLE_KEY:0:10}..."
+
+# Cache löschen und neu bauen
+RUN rm -rf node_modules/.vite node_modules/.cache .vite dist
 
 RUN npm run build
 
-EXPOSE 3000
-ENV PORT=3000
+# Debug: Zeige generierte JS-Dateien
+RUN ls -la dist/public/assets/*.js || echo "No JS files found in dist/public/assets/"
+
+EXPOSE 8080
+ENV PORT=8080
 
 CMD ["node", "dist/index.js"]
