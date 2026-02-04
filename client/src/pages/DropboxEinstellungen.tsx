@@ -4,61 +4,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import AppHeader from "@/components/AppHeader";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { Link } from "wouter";
 import {
   Cloud,
   Loader2,
   CheckCircle2,
-  XCircle,
-  RefreshCw,
-  Trash2,
-  AlertCircle,
-  Zap,
-  FileText,
+  Sparkles,
   ExternalLink,
-  Info,
+  AlertCircle,
 } from "lucide-react";
-
-function formatDate(dateStr: string | Date): string {
-  const date = new Date(dateStr);
-  return date.toLocaleString("de-DE");
-}
 
 export default function DropboxEinstellungen() {
   const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(null);
-  const [folderLink, setFolderLink] = useState("");
-  const [logDialogOpen, setLogDialogOpen] = useState(false);
+  const [dropboxLink, setDropboxLink] = useState("");
+  const [lastResult, setLastResult] = useState<{
+    success: boolean;
+    message: string;
+    vorschlagId?: number;
+    filename?: string;
+  } | null>(null);
 
   // Queries
   const { data: unternehmen } = trpc.unternehmen.list.useQuery();
-
-  const { data: firmenInfo, refetch: refetchFirmenInfo } = trpc.dropbox.getUnternehmenInfo.useQuery(
-    { unternehmenId: selectedUnternehmen! },
-    { enabled: !!selectedUnternehmen }
-  );
-
-  const { data: syncLog = [] } = trpc.dropbox.getSyncLog.useQuery(
-    { unternehmenId: selectedUnternehmen!, limit: 50 },
-    { enabled: !!selectedUnternehmen && logDialogOpen }
-  );
 
   // Auto-select Unternehmen
   useEffect(() => {
@@ -76,54 +47,34 @@ export default function DropboxEinstellungen() {
     }
   }, [unternehmen, selectedUnternehmen]);
 
-  // Update folderLink when firmenInfo changes
-  useEffect(() => {
-    if (firmenInfo?.dropboxFolderLink) {
-      setFolderLink(firmenInfo.dropboxFolderLink);
-    } else {
-      setFolderLink("");
-    }
-  }, [firmenInfo]);
-
-  // Mutations
-  const setLinkMutation = trpc.dropbox.setFolderLink.useMutation({
-    onSuccess: () => {
-      toast.success("Dropbox-Ordner gespeichert");
-      refetchFirmenInfo();
-    },
-    onError: (error) => {
-      toast.error(`Fehler: ${error.message}`);
-    },
-  });
-
-  const removeLinkMutation = trpc.dropbox.removeFolderLink.useMutation({
-    onSuccess: () => {
-      toast.success("Dropbox-Ordner entfernt");
-      setFolderLink("");
-      refetchFirmenInfo();
-    },
-    onError: (error) => {
-      toast.error(`Fehler: ${error.message}`);
-    },
-  });
-
-  const syncMutation = trpc.dropbox.sync.useMutation({
+  // Mutation
+  const processLinkMutation = trpc.dropbox.processLink.useMutation({
     onSuccess: (data) => {
-      toast.success(`Sync erfolgreich: ${data.neueeDateien} neue Dateien`);
-      refetchFirmenInfo();
+      toast.success(`Beleg erfolgreich verarbeitet: ${data.filename}`);
+      setLastResult({
+        success: true,
+        message: `Buchungsvorschlag wurde erstellt für "${data.filename}"`,
+        vorschlagId: data.vorschlagId,
+        filename: data.filename,
+      });
+      setDropboxLink("");
     },
     onError: (error) => {
-      toast.error(`Sync fehlgeschlagen: ${error.message}`);
+      toast.error(`Fehler: ${error.message}`);
+      setLastResult({
+        success: false,
+        message: error.message,
+      });
     },
   });
 
-  const handleSaveLink = () => {
-    if (!selectedUnternehmen || !folderLink) return;
+  const handleProcess = () => {
+    if (!selectedUnternehmen || !dropboxLink) return;
 
     // Validiere URL
     try {
-      new URL(folderLink);
-      if (!folderLink.includes("dropbox.com")) {
+      const url = new URL(dropboxLink);
+      if (!url.hostname.includes("dropbox")) {
         toast.error("Bitte geben Sie einen gültigen Dropbox-Link ein");
         return;
       }
@@ -132,55 +83,38 @@ export default function DropboxEinstellungen() {
       return;
     }
 
-    setLinkMutation.mutate({
-      unternehmenId: selectedUnternehmen,
-      folderLink,
-    });
-  };
-
-  const handleRemoveLink = () => {
-    if (!selectedUnternehmen) return;
-    if (!confirm("Dropbox-Ordner wirklich entfernen?")) return;
-
-    removeLinkMutation.mutate({
+    setLastResult(null);
+    processLinkMutation.mutate({
+      dropboxLink,
       unternehmenId: selectedUnternehmen,
     });
   };
-
-  const handleSync = () => {
-    if (!selectedUnternehmen) return;
-    syncMutation.mutate({ unternehmenId: selectedUnternehmen });
-  };
-
-  const hasLink = !!firmenInfo?.dropboxFolderLink;
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <AppHeader title="Dropbox-Integration" subtitle="Automatische Beleg-Synchronisierung via Shared Links" />
+      <AppHeader title="Dropbox-Integration" subtitle="Belege direkt aus Dropbox verarbeiten" />
 
-      <main className="container py-6">
+      <main className="container py-6 max-w-3xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Select
-              value={selectedUnternehmen?.toString() || ""}
-              onValueChange={(value) => {
-                setSelectedUnternehmen(parseInt(value));
-                localStorage.setItem("selectedUnternehmenId", value);
-              }}
-            >
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Firma wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {unternehmen?.map((u) => (
-                  <SelectItem key={u.unternehmen.id} value={u.unternehmen.id.toString()}>
-                    {u.unternehmen.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="mb-6">
+          <Select
+            value={selectedUnternehmen?.toString() || ""}
+            onValueChange={(value) => {
+              setSelectedUnternehmen(parseInt(value));
+              localStorage.setItem("selectedUnternehmenId", value);
+            }}
+          >
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Firma wählen" />
+            </SelectTrigger>
+            <SelectContent>
+              {unternehmen?.map((u) => (
+                <SelectItem key={u.unternehmen.id} value={u.unternehmen.id.toString()}>
+                  {u.unternehmen.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {selectedUnternehmen && (
@@ -190,204 +124,147 @@ export default function DropboxEinstellungen() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Cloud className="w-5 h-5 text-blue-600" />
-                  <CardTitle className="text-blue-900">Automatische Beleg-Synchronisierung</CardTitle>
+                  <CardTitle className="text-blue-900">Belege aus Dropbox verarbeiten</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-blue-800 mb-3">
-                  Teilen Sie einen Dropbox-Ordner und fügen Sie den Link hier ein.
-                  Die App synchronisiert automatisch neue Dateien und erstellt Buchungsvorschläge.
+                  Teilen Sie eine Datei in Dropbox, kopieren Sie den Link und fügen Sie ihn hier ein.
+                  Die App lädt den Beleg herunter und erstellt automatisch einen Buchungsvorschlag.
                 </p>
-                <div className="flex items-start gap-2 text-sm">
-                  <Zap className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <strong>So funktioniert's:</strong>
-                    <ol className="list-decimal pl-5 mt-1 space-y-1">
-                      <li>Erstellen Sie einen Ordner in Ihrer Dropbox (z.B. "Belege 2024")</li>
-                      <li>Rechtsklick auf Ordner → "Freigeben" → "Link erstellen"</li>
-                      <li>Kopieren Sie den geteilten Link und fügen Sie ihn unten ein</li>
-                      <li>Klicken Sie auf "Synchronisieren" um neue Belege abzurufen</li>
-                      <li>Für jeden Beleg wird automatisch ein Buchungsvorschlag erstellt</li>
-                    </ol>
+                <div className="space-y-2 text-sm text-blue-800">
+                  <p><strong>So funktioniert's:</strong></p>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    <li>Öffnen Sie Ihre Dropbox (Web oder App)</li>
+                    <li>Rechtsklick auf Beleg → "Freigeben" → "Link erstellen"</li>
+                    <li>Kopieren Sie den Link</li>
+                    <li>Fügen Sie ihn unten ein und klicken Sie auf "Beleg verarbeiten"</li>
+                    <li>Die AI analysiert den Beleg und erstellt einen Buchungsvorschlag</li>
+                  </ol>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Haupt-Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Beleg verarbeiten
+                </CardTitle>
+                <CardDescription>
+                  Dropbox-Link einfügen und automatisch analysieren lassen
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="dropbox-link">Dropbox-Link</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      id="dropbox-link"
+                      value={dropboxLink}
+                      onChange={(e) => setDropboxLink(e.target.value)}
+                      placeholder="https://www.dropbox.com/scl/fi/..."
+                      disabled={processLinkMutation.isPending}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && dropboxLink) {
+                          handleProcess();
+                        }
+                      }}
+                    />
+                    <Button
+                      onClick={handleProcess}
+                      disabled={!dropboxLink || processLinkMutation.isPending}
+                      className="min-w-[140px]"
+                    >
+                      {processLinkMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Verarbeite...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Verarbeiten
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Beispiel: https://www.dropbox.com/scl/fi/abc123/rechnung.pdf?...
+                  </p>
+                </div>
+
+                {/* Erfolg/Fehler Meldung */}
+                {lastResult && (
+                  <Alert className={lastResult.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}>
+                    <div className="flex items-start gap-2">
+                      {lastResult.success ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <AlertDescription className={lastResult.success ? "text-green-800" : "text-red-800"}>
+                          {lastResult.message}
+                        </AlertDescription>
+                        {lastResult.success && lastResult.vorschlagId && (
+                          <Link href="/buchungsvorschlaege">
+                            <Button variant="link" className="p-0 h-auto mt-2 text-green-700 hover:text-green-800">
+                              <Sparkles className="w-4 h-4 mr-1" />
+                              Buchungsvorschlag ansehen
+                              <ExternalLink className="w-3 h-3 ml-1" />
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </Alert>
+                )}
+
+                <div className="bg-slate-50 p-4 rounded-lg border">
+                  <div className="flex items-start gap-2 text-sm">
+                    <AlertCircle className="w-4 h-4 text-slate-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-slate-900">Hinweise:</p>
+                      <ul className="list-disc pl-5 mt-1 space-y-1 text-slate-700">
+                        <li>Funktioniert mit PDF, JPG, PNG, GIF</li>
+                        <li>Keine Installation oder API-Token erforderlich</li>
+                        <li>Die Datei muss in Dropbox freigegeben sein</li>
+                        <li>Der Link kann nach Verarbeitung wieder entfernt werden</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Konfiguration */}
-            <Card className="mb-6">
+            {/* Beispiel Card */}
+            <Card className="mt-6 bg-slate-50 border-slate-200">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Cloud className="w-5 h-5" />
-                  Dropbox-Ordner konfigurieren
-                </CardTitle>
-                <CardDescription>
-                  Fügen Sie den Link zu Ihrem geteilten Dropbox-Ordner ein
-                </CardDescription>
+                <CardTitle className="text-base">Wie sieht ein Dropbox-Link aus?</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 text-sm">
                 <div>
-                  <Label htmlFor="folder-link">Geteilter Ordner-Link</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      id="folder-link"
-                      value={folderLink}
-                      onChange={(e) => setFolderLink(e.target.value)}
-                      placeholder="https://www.dropbox.com/sh/xyz123..."
-                      disabled={setLinkMutation.isPending}
-                    />
-                    <Button
-                      onClick={handleSaveLink}
-                      disabled={!folderLink || setLinkMutation.isPending}
-                    >
-                      {setLinkMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        "Speichern"
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Beispiel: https://www.dropbox.com/sh/abc123xyz/...
-                  </p>
+                  <p className="font-medium text-slate-700 mb-1">Moderne Dropbox-Links:</p>
+                  <code className="block bg-white p-2 rounded border text-xs break-all">
+                    https://www.dropbox.com/scl/fi/abc123def456/rechnung.pdf?rlkey=xyz&dl=0
+                  </code>
                 </div>
-
-                {hasLink && (
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="font-medium text-green-900">Dropbox-Ordner verbunden</p>
-                        <p className="text-sm text-green-700 mt-1 break-all">
-                          {firmenInfo.dropboxFolderLink}
-                        </p>
-                        {firmenInfo.dropboxLastSync && (
-                          <p className="text-xs text-green-600 mt-1">
-                            Letzter Sync: {formatDate(firmenInfo.dropboxLastSync)}
-                          </p>
-                        )}
-                        <div className="flex gap-2 mt-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleSync}
-                            disabled={syncMutation.isPending}
-                          >
-                            {syncMutation.isPending ? (
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                              <RefreshCw className="w-4 h-4 mr-2" />
-                            )}
-                            Jetzt synchronisieren
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setLogDialogOpen(true)}
-                          >
-                            <FileText className="w-4 h-4 mr-2" />
-                            Sync-Protokoll
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleRemoveLink}
-                            className="text-red-600 hover:text-red-700"
-                            disabled={removeLinkMutation.isPending}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Entfernen
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="bg-yellow-50 p-4 rounded-lg">
-                  <div className="flex items-start gap-2 text-sm">
-                    <Info className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <strong className="text-yellow-800">Hinweis:</strong>
-                      <p className="text-yellow-700 mt-1">
-                        Für Production muss die Environment Variable <code className="bg-yellow-100 px-1 rounded">DROPBOX_APP_TOKEN</code> gesetzt werden.
-                        Dieser Token wird benötigt, um auf geteilte Ordner zuzugreifen.
-                      </p>
-                      <p className="text-yellow-700 mt-2">
-                        <strong>So erstellen Sie einen App Token:</strong>
-                      </p>
-                      <ol className="list-decimal pl-5 mt-1 space-y-1 text-yellow-700">
-                        <li>Gehen Sie zu <a href="https://www.dropbox.com/developers/apps" target="_blank" rel="noopener" className="underline">dropbox.com/developers/apps</a></li>
-                        <li>Erstellen Sie eine neue App (Scoped Access, Full Dropbox)</li>
-                        <li>Unter "Settings" → "Generated access token" → Token generieren</li>
-                        <li>Token als DROPBOX_APP_TOKEN in Railway Environment Variables einfügen</li>
-                      </ol>
-                    </div>
-                  </div>
+                <div>
+                  <p className="font-medium text-slate-700 mb-1">Klassische Dropbox-Links:</p>
+                  <code className="block bg-white p-2 rounded border text-xs break-all">
+                    https://www.dropbox.com/s/abc123def456/rechnung.pdf?dl=0
+                  </code>
                 </div>
+                <p className="text-xs text-slate-600 mt-2">
+                  Die App wandelt den Link automatisch in einen Download-Link um (dl=1)
+                </p>
               </CardContent>
             </Card>
           </>
         )}
       </main>
-
-      {/* Sync-Log Dialog */}
-      <Dialog open={logDialogOpen} onOpenChange={setLogDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Sync-Protokoll</DialogTitle>
-            <DialogDescription>Letzte 50 synchronisierte Dateien</DialogDescription>
-          </DialogHeader>
-
-          {syncLog.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">Noch keine Dateien synchronisiert.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Datei</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Synchronisiert</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {syncLog.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{log.fileName}</p>
-                          <p className="text-xs text-muted-foreground">{log.dropboxPath}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {log.status === "analyzed" && (
-                        <Badge className="bg-green-100 text-green-800">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          Analysiert
-                        </Badge>
-                      )}
-                      {log.status === "uploaded" && (
-                        <Badge className="bg-blue-100 text-blue-800">Hochgeladen</Badge>
-                      )}
-                      {log.status === "sync" && <Badge variant="outline">Sync</Badge>}
-                      {log.status === "fehler" && (
-                        <Badge className="bg-red-100 text-red-800">
-                          <XCircle className="w-3 h-3 mr-1" />
-                          Fehler
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm">{formatDate(log.syncedAt)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
