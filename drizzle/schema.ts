@@ -1457,3 +1457,91 @@ export const auszugPositionen = mysqlTable("auszug_positionen", {
 
 export type AuszugPosition = typeof auszugPositionen.$inferSelect;
 export type InsertAuszugPosition = typeof auszugPositionen.$inferInsert;
+
+/**
+ * Kredit- und Leasingverträge
+ */
+export const finanzierungen = mysqlTable("finanzierungen", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+
+  // Vertragstyp
+  typ: mysqlEnum("typ", ["kredit", "leasing", "mietkauf", "factoring"]).notNull(),
+
+  // Vertragsdaten
+  vertragsnummer: varchar("vertragsnummer", { length: 100 }),
+  bezeichnung: varchar("bezeichnung", { length: 255 }).notNull(),
+  beschreibung: text("beschreibung"),
+
+  // Vertragspartner
+  kreditgeber: varchar("kreditgeber", { length: 255 }).notNull(),
+  kreditgeberKontonummer: varchar("kreditgeberKontonummer", { length: 20 }),
+
+  // Finanzierungsobjekt (bei Leasing/Mietkauf)
+  objektBezeichnung: varchar("objektBezeichnung", { length: 255 }),
+  objektWert: decimal("objektWert", { precision: 15, scale: 2 }),
+
+  // Konditionen
+  gesamtbetrag: decimal("gesamtbetrag", { precision: 15, scale: 2 }).notNull(),
+  restschuld: decimal("restschuld", { precision: 15, scale: 2 }),
+  zinssatz: decimal("zinssatz", { precision: 5, scale: 3 }),
+
+  // Laufzeit
+  vertragsBeginn: date("vertragsBeginn").notNull(),
+  vertragsEnde: date("vertragsEnde").notNull(),
+
+  // Raten
+  ratenBetrag: decimal("ratenBetrag", { precision: 15, scale: 2 }).notNull(),
+  ratenTyp: mysqlEnum("ratenTyp", ["monatlich", "quartal", "halbjaehrlich", "jaehrlich"]).default("monatlich").notNull(),
+  ratenTag: int("ratenTag").default(1),
+
+  // Sonderzahlungen (Leasing)
+  anzahlung: decimal("anzahlung", { precision: 15, scale: 2 }).default("0"),
+  schlussrate: decimal("schlussrate", { precision: 15, scale: 2 }).default("0"),
+
+  // Buchhaltung
+  aufwandskonto: varchar("aufwandskonto", { length: 20 }),
+  verbindlichkeitskonto: varchar("verbindlichkeitskonto", { length: 20 }),
+  zinsaufwandskonto: varchar("zinsaufwandskonto", { length: 20 }),
+
+  // Status
+  status: mysqlEnum("status", ["aktiv", "abgeschlossen", "gekuendigt"]).default("aktiv").notNull(),
+
+  // Dokumente
+  vertragsDokumentUrl: text("vertragsDokumentUrl"),
+
+  // Meta
+  notizen: text("notizen"),
+  createdBy: varchar("createdBy", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Finanzierung = typeof finanzierungen.$inferSelect;
+export type InsertFinanzierung = typeof finanzierungen.$inferInsert;
+
+/**
+ * Zahlungen für Finanzierungen
+ */
+export const finanzierungZahlungen = mysqlTable("finanzierung_zahlungen", {
+  id: int("id").autoincrement().primaryKey(),
+  finanzierungId: int("finanzierungId").references(() => finanzierungen.id).notNull(),
+
+  // Zahlung
+  faelligkeit: date("faelligkeit").notNull(),
+  betrag: decimal("betrag", { precision: 15, scale: 2 }).notNull(),
+  zinsenAnteil: decimal("zinsenAnteil", { precision: 15, scale: 2 }),
+  tilgungAnteil: decimal("tilgungAnteil", { precision: 15, scale: 2 }),
+
+  // Status
+  status: mysqlEnum("status", ["offen", "bezahlt", "ueberfaellig"]).default("offen").notNull(),
+  bezahltAm: date("bezahltAm"),
+
+  // Buchung
+  buchungId: int("buchungId").references(() => buchungen.id),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FinanzierungZahlung = typeof finanzierungZahlungen.$inferSelect;
+export type InsertFinanzierungZahlung = typeof finanzierungZahlungen.$inferInsert;
