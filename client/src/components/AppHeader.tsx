@@ -155,8 +155,8 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
 
       <div className="container py-2.5">
         <div className="flex items-center justify-between gap-4">
-          {/* Links: Logo + Firmenname + Firmenauswahl */}
-          <div className="flex items-center gap-3 min-w-0">
+          {/* Links: Logo + Firmenauswahl */}
+          <div className="flex items-center gap-2 min-w-0">
             {/* Firmenlogo oder Icon */}
             {firmenLogo ? (
               <img
@@ -173,26 +173,14 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               </div>
             )}
 
-            {/* Firmenname - truncated */}
-            {firmenName && (
-              <div className="min-w-0 flex-shrink">
-                <h1
-                  className="text-sm font-semibold text-slate-900 tracking-tight truncate"
-                  title={firmenName}
-                >
-                  {truncateName(firmenName)}
-                </h1>
-              </div>
-            )}
-
-            {/* Unternehmensauswahl Dropdown - kompakt */}
-            {unternehmenList && unternehmenList.length > 1 && (
+            {/* Unternehmensauswahl Dropdown */}
+            {unternehmenList && unternehmenList.length > 0 && (
               <Select
                 value={selectedId?.toString() || ""}
                 onValueChange={handleUnternehmenChange}
               >
-                <SelectTrigger className="w-[140px] h-7 text-xs border-slate-300">
-                  <SelectValue placeholder="Firma" />
+                <SelectTrigger className="w-[200px] h-7 text-xs border-slate-300">
+                  <SelectValue placeholder="Firma auswählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {unternehmenList.map((item: UnternehmenData) => (
@@ -286,31 +274,32 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                   <ChevronDown className="w-3 h-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuLabel>Weitere Module</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="text-xs text-slate-500">Weitere Module</DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
+                {/* Finanzen Gruppe */}
+                <div className="px-2 py-1">
+                  <p className="text-xs font-medium text-slate-400 mb-1">Finanzen</p>
+                </div>
                 <Link href="/auszuege">
                   <DropdownMenuItem className="cursor-pointer">
                     <Receipt className="w-4 h-4 mr-2" />
                     Kontoauszüge
                   </DropdownMenuItem>
                 </Link>
-
                 <Link href="/finanzierungen">
                   <DropdownMenuItem className="cursor-pointer">
                     <Banknote className="w-4 h-4 mr-2" />
                     Kredite & Leasing
                   </DropdownMenuItem>
                 </Link>
-
                 <Link href="/buchungsvorschlaege">
                   <DropdownMenuItem className="cursor-pointer">
                     <Sparkles className="w-4 h-4 mr-2" />
                     Buchungsvorschläge
                   </DropdownMenuItem>
                 </Link>
-
                 <Link href="/einstellungen/dropbox">
                   <DropdownMenuItem className="cursor-pointer">
                     <Cloud className="w-4 h-4 mr-2" />
@@ -320,20 +309,22 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
 
                 <DropdownMenuSeparator />
 
+                {/* Organisation Gruppe */}
+                <div className="px-2 py-1">
+                  <p className="text-xs font-medium text-slate-400 mb-1">Organisation</p>
+                </div>
                 <Link href="/kalender">
                   <DropdownMenuItem className="cursor-pointer">
                     <Calendar className="w-4 h-4 mr-2" />
                     Kalender
                   </DropdownMenuItem>
                 </Link>
-
                 <Link href="/notizen">
                   <DropdownMenuItem className="cursor-pointer">
                     <StickyNote className="w-4 h-4 mr-2" />
                     Notizen
                   </DropdownMenuItem>
                 </Link>
-
                 <Link href="/artikel">
                   <DropdownMenuItem className="cursor-pointer">
                     <Package className="w-4 h-4 mr-2" />
@@ -343,27 +334,28 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
 
                 <DropdownMenuSeparator />
 
+                {/* Behörden Gruppe */}
+                <div className="px-2 py-1">
+                  <p className="text-xs font-medium text-slate-400 mb-1">Behörden</p>
+                </div>
                 <Link href="/finanzamt">
                   <DropdownMenuItem className="cursor-pointer">
                     <Landmark className="w-4 h-4 mr-2" />
                     Finanzamt
                   </DropdownMenuItem>
                 </Link>
-
                 <Link href="/finanzamt/ustva">
                   <DropdownMenuItem className="cursor-pointer">
                     <FileText className="w-4 h-4 mr-2" />
                     USt-Voranmeldung
                   </DropdownMenuItem>
                 </Link>
-
                 <Link href="/aufgaben">
                   <DropdownMenuItem className="cursor-pointer">
                     <ListTodo className="w-4 h-4 mr-2" />
                     Aufgaben
                   </DropdownMenuItem>
                 </Link>
-
                 <Link href="/steuerberater">
                   <DropdownMenuItem className="cursor-pointer">
                     <Send className="w-4 h-4 mr-2" />

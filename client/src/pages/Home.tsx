@@ -803,28 +803,42 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       {/* Header mit Firmenauswahl */}
       <AppHeader />
-      
-      {/* Statistik-Leiste */}
-      <div className="border-b border-border bg-card">
-        <div className="container py-3">
-          <div className="flex items-center justify-end gap-6">
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Vollständige Buchungen</p>
-              <p className="text-lg font-semibold tabular-nums">{completeBuchungenCount} / {buchungen.length}</p>
-            </div>
-            <Separator orientation="vertical" className="h-8" />
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Gesamtbetrag (brutto)</p>
-              <p className="text-lg font-semibold tabular-nums font-mono">{formatCurrency(totalBrutto.toFixed(2))} €</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <main className="container py-8">
+      <main className="container py-6">
+        {/* Statistik-Karten */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <Card className="border-slate-200">
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Vollständige Buchungen</p>
+                  <p className="text-2xl font-bold tabular-nums">{completeBuchungenCount} / {buchungen.length}</p>
+                </div>
+                <div className="p-3 rounded-full bg-green-100">
+                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200">
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Gesamtbetrag (brutto)</p>
+                  <p className="text-2xl font-bold tabular-nums font-mono">{formatCurrency(totalBrutto.toFixed(2))} €</p>
+                </div>
+                <div className="p-3 rounded-full bg-blue-100">
+                  <Euro className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Dashboard-Widgets für offene Aufgaben und Finanzamt-Fristen */}
         {selectedUnternehmenId && ((aufgabenStats?.ueberfaellig || 0) > 0 || (finanzamtStats?.ueberfaelligeFristen || 0) > 0 || (offeneAufgaben?.length || 0) > 0) && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {/* Offene Aufgaben Widget */}
             <Link href="/aufgaben">
               <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-amber-500">
@@ -892,20 +906,20 @@ export default function Home() {
           </div>
         )}
 
-        {/* Upload Zone */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="w-5 h-5" />
-              Belege hochladen
-            </CardTitle>
-            <CardDescription>
-              Ziehen Sie Ihre Belege (PDF, JPG, PNG) hierher oder klicken Sie zum Auswählen
-            </CardDescription>
+        {/* Upload Zone - Kompakt */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Upload className="w-4 h-4" />
+                Belege hochladen
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">PDF, JPG, PNG</p>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-4">
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer
+              className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer max-h-[120px] flex flex-col items-center justify-center
                 ${dragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -913,9 +927,9 @@ export default function Home() {
               onDrop={handleDrop}
               onClick={() => document.getElementById("fileInput")?.click()}
             >
-              <Upload className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
-              <p className="font-medium">Belege hier ablegen</p>
-              <p className="text-sm text-muted-foreground">oder klicken zum Auswählen</p>
+              <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm font-medium">Belege hier ablegen</p>
+              <p className="text-xs text-muted-foreground">oder klicken zum Auswählen</p>
               <input
                 id="fileInput"
                 type="file"
