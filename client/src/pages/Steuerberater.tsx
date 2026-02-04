@@ -84,6 +84,7 @@ export default function Steuerberater() {
   // Upload-State für Rechnungsdokument
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   
   const [neuePosition, setNeuePosition] = useState({
     beschreibung: "",
@@ -197,6 +198,75 @@ export default function Steuerberater() {
     },
   });
 
+  // OCR Mutations
+  const ocrMutation = trpc.ocr.analyzeImage.useMutation();
+  const pdfOcrMutation = trpc.ocr.analyzePdf.useMutation();
+
+  // Automatische AI-Analyse beim Datei-Upload
+  const analyzeUploadedFile = async (file: File) => {
+    if (!file) return;
+
+    const isPdf = file.type === "application/pdf";
+    const isImage = file.type.startsWith("image/");
+
+    if (!isPdf && !isImage) {
+      return; // Nur PDFs und Bilder analysieren
+    }
+
+    setAnalyzing(true);
+
+    try {
+      // Datei zu Base64 konvertieren
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64Data = result.split(",")[1]; // Entferne Data-URL-Prefix
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Wähle die richtige OCR-Methode
+      let result;
+      if (isPdf) {
+        result = await pdfOcrMutation.mutateAsync({
+          pdfBase64: base64,
+          kontenrahmen: "SKR04",
+        });
+      } else {
+        result = await ocrMutation.mutateAsync({
+          imageBase64: base64,
+          mimeType: file.type,
+          kontenrahmen: "SKR04",
+        });
+      }
+
+      // Felder mit erkannten Daten füllen
+      setNeueRechnung((prev) => ({
+        ...prev,
+        rechnungsnummer: result.belegnummer || prev.rechnungsnummer,
+        rechnungsdatum: result.belegdatum || prev.rechnungsdatum,
+        nettobetrag: result.nettobetrag ? result.nettobetrag.toFixed(2) : prev.nettobetrag,
+        bruttobetrag: result.bruttobetrag ? result.bruttobetrag.toFixed(2) : prev.bruttobetrag,
+        steuersatz: result.steuersatz ? result.steuersatz.toFixed(2) : prev.steuersatz,
+        beschreibung: result.geschaeftspartner
+          ? `Rechnung von ${result.geschaeftspartner}`
+          : prev.beschreibung,
+      }));
+
+      // Toast-Benachrichtigung
+      if (result.erkannteFelder.length > 0) {
+        console.log(`✅ ${result.erkannteFelder.length} Felder automatisch erkannt (${result.konfidenz}% Konfidenz)`);
+      }
+    } catch (error) {
+      console.error("AI-Analyse fehlgeschlagen:", error);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const resetForm = () => {
     setNeueUebergabe({
       bezeichnung: "",
@@ -291,11 +361,22 @@ export default function Steuerberater() {
     });
   };
   
-  // Nettobetrag-Berechnung bei Steuersatz-Änderung
+  // Bidirektionale Berechnung: Netto <-> Brutto
   const updateBruttobetrag = (netto: string, steuersatz: string) => {
-    if (netto) {
-      const brutto = parseFloat(netto) * (1 + parseFloat(steuersatz) / 100);
-      setNeueRechnung(prev => ({ ...prev, bruttobetrag: brutto.toFixed(2) }));
+    if (netto && parseFloat(netto) > 0) {
+      const nettoNum = parseFloat(netto);
+      const steuerNum = parseFloat(steuersatz);
+      const brutto = nettoNum * (1 + steuerNum / 100);
+      setNeueRechnung((prev) => ({ ...prev, bruttobetrag: brutto.toFixed(2) }));
+    }
+  };
+
+  const updateNettobetrag = (brutto: string, steuersatz: string) => {
+    if (brutto && parseFloat(brutto) > 0) {
+      const bruttoNum = parseFloat(brutto);
+      const steuerNum = parseFloat(steuersatz);
+      const netto = bruttoNum / (1 + steuerNum / 100);
+      setNeueRechnung((prev) => ({ ...prev, nettobetrag: netto.toFixed(2) }));
     }
   };
 
@@ -818,7 +899,13 @@ export default function Steuerberater() {
                               value={neueRechnung.steuersatz}
                               onValueChange={(v) => {
                                 setNeueRechnung({ ...neueRechnung, steuersatz: v });
-                                updateBruttobetrag(neueRechnung.nettobetrag, v);
+                                // Intelligente Neuberechnung: Wenn Netto vorhanden, berechne Brutto
+                                // Ansonsten wenn Brutto vorhanden, berechne Netto
+                                if (neueRechnung.nettobetrag && parseFloat(neueRechnung.nettobetrag) > 0) {
+                                  updateBruttobetrag(neueRechnung.nettobetrag, v);
+                                } else if (neueRechnung.bruttobetrag && parseFloat(neueRechnung.bruttobetrag) > 0) {
+                                  updateNettobetrag(neueRechnung.bruttobetrag, v);
+                                }
                               }}
                             >
                               <SelectTrigger>
@@ -837,7 +924,11 @@ export default function Steuerberater() {
                               type="number"
                               step="0.01"
                               value={neueRechnung.bruttobetrag}
-                              onChange={(e) => setNeueRechnung({ ...neueRechnung, bruttobetrag: e.target.value })}
+                              onChange={(e) => {
+                                setNeueRechnung({ ...neueRechnung, bruttobetrag: e.target.value });
+                                // Automatische Rückrechnung zu Netto
+                                updateNettobetrag(e.target.value, neueRechnung.steuersatz);
+                              }}
                               placeholder="0.00"
                             />
                           </div>
@@ -865,11 +956,20 @@ export default function Steuerberater() {
                               const file = e.target.files?.[0];
                               if (file) {
                                 setUploadedFile(file);
+                                // Starte automatische AI-Analyse
+                                analyzeUploadedFile(file);
                               }
                             }}
                             className="cursor-pointer"
+                            disabled={analyzing}
                           />
-                          {uploadedFile && (
+                          {analyzing && (
+                            <div className="mt-2 flex items-center gap-2 text-sm text-primary">
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              <span>Analysiere Rechnung mit AI...</span>
+                            </div>
+                          )}
+                          {uploadedFile && !analyzing && (
                             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
                               <File className="w-4 h-4" />
                               <span>{uploadedFile.name}</span>
