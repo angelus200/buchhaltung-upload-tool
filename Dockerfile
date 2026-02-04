@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# WICHTIG: NO_CACHE=1 muss als Environment Variable in Railway Dashboard gesetzt werden
+# Dashboard → Variables → NO_CACHE=1 hinzufügen → Deploy
+
 # Install poppler-utils for PDF OCR (pdftoppm command)
 RUN apk add --no-cache poppler-utils
 
