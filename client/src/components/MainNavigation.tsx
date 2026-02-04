@@ -19,6 +19,7 @@ import {
   Home,
   ChevronDown,
   Receipt,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -35,15 +36,22 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-// Hauptnavigation Links
-const NAV_ITEMS: NavItem[] = [
+// Hauptnavigation Links - Wichtigste Seiten direkt sichtbar
+const PRIMARY_NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Buchungen", icon: <Upload className="w-4 h-4" /> },
+  { href: "/auszuege", label: "Kontoauszüge", icon: <Receipt className="w-4 h-4" /> },
   { href: "/uebersicht", label: "Übersicht", icon: <BarChart3 className="w-4 h-4" /> },
   { href: "/stammdaten", label: "Stammdaten", icon: <Briefcase className="w-4 h-4" /> },
-  { href: "/auszuege", label: "Kontoauszüge", icon: <Receipt className="w-4 h-4" /> },
+];
+
+// Weitere Seiten im "Mehr" Dropdown
+const MORE_NAV_ITEMS: NavItem[] = [
   { href: "/notizen", label: "Notizen", icon: <StickyNote className="w-4 h-4" /> },
   { href: "/unternehmen", label: "Unternehmen", icon: <Building2 className="w-4 h-4" /> },
 ];
+
+// Für Kompatibilität und Debug
+const NAV_ITEMS = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS];
 
 const ADMIN_ITEMS: NavItem[] = [
   { href: "/admin", label: "Admin-Board", icon: <Shield className="w-4 h-4" />, adminOnly: true },
@@ -69,7 +77,8 @@ export default function MainNavigation() {
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
-      {NAV_ITEMS.map((item) => (
+      {/* Primäre Navigation - immer sichtbar */}
+      {PRIMARY_NAV_ITEMS.map((item) => (
         <Link key={item.href} href={item.href}>
           <Button
             variant={isActive(item.href) ? "default" : "ghost"}
@@ -84,7 +93,47 @@ export default function MainNavigation() {
           </Button>
         </Link>
       ))}
-      
+
+      {/* "Mehr" Dropdown (Desktop) */}
+      {!mobile && MORE_NAV_ITEMS.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <MoreHorizontal className="w-4 h-4" />
+              <span className="ml-2">Mehr</span>
+              <ChevronDown className="w-3 h-3 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {MORE_NAV_ITEMS.map((item) => (
+              <Link key={item.href} href={item.href}>
+                <DropdownMenuItem className="cursor-pointer">
+                  {item.icon}
+                  <span className="ml-2">{item.label}</span>
+                </DropdownMenuItem>
+              </Link>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {/* "Mehr" Items direkt sichtbar (Mobile) */}
+      {mobile && MORE_NAV_ITEMS.map((item) => (
+        <Link key={item.href} href={item.href}>
+          <Button
+            variant={isActive(item.href) ? "default" : "ghost"}
+            size="default"
+            className={`w-full justify-start ${
+              isActive(item.href) ? "bg-teal-600 text-white hover:bg-teal-700" : ""
+            }`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            {item.icon}
+            <span className="ml-2">{item.label}</span>
+          </Button>
+        </Link>
+      ))}
+
       {/* Admin-Bereich Dropdown (Desktop) */}
       {!mobile && (
         <DropdownMenu>
