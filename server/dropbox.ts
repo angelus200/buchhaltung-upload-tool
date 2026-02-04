@@ -1,63 +1,99 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { dropboxConnections, dropboxSyncLog, buchungsvorschlaege, kreditoren, InsertDropboxConnection, InsertDropboxSyncLog } from "../drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { unternehmen, dropboxSyncLog, buchungsvorschlaege, kreditoren, InsertDropboxSyncLog } from "../drizzle/schema";
+import { eq, desc, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { uploadBelegLocal } from "./storage";
 import { analyzeBelegAndCreateVorschlag, findKreditorByName } from "./buchungsvorschlaege";
 
 /**
- * Dropbox API Helper
+ * Dropbox Shared Link API
  *
- * Hinweis: Für Production benötigt man:
- * - Dropbox App im Dropbox Developer Portal erstellen
- * - OAuth Client ID und Secret als ENV Variables
- * - Redirect URI konfigurieren
+ * KEIN OAUTH NÖTIG - Nutzt öffentliche Shared Links
+ * User teilt einen Dropbox-Ordner und kopiert den Link in die Firmen-Einstellungen
  */
 
-interface DropboxOAuthTokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in?: number;
-  refresh_token?: string;
-  account_id: string;
-}
-
-interface DropboxFileMetadata {
+interface DropboxSharedLinkFile {
   ".tag": "file" | "folder";
   name: string;
-  path_lower: string;
-  path_display: string;
+  path_lower?: string;
   id: string;
   size?: number;
   server_modified?: string;
+  client_modified?: string;
 }
 
-interface DropboxDeltaResponse {
-  entries: Array<{
-    ".tag": "file" | "folder" | "deleted";
-    name?: string;
-    path_lower?: string;
-    path_display?: string;
-    id?: string;
-    size?: number;
-  }>;
-  cursor: string;
-  has_more: boolean;
+interface DropboxSharedLinkMetadata {
+  url: string;
+  name: string;
+  link_permissions: {
+    can_revoke: boolean;
+    resolved_visibility: { ".tag": string };
+  };
+  ".tag": string;
 }
 
 /**
- * Dropbox API Client
+ * Dropbox Shared Link Client (kein OAuth)
  */
-class DropboxClient {
+class DropboxSharedLinkClient {
   private accessToken: string;
 
-  constructor(accessToken: string) {
-    this.accessToken = accessToken;
+  constructor() {
+    // Für Shared Links brauchen wir nur einen App Access Token
+    // Dieser muss als ENV Variable gesetzt werden
+    this.accessToken = process.env.DROPBOX_APP_TOKEN || "";
+
+    if (!this.accessToken) {
+      console.warn("⚠️  DROPBOX_APP_TOKEN nicht gesetzt. Dropbox-Integration deaktiviert.");
+    }
   }
 
-  async listFolder(path: string): Promise<DropboxFileMetadata[]> {
+  /**
+   * Listet Dateien in einem geteilten Ordner
+   */
+  async listSharedFolderFiles(sharedLink: string): Promise<DropboxSharedLinkFile[]> {
+    if (!this.accessToken) {
+      throw new Error("Dropbox App Token nicht konfiguriert");
+    }
+
+    try {
+      const response = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${this.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          path: this.extractPathFromSharedLink(sharedLink),
+          recursive: false,
+          include_deleted: false,
+        }),
+      });
+
+      if (!response.ok) {
+        // Fallback: Shared Link Method
+        return await this.listSharedLinkFilesAlternative(sharedLink);
+      }
+
+      const data = await response.json();
+      return data.entries || [];
+    } catch (error) {
+      console.error("Dropbox listSharedFolderFiles Error:", error);
+      // Fallback zur Alternative
+      return await this.listSharedLinkFilesAlternative(sharedLink);
+    }
+  }
+
+  /**
+   * Alternative Methode: Nutzt Shared Link API
+   */
+  private async listSharedLinkFilesAlternative(sharedLink: string): Promise<DropboxSharedLinkFile[]> {
+    if (!this.accessToken) {
+      throw new Error("Dropbox App Token nicht konfiguriert");
+    }
+
     const response = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
       method: "POST",
       headers: {
@@ -65,26 +101,41 @@ class DropboxClient {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        path: path === "/" ? "" : path,
+        shared_link: {
+          url: sharedLink,
+        },
+        path: "",
         recursive: false,
-        include_deleted: false,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Dropbox API Fehler: ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(`Dropbox API Fehler: ${errorData.error_summary || response.statusText}`);
     }
 
     const data = await response.json();
     return data.entries || [];
   }
 
-  async downloadFile(path: string): Promise<{ buffer: Buffer; metadata: any }> {
+  /**
+   * Lädt eine Datei von einem Shared Link herunter
+   */
+  async downloadFileFromSharedLink(sharedLink: string, filePath: string): Promise<Buffer> {
+    if (!this.accessToken) {
+      throw new Error("Dropbox App Token nicht konfiguriert");
+    }
+
     const response = await fetch("https://content.dropboxapi.com/2/files/download", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${this.accessToken}`,
-        "Dropbox-API-Arg": JSON.stringify({ path }),
+        "Dropbox-API-Arg": JSON.stringify({
+          shared_link: {
+            url: sharedLink,
+          },
+          path: filePath,
+        }),
       },
     });
 
@@ -92,82 +143,20 @@ class DropboxClient {
       throw new Error(`Dropbox Download Fehler: ${response.statusText}`);
     }
 
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const metadata = JSON.parse(response.headers.get("dropbox-api-result") || "{}");
-
-    return { buffer, metadata };
+    return Buffer.from(await response.arrayBuffer());
   }
 
-  async listFolderContinue(cursor: string): Promise<DropboxDeltaResponse> {
-    const response = await fetch("https://api.dropboxapi.com/2/files/list_folder/continue", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${this.accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ cursor }),
-    });
+  /**
+   * Extrahiert Pfad aus Shared Link (Fallback)
+   */
+  private extractPathFromSharedLink(sharedLink: string): string {
+    // Versuche den Pfad aus dem Link zu extrahieren
+    // Format: https://www.dropbox.com/sh/FOLDER_ID/KEY
+    // oder: https://www.dropbox.com/scl/fo/FOLDER_ID/KEY
 
-    if (!response.ok) {
-      throw new Error(`Dropbox API Fehler: ${response.statusText}`);
-    }
-
-    return await response.json();
+    // Standardmäßig root
+    return "";
   }
-
-  async getLatestCursor(path: string): Promise<string> {
-    const response = await fetch("https://api.dropboxapi.com/2/files/list_folder/get_latest_cursor", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${this.accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        path: path === "/" ? "" : path,
-        recursive: false,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Dropbox API Fehler: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.cursor;
-  }
-
-  async getAccountInfo(): Promise<{ account_id: string; email: string }> {
-    const response = await fetch("https://api.dropboxapi.com/2/users/get_current_account", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${this.accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Dropbox API Fehler: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return {
-      account_id: data.account_id,
-      email: data.email,
-    };
-  }
-}
-
-/**
- * Verschlüsselt Access Token (einfache XOR-Verschlüsselung für Demo)
- * Für Production: Verwenden Sie eine richtige Verschlüsselung (z.B. crypto.encrypt)
- */
-function encryptToken(token: string): string {
-  // TODO: Implementieren Sie richtige Verschlüsselung
-  return Buffer.from(token).toString("base64");
-}
-
-function decryptToken(encrypted: string): string {
-  // TODO: Implementieren Sie richtige Entschlüsselung
-  return Buffer.from(encrypted, "base64").toString("utf-8");
 }
 
 /**
@@ -179,180 +168,114 @@ function isSupportedFileType(filename: string): boolean {
 }
 
 /**
- * Dropbox-Router
+ * Dropbox Router (Shared Links)
  */
 export const dropboxRouter = router({
   /**
-   * OAuth: Generiere Authorization URL
+   * Dropbox Ordner-Link speichern
    */
-  getAuthUrl: protectedProcedure
-    .input(z.object({ unternehmenId: z.number() }))
-    .query(async ({ input }) => {
-      // TODO: Ersetzen durch echte Dropbox App Credentials
-      const clientId = process.env.DROPBOX_CLIENT_ID || "YOUR_CLIENT_ID";
-      const redirectUri = process.env.DROPBOX_REDIRECT_URI || "http://localhost:5000/api/dropbox/callback";
-
-      const authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${input.unternehmenId}`;
-
-      return { authUrl };
-    }),
-
-  /**
-   * OAuth Callback: Exchange Code for Token
-   */
-  handleCallback: protectedProcedure
+  setFolderLink: protectedProcedure
     .input(
       z.object({
-        code: z.string(),
         unternehmenId: z.number(),
-        watchFolder: z.string().default("/Belege"),
+        folderLink: z.string().url(),
       })
     )
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
 
-      // TODO: Ersetzen durch echte Dropbox App Credentials
-      const clientId = process.env.DROPBOX_CLIENT_ID || "YOUR_CLIENT_ID";
-      const clientSecret = process.env.DROPBOX_CLIENT_SECRET || "YOUR_CLIENT_SECRET";
-      const redirectUri = process.env.DROPBOX_REDIRECT_URI || "http://localhost:5000/api/dropbox/callback";
+      await db
+        .update(unternehmen)
+        .set({
+          dropboxFolderLink: input.folderLink,
+        })
+        .where(eq(unternehmen.id, input.unternehmenId));
 
-      // Exchange code for access token
-      const tokenResponse = await fetch("https://api.dropboxapi.com/oauth2/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          code: input.code,
-          grant_type: "authorization_code",
-          client_id: clientId,
-          client_secret: clientSecret,
-          redirect_uri: redirectUri,
-        }),
-      });
+      return { success: true };
+    }),
 
-      if (!tokenResponse.ok) {
+  /**
+   * Dropbox Ordner-Link entfernen
+   */
+  removeFolderLink: protectedProcedure
+    .input(z.object({ unternehmenId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      await db
+        .update(unternehmen)
+        .set({
+          dropboxFolderLink: null,
+          dropboxLastSync: null,
+        })
+        .where(eq(unternehmen.id, input.unternehmenId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Firmen-Info mit Dropbox-Link abrufen
+   */
+  getUnternehmenInfo: protectedProcedure
+    .input(z.object({ unternehmenId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const [firma] = await db
+        .select()
+        .from(unternehmen)
+        .where(eq(unternehmen.id, input.unternehmenId))
+        .limit(1);
+
+      return firma || null;
+    }),
+
+  /**
+   * Manueller Sync: Neue Dateien aus Shared Link laden
+   */
+  sync: protectedProcedure
+    .input(z.object({ unternehmenId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      // Lade Firma mit Dropbox-Link
+      const [firma] = await db
+        .select()
+        .from(unternehmen)
+        .where(eq(unternehmen.id, input.unternehmenId))
+        .limit(1);
+
+      if (!firma || !firma.dropboxFolderLink) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Dropbox OAuth fehlgeschlagen",
+          message: "Kein Dropbox-Ordner konfiguriert",
         });
       }
 
-      const tokenData: DropboxOAuthTokenResponse = await tokenResponse.json();
-
-      // Hole Account-Info
-      const client = new DropboxClient(tokenData.access_token);
-      const accountInfo = await client.getAccountInfo();
-
-      // Initiale Cursor holen
-      const cursor = await client.getLatestCursor(input.watchFolder);
-
-      // Speichere Verbindung
-      const expiresAt = tokenData.expires_in
-        ? new Date(Date.now() + tokenData.expires_in * 1000)
-        : null;
-
-      await db.insert(dropboxConnections).values({
-        unternehmenId: input.unternehmenId,
-        accessToken: encryptToken(tokenData.access_token),
-        refreshToken: tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null,
-        expiresAt,
-        accountId: accountInfo.account_id,
-        accountEmail: accountInfo.email,
-        watchFolder: input.watchFolder,
-        autoCreateVorschlaege: true,
-        lastCursor: cursor,
-        syncStatus: "aktiv",
-        aktiv: true,
-        createdBy: ctx.user.id,
-      } as InsertDropboxConnection);
-
-      return { success: true };
-    }),
-
-  /**
-   * Liste alle Verbindungen
-   */
-  listConnections: protectedProcedure
-    .input(z.object({ unternehmenId: z.number() }))
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) return [];
-
-      const connections = await db
-        .select()
-        .from(dropboxConnections)
-        .where(eq(dropboxConnections.unternehmenId, input.unternehmenId))
-        .orderBy(desc(dropboxConnections.createdAt));
-
-      // Verstecke Tokens im Response
-      return connections.map((conn) => ({
-        ...conn,
-        accessToken: "***",
-        refreshToken: "***",
-      }));
-    }),
-
-  /**
-   * Verbindung löschen
-   */
-  deleteConnection: protectedProcedure
-    .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
-
-      await db.delete(dropboxConnections).where(eq(dropboxConnections.id, input.id));
-
-      return { success: true };
-    }),
-
-  /**
-   * Manueller Sync
-   */
-  sync: protectedProcedure
-    .input(z.object({ connectionId: z.number() }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
-
-      // Lade Verbindung
-      const [connection] = await db
-        .select()
-        .from(dropboxConnections)
-        .where(eq(dropboxConnections.id, input.connectionId))
-        .limit(1);
-
-      if (!connection) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Verbindung nicht gefunden" });
-      }
-
-      const accessToken = decryptToken(connection.accessToken);
-      const client = new DropboxClient(accessToken);
-
+      const client = new DropboxSharedLinkClient();
       let neueeDateien = 0;
-      let cursor = connection.lastCursor;
 
       try {
-        // Hole neue/geänderte Dateien seit letztem Sync
-        const delta: DropboxDeltaResponse = cursor
-          ? await client.listFolderContinue(cursor)
-          : { entries: await client.listFolder(connection.watchFolder), cursor: "", has_more: false };
+        // Liste alle Dateien im geteilten Ordner
+        const files = await client.listSharedFolderFiles(firma.dropboxFolderLink);
 
-        for (const entry of delta.entries) {
-          if (entry[".tag"] !== "file" || !entry.name || !isSupportedFileType(entry.name)) {
+        for (const file of files) {
+          if (file[".tag"] !== "file" || !isSupportedFileType(file.name)) {
             continue;
           }
 
-          // Prüfe ob bereits syncronisiert
+          // Prüfe ob bereits synchronisiert
           const [existing] = await db
             .select()
             .from(dropboxSyncLog)
             .where(
               and(
-                eq(dropboxSyncLog.connectionId, input.connectionId),
-                eq(dropboxSyncLog.dropboxFileId, entry.id!)
+                eq(dropboxSyncLog.fileName, file.name),
+                eq(dropboxSyncLog.dropboxPath, file.path_lower || `/${file.name}`)
               )
             )
             .limit(1);
@@ -360,17 +283,20 @@ export const dropboxRouter = router({
           if (existing) continue;
 
           // Download Datei
-          const { buffer } = await client.downloadFile(entry.path_lower!);
+          const buffer = await client.downloadFileFromSharedLink(
+            firma.dropboxFolderLink,
+            file.path_lower || `/${file.name}`
+          );
 
           // Upload zu lokalem Storage
           const { url: belegUrl } = await uploadBelegLocal(
             buffer,
-            entry.name,
-            connection.unternehmenId
+            file.name,
+            input.unternehmenId
           );
 
           // MIME-Type ermitteln
-          const ext = entry.name.toLowerCase().split(".").pop();
+          const ext = file.name.toLowerCase().split(".").pop();
           const mimeTypeMap: Record<string, string> = {
             pdf: "application/pdf",
             jpg: "image/jpeg",
@@ -384,70 +310,66 @@ export const dropboxRouter = router({
           let syncStatus: "uploaded" | "analyzed" | "fehler" = "uploaded";
           let fehlerMeldung: string | null = null;
 
-          // Erstelle Buchungsvorschlag (wenn aktiviert)
-          if (connection.autoCreateVorschlaege) {
-            try {
-              // Konvertiere Buffer zu Base64
-              const imageBase64 = buffer.toString("base64");
+          // Erstelle automatisch Buchungsvorschlag
+          try {
+            // Konvertiere Buffer zu Base64
+            const imageBase64 = buffer.toString("base64");
 
-              // AI-Analyse
-              const vorschlagData = await analyzeBelegAndCreateVorschlag(
-                imageBase64,
-                mimeType,
-                connection.unternehmenId,
-                belegUrl
+            // AI-Analyse
+            const vorschlagData = await analyzeBelegAndCreateVorschlag(
+              imageBase64,
+              mimeType,
+              input.unternehmenId,
+              belegUrl
+            );
+
+            // Suche passenden Kreditor
+            if (vorschlagData.lieferant) {
+              const kreditorId = await findKreditorByName(
+                vorschlagData.lieferant,
+                input.unternehmenId
               );
 
-              // Suche passenden Kreditor
-              if (vorschlagData.lieferant) {
-                const kreditorId = await findKreditorByName(
-                  vorschlagData.lieferant,
-                  connection.unternehmenId
-                );
+              if (kreditorId) {
+                vorschlagData.kreditorId = kreditorId;
 
-                if (kreditorId) {
-                  vorschlagData.kreditorId = kreditorId;
+                // Lade Kreditor-Daten
+                const [kreditor] = await db
+                  .select()
+                  .from(kreditoren)
+                  .where(eq(kreditoren.id, kreditorId))
+                  .limit(1);
 
-                  // Lade Kreditor-Daten
-                  const [kreditor] = await db
-                    .select()
-                    .from(kreditoren)
-                    .where(eq(kreditoren.id, kreditorId))
-                    .limit(1);
+                if (kreditor) {
+                  vorschlagData.geschaeftspartnerKonto = kreditor.kontonummer || null;
 
-                  if (kreditor) {
-                    // Verwende Kreditor-Personenkonto
-                    vorschlagData.geschaeftspartnerKonto = kreditor.kontonummer || null;
-
-                    // Verwende Standard-Sachkonto wenn vorhanden
-                    if (kreditor.standardSachkonto) {
-                      vorschlagData.sollKonto = kreditor.standardSachkonto;
-                      vorschlagData.confidence = "0.95"; // Höhere Confidence bei bekanntem Kreditor
-                      vorschlagData.aiNotizen = (vorschlagData.aiNotizen || "") +
-                        ` | Kreditor erkannt: ${kreditor.name}, Standard-Sachkonto verwendet.`;
-                    }
+                  if (kreditor.standardSachkonto) {
+                    vorschlagData.sollKonto = kreditor.standardSachkonto;
+                    vorschlagData.confidence = "0.95";
+                    vorschlagData.aiNotizen = (vorschlagData.aiNotizen || "") +
+                      ` | Kreditor erkannt: ${kreditor.name}, Standard-Sachkonto verwendet.`;
                   }
                 }
               }
-
-              // Speichere Vorschlag
-              const [insertResult] = await db.insert(buchungsvorschlaege).values(vorschlagData);
-              vorschlagId = insertResult.insertId;
-              syncStatus = "analyzed";
-            } catch (aiError) {
-              console.error("AI-Analyse fehlgeschlagen:", aiError);
-              fehlerMeldung = aiError instanceof Error ? aiError.message : "AI-Analyse fehlgeschlagen";
-              syncStatus = "fehler";
             }
+
+            // Speichere Vorschlag
+            const [insertResult] = await db.insert(buchungsvorschlaege).values(vorschlagData);
+            vorschlagId = insertResult.insertId;
+            syncStatus = "analyzed";
+          } catch (aiError) {
+            console.error("AI-Analyse fehlgeschlagen:", aiError);
+            fehlerMeldung = aiError instanceof Error ? aiError.message : "AI-Analyse fehlgeschlagen";
+            syncStatus = "fehler";
           }
 
-          // Log Sync
+          // Log Sync (connectionId auf 0 setzen, da wir keine Connection-Tabelle mehr haben)
           await db.insert(dropboxSyncLog).values({
-            connectionId: input.connectionId,
-            dropboxPath: entry.path_display!,
-            dropboxFileId: entry.id!,
-            fileName: entry.name,
-            fileSize: entry.size,
+            connectionId: 0, // Dummy-Wert für Legacy-Kompatibilität
+            dropboxPath: file.path_lower || `/${file.name}`,
+            dropboxFileId: file.id,
+            fileName: file.name,
+            fileSize: file.size,
             belegUrl,
             vorschlagId,
             status: syncStatus,
@@ -457,29 +379,16 @@ export const dropboxRouter = router({
           neueeDateien++;
         }
 
-        // Update Connection
+        // Update Last Sync Zeit
         await db
-          .update(dropboxConnections)
+          .update(unternehmen)
           .set({
-            lastSync: new Date(),
-            lastCursor: delta.cursor,
-            dateienNeu: neueeDateien,
-            syncStatus: "aktiv",
+            dropboxLastSync: new Date(),
           })
-          .where(eq(dropboxConnections.id, input.connectionId));
+          .where(eq(unternehmen.id, input.unternehmenId));
 
         return { success: true, neueeDateien };
       } catch (error) {
-        // Fehler loggen
-        await db
-          .update(dropboxConnections)
-          .set({
-            syncStatus: "fehler",
-            syncFehler: error instanceof Error ? error.message : "Unbekannter Fehler",
-            letzterFehler: new Date(),
-          })
-          .where(eq(dropboxConnections.id, input.connectionId));
-
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: `Sync fehlgeschlagen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`,
@@ -491,15 +400,15 @@ export const dropboxRouter = router({
    * Sync-Log abrufen
    */
   getSyncLog: protectedProcedure
-    .input(z.object({ connectionId: z.number(), limit: z.number().default(50) }))
+    .input(z.object({ unternehmenId: z.number(), limit: z.number().default(50) }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
 
+      // Alle Logs anzeigen (connectionId ignorieren)
       const logs = await db
         .select()
         .from(dropboxSyncLog)
-        .where(eq(dropboxSyncLog.connectionId, input.connectionId))
         .orderBy(desc(dropboxSyncLog.syncedAt))
         .limit(input.limit);
 
