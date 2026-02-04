@@ -39,7 +39,8 @@ import {
   HelpCircle,
   Receipt,
   FileText,
-  Sparkles
+  Sparkles,
+  Cloud
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
