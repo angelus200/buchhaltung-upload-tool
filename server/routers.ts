@@ -20,6 +20,7 @@ import { finanzkontenRouter } from "./finanzkonten";
 import { mwstRouter } from "./mwst";
 import { auszuegeRouter } from "./auszuege";
 import { finanzierungenRouter } from "./finanzierungen";
+import { buchungsvorschlaegeRouter } from "./buchungsvorschlaege";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -92,6 +93,9 @@ export const appRouter = router({
 
   // Kredit- und Leasingverträge
   finanzierungen: finanzierungenRouter,
+
+  // Automatische Buchungsvorschläge (AI)
+  buchungsvorschlaege: buchungsvorschlaegeRouter,
 });
 
 export type AppRouter = typeof appRouter;

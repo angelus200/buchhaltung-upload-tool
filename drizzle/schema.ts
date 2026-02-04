@@ -1566,3 +1566,45 @@ export const finanzierungDokumente = mysqlTable("finanzierung_dokumente", {
 
 export type FinanzierungDokument = typeof finanzierungDokumente.$inferSelect;
 export type InsertFinanzierungDokument = typeof finanzierungDokumente.$inferInsert;
+
+/**
+ * Automatische Buchungsvorschläge basierend auf AI-Beleganalyse
+ */
+export const buchungsvorschlaege = mysqlTable("buchungsvorschlaege", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  belegUrl: varchar("belegUrl", { length: 512 }), // Verknüpfung zum Beleg
+
+  // Erkannte Daten aus Beleg
+  lieferant: varchar("lieferant", { length: 255 }),
+  kreditorId: int("kreditorId").references(() => kreditoren.id),
+  rechnungsnummer: varchar("rechnungsnummer", { length: 100 }),
+  belegdatum: date("belegdatum"),
+  betragBrutto: decimal("betragBrutto", { precision: 15, scale: 2 }),
+  betragNetto: decimal("betragNetto", { precision: 15, scale: 2 }),
+  ustBetrag: decimal("ustBetrag", { precision: 15, scale: 2 }),
+  ustSatz: decimal("ustSatz", { precision: 5, scale: 2 }),
+  zahlungsziel: int("zahlungsziel"), // Tage
+  iban: varchar("iban", { length: 34 }),
+
+  // Vorgeschlagene Buchung
+  sollKonto: varchar("sollKonto", { length: 20 }), // z.B. 6815 Bürobedarf
+  habenKonto: varchar("habenKonto", { length: 20 }), // z.B. 0620 Verbindlichkeiten
+  buchungstext: varchar("buchungstext", { length: 255 }),
+  geschaeftspartnerKonto: varchar("geschaeftspartnerKonto", { length: 20 }), // Kreditor-Personenkonto
+
+  // AI Confidence & Begründung
+  confidence: decimal("confidence", { precision: 3, scale: 2 }), // 0.00 - 1.00
+  aiNotizen: text("aiNotizen"), // Begründung der AI
+
+  // Status & Verarbeitung
+  status: mysqlEnum("status", ["vorschlag", "akzeptiert", "abgelehnt", "bearbeitet"]).default("vorschlag").notNull(),
+  buchungId: int("buchungId").references(() => buchungen.id), // Nach Akzeptieren
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  bearbeitetVon: int("bearbeitetVon").references(() => users.id),
+  bearbeitetAm: timestamp("bearbeitetAm"),
+});
+
+export type Buchungsvorschlag = typeof buchungsvorschlaege.$inferSelect;
+export type InsertBuchungsvorschlag = typeof buchungsvorschlaege.$inferInsert;

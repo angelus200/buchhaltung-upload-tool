@@ -38,7 +38,8 @@ import {
   Calculator,
   HelpCircle,
   Receipt,
-  FileText
+  FileText,
+  Sparkles
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -289,10 +290,21 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                 Kredite & Leasing
               </Button>
             </Link>
+            <Link href="/buchungsvorschlaege">
+              <Button
+                variant={isActive("/buchungsvorschlaege") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-8 text-xs relative"
+                style={isActive("/buchungsvorschlaege") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Vorschläge
+              </Button>
+            </Link>
             <Link href="/kalender">
-              <Button 
-                variant={isActive("/kalender") ? "default" : "ghost"} 
-                size="sm" 
+              <Button
+                variant={isActive("/kalender") ? "default" : "ghost"}
+                size="sm"
                 className="gap-1.5 h-8 text-xs"
                 style={isActive("/kalender") ? { backgroundColor: firmenFarbe } : {}}
               >

@@ -42,6 +42,7 @@ import SteuerberaterHandbuch from "./pages/SteuerberaterHandbuch";
 import MwstAbrechnung from "./pages/MwstAbrechnung";
 import Auszuege from "./pages/Auszuege";
 import Finanzierungen from "./pages/Finanzierungen";
+import Buchungsvorschlaege from "./pages/Buchungsvorschlaege";
 
 // Router-Konfiguration
 function Router() {
@@ -242,6 +243,12 @@ function Router() {
       <Route path={"/finanzierungen"}>
         <ProtectedRoute>
           <Finanzierungen />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/buchungsvorschlaege"}>
+        <ProtectedRoute>
+          <Buchungsvorschlaege />
         </ProtectedRoute>
       </Route>
 
