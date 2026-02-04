@@ -1608,3 +1608,67 @@ export const buchungsvorschlaege = mysqlTable("buchungsvorschlaege", {
 
 export type Buchungsvorschlag = typeof buchungsvorschlaege.$inferSelect;
 export type InsertBuchungsvorschlag = typeof buchungsvorschlaege.$inferInsert;
+
+/**
+ * Dropbox-Verbindungen für automatischen Beleg-Sync
+ */
+export const dropboxConnections = mysqlTable("dropbox_connections", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+
+  // OAuth Tokens (verschlüsselt speichern!)
+  accessToken: text("accessToken").notNull(),
+  refreshToken: text("refreshToken"),
+  expiresAt: timestamp("expiresAt"),
+
+  // Dropbox Account Info
+  accountId: varchar("accountId", { length: 100 }),
+  accountEmail: varchar("accountEmail", { length: 255 }),
+
+  // Sync-Konfiguration
+  watchFolder: varchar("watchFolder", { length: 500 }).notNull(), // z.B. "/Belege"
+  autoCreateVorschlaege: boolean("autoCreateVorschlaege").default(true), // Automatisch Buchungsvorschläge erstellen
+
+  // Sync-Status
+  lastSync: timestamp("lastSync"),
+  lastCursor: text("lastCursor"), // Dropbox Delta Cursor
+  syncStatus: mysqlEnum("syncStatus", ["aktiv", "fehler", "pausiert"]).default("aktiv").notNull(),
+  syncFehler: text("syncFehler"),
+
+  // Statistiken
+  dateienGesamt: int("dateienGesamt").default(0),
+  dateienNeu: int("dateienNeu").default(0),
+  letzterFehler: timestamp("letzterFehler"),
+
+  aktiv: boolean("aktiv").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdBy: int("createdBy").references(() => users.id),
+});
+
+export type DropboxConnection = typeof dropboxConnections.$inferSelect;
+export type InsertDropboxConnection = typeof dropboxConnections.$inferInsert;
+
+/**
+ * Sync-Log für Dropbox-Dateien
+ */
+export const dropboxSyncLog = mysqlTable("dropbox_sync_log", {
+  id: int("id").autoincrement().primaryKey(),
+  connectionId: int("connectionId").references(() => dropboxConnections.id).notNull(),
+
+  dropboxPath: varchar("dropboxPath", { length: 500 }).notNull(),
+  dropboxFileId: varchar("dropboxFileId", { length: 100 }),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileSize: int("fileSize"),
+
+  belegUrl: varchar("belegUrl", { length: 512 }), // Nach Upload
+  vorschlagId: int("vorschlagId").references(() => buchungsvorschlaege.id),
+
+  status: mysqlEnum("status", ["sync", "uploaded", "analyzed", "fehler"]).default("sync").notNull(),
+  fehlerMeldung: text("fehlerMeldung"),
+
+  syncedAt: timestamp("syncedAt").defaultNow().notNull(),
+});
+
+export type DropboxSyncLog = typeof dropboxSyncLog.$inferSelect;
+export type InsertDropboxSyncLog = typeof dropboxSyncLog.$inferInsert;

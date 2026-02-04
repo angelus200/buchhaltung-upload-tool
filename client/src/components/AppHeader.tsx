@@ -324,6 +324,18 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               </Button>
             </Link>
 
+            <Link href="/einstellungen/dropbox">
+              <Button
+                variant={isActive("/einstellungen/dropbox") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/einstellungen/dropbox") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <Cloud className="w-3.5 h-3.5" />
+                Dropbox
+              </Button>
+            </Link>
+
             {/* Lager Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -43,6 +43,7 @@ import MwstAbrechnung from "./pages/MwstAbrechnung";
 import Auszuege from "./pages/Auszuege";
 import Finanzierungen from "./pages/Finanzierungen";
 import Buchungsvorschlaege from "./pages/Buchungsvorschlaege";
+import DropboxEinstellungen from "./pages/DropboxEinstellungen";
 
 // Router-Konfiguration
 function Router() {
@@ -249,6 +250,12 @@ function Router() {
       <Route path={"/buchungsvorschlaege"}>
         <ProtectedRoute>
           <Buchungsvorschlaege />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/einstellungen/dropbox"}>
+        <ProtectedRoute>
+          <DropboxEinstellungen />
         </ProtectedRoute>
       </Route>
 
