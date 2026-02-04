@@ -210,32 +210,42 @@ export default function Steuerberater() {
     const isImage = file.type.startsWith("image/");
 
     if (!isPdf && !isImage) {
+      console.warn("Datei-Typ nicht unterstützt:", file.type);
       return; // Nur PDFs und Bilder analysieren
     }
 
+    console.log("🔍 Starte AI-Analyse für:", file.name, "Typ:", file.type);
     setAnalyzing(true);
 
     try {
       // Datei zu Base64 konvertieren
+      console.log("📄 Konvertiere Datei zu Base64...");
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
           const base64Data = result.split(",")[1]; // Entferne Data-URL-Prefix
+          console.log("✅ Base64-Konvertierung erfolgreich, Größe:", base64Data.length, "Zeichen");
           resolve(base64Data);
         };
-        reader.onerror = reject;
+        reader.onerror = (error) => {
+          console.error("❌ FileReader Fehler:", error);
+          reject(error);
+        };
         reader.readAsDataURL(file);
       });
 
       // Wähle die richtige OCR-Methode
+      console.log("🤖 Starte OCR-API-Call...");
       let result;
       if (isPdf) {
+        console.log("📋 Verwende PDF-OCR...");
         result = await pdfOcrMutation.mutateAsync({
           pdfBase64: base64,
           kontenrahmen: "SKR04",
         });
       } else {
+        console.log("🖼️ Verwende Bild-OCR...");
         result = await ocrMutation.mutateAsync({
           imageBase64: base64,
           mimeType: file.type,
@@ -243,25 +253,75 @@ export default function Steuerberater() {
         });
       }
 
-      // Felder mit erkannten Daten füllen
-      setNeueRechnung((prev) => ({
-        ...prev,
-        rechnungsnummer: result.belegnummer || prev.rechnungsnummer,
-        rechnungsdatum: result.belegdatum || prev.rechnungsdatum,
-        nettobetrag: result.nettobetrag ? result.nettobetrag.toFixed(2) : prev.nettobetrag,
-        bruttobetrag: result.bruttobetrag ? result.bruttobetrag.toFixed(2) : prev.bruttobetrag,
-        steuersatz: result.steuersatz ? result.steuersatz.toFixed(2) : prev.steuersatz,
-        beschreibung: result.geschaeftspartner
-          ? `Rechnung von ${result.geschaeftspartner}`
-          : prev.beschreibung,
-      }));
+      console.log("✅ OCR-Ergebnis:", result);
 
-      // Toast-Benachrichtigung
-      if (result.erkannteFelder.length > 0) {
-        console.log(`✅ ${result.erkannteFelder.length} Felder automatisch erkannt (${result.konfidenz}% Konfidenz)`);
+      // Felder mit erkannten Daten füllen
+      const updates: any = {};
+      let updateCount = 0;
+
+      if (result.belegnummer) {
+        updates.rechnungsnummer = result.belegnummer;
+        updateCount++;
+      }
+      if (result.belegdatum) {
+        updates.rechnungsdatum = result.belegdatum;
+        updateCount++;
+      }
+      if (result.nettobetrag && result.nettobetrag > 0) {
+        updates.nettobetrag = result.nettobetrag.toFixed(2);
+        updateCount++;
+      }
+      if (result.bruttobetrag && result.bruttobetrag > 0) {
+        updates.bruttobetrag = result.bruttobetrag.toFixed(2);
+        updateCount++;
+      }
+      if (result.steuersatz && result.steuersatz > 0) {
+        updates.steuersatz = result.steuersatz.toFixed(2);
+        updateCount++;
+      }
+      if (result.geschaeftspartner) {
+        updates.beschreibung = `Rechnung von ${result.geschaeftspartner}`;
+        updateCount++;
+      }
+
+      if (updateCount > 0) {
+        setNeueRechnung((prev) => ({
+          ...prev,
+          ...updates,
+        }));
+
+        console.log("✅ Felder aktualisiert:", updates);
+
+        // Erfolgs-Toast
+        const toast = await import("sonner");
+        toast.toast.success(
+          `AI-Analyse erfolgreich: ${updateCount} Feld(er) erkannt`,
+          {
+            description: `Konfidenz: ${result.konfidenz}%`,
+            duration: 5000,
+          }
+        );
+      } else {
+        console.warn("⚠️ Keine Felder erkannt");
+        const toast = await import("sonner");
+        toast.toast.warning(
+          "Keine Daten automatisch erkannt",
+          {
+            description: "Bitte füllen Sie die Felder manuell aus",
+            duration: 5000,
+          }
+        );
       }
     } catch (error) {
-      console.error("AI-Analyse fehlgeschlagen:", error);
+      console.error("❌ AI-Analyse fehlgeschlagen:", error);
+      const toast = await import("sonner");
+      toast.toast.error(
+        "Fehler bei der AI-Analyse",
+        {
+          description: error instanceof Error ? error.message : "Unbekannter Fehler",
+          duration: 5000,
+        }
+      );
     } finally {
       setAnalyzing(false);
     }
