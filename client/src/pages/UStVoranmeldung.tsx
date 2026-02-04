@@ -430,7 +430,7 @@ export default function UStVoranmeldung() {
               </CardContent>
             </Card>
           </>
-        )}
+        ) : null}
       </main>
     </div>
   );
