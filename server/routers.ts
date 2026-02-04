@@ -22,6 +22,7 @@ import { auszuegeRouter } from "./auszuege";
 import { finanzierungenRouter } from "./finanzierungen";
 import { buchungsvorschlaegeRouter } from "./buchungsvorschlaege";
 import { dropboxRouter } from "./dropbox";
+import { elsterRouter } from "./elster";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -100,6 +101,9 @@ export const appRouter = router({
 
   // Dropbox-Integration
   dropbox: dropboxRouter,
+
+  // ELSTER USt-Voranmeldung (Deutschland)
+  elster: elsterRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -395,14 +395,25 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
               </Button>
             </Link>
             <Link href="/finanzamt">
-              <Button 
-                variant={isActive("/finanzamt") ? "default" : "ghost"} 
-                size="sm" 
+              <Button
+                variant={isActive("/finanzamt") ? "default" : "ghost"}
+                size="sm"
                 className="gap-1.5 h-8 text-xs"
                 style={isActive("/finanzamt") ? { backgroundColor: firmenFarbe } : {}}
               >
                 <Landmark className="w-3.5 h-3.5" />
                 Finanzamt
+              </Button>
+            </Link>
+            <Link href="/finanzamt/ustva">
+              <Button
+                variant={isActive("/finanzamt/ustva") ? "default" : "ghost"}
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                style={isActive("/finanzamt/ustva") ? { backgroundColor: firmenFarbe } : {}}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                USt-VA
               </Button>
             </Link>
             <Link href="/aufgaben">

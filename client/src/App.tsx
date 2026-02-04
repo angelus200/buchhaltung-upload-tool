@@ -44,6 +44,7 @@ import Auszuege from "./pages/Auszuege";
 import Finanzierungen from "./pages/Finanzierungen";
 import Buchungsvorschlaege from "./pages/Buchungsvorschlaege";
 import DropboxEinstellungen from "./pages/DropboxEinstellungen";
+import UStVoranmeldung from "./pages/UStVoranmeldung";
 
 // Router-Konfiguration
 function Router() {
@@ -142,6 +143,12 @@ function Router() {
       <Route path={"/finanzamt"}>
         <ProtectedRoute>
           <Finanzamt />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path={"/finanzamt/ustva"}>
+        <ProtectedRoute>
+          <UStVoranmeldung />
         </ProtectedRoute>
       </Route>
 
