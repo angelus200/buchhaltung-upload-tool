@@ -39,6 +39,9 @@ import {
   Edit,
   CheckCircle2,
   AlertCircle,
+  Upload,
+  Download,
+  X,
 } from "lucide-react";
 
 function formatCurrency(value: number | string): string {
@@ -93,6 +96,10 @@ export default function Finanzierungen() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedFinanzierung, setSelectedFinanzierung] = useState<number | null>(null);
 
+  // Dokument-Upload State
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploadBeschreibung, setUploadBeschreibung] = useState("");
+
   // Filter
   const [filterTyp, setFilterTyp] = useState<string>("alle");
   const [filterStatus, setFilterStatus] = useState<string>("aktiv");
@@ -136,6 +143,11 @@ export default function Finanzierungen() {
     { enabled: !!selectedFinanzierung }
   );
 
+  const { data: dokumente = [], refetch: refetchDokumente } = trpc.finanzierungen.listDokumente.useQuery(
+    { finanzierungId: selectedFinanzierung! },
+    { enabled: !!selectedFinanzierung }
+  );
+
   // Auto-select Unternehmen
   useEffect(() => {
     if (unternehmen && unternehmen.length > 0 && !selectedUnternehmen) {
@@ -176,6 +188,28 @@ export default function Finanzierungen() {
     },
   });
 
+  const uploadDokumentMutation = trpc.finanzierungen.uploadDokument.useMutation({
+    onSuccess: () => {
+      toast.success("Dokument hochgeladen");
+      refetchDokumente();
+      setUploadFiles([]);
+      setUploadBeschreibung("");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const deleteDokumentMutation = trpc.finanzierungen.deleteDokument.useMutation({
+    onSuccess: () => {
+      toast.success("Dokument gelöscht");
+      refetchDokumente();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
   const generateZahlungsplanMutation = trpc.finanzierungen.generateZahlungsplan.useMutation({
     onSuccess: (data) => {
       toast.success(`Zahlungsplan erstellt: ${data.anzahl} Raten`);
@@ -201,6 +235,36 @@ export default function Finanzierungen() {
       objektBezeichnung: "",
       notizen: "",
     });
+  };
+
+  // Dokument-Upload Handler
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setUploadFiles(Array.from(e.target.files));
+    }
+  };
+
+  const handleUploadDokumente = async () => {
+    if (!selectedFinanzierung || !selectedUnternehmen || uploadFiles.length === 0) return;
+
+    for (const file of uploadFiles) {
+      // Konvertiere zu Base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target?.result?.toString().split(",")[1];
+        if (!base64) return;
+
+        await uploadDokumentMutation.mutateAsync({
+          finanzierungId: selectedFinanzierung,
+          unternehmenId: selectedUnternehmen,
+          dateiName: file.name,
+          dateiBase64: base64,
+          contentType: file.type,
+          beschreibung: uploadBeschreibung || undefined,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = () => {
@@ -697,6 +761,114 @@ export default function Finanzierungen() {
                           ))}
                         </TableBody>
                       </Table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dokumente */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Dokumente</h3>
+
+                  {/* Upload-Bereich */}
+                  <Card className="mb-4">
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="dokument-upload">Dokument hochladen (PDF, JPG, PNG)</Label>
+                          <Input
+                            id="dokument-upload"
+                            type="file"
+                            multiple
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={handleFileChange}
+                            className="mt-1"
+                          />
+                          {uploadFiles.length > 0 && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                              {uploadFiles.length} Datei(en) ausgewählt
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label htmlFor="beschreibung">Beschreibung (optional)</Label>
+                          <Input
+                            id="beschreibung"
+                            value={uploadBeschreibung}
+                            onChange={(e) => setUploadBeschreibung(e.target.value)}
+                            placeholder="z.B. Kreditvertrag, Anlage, etc."
+                          />
+                        </div>
+
+                        <Button
+                          onClick={handleUploadDokumente}
+                          disabled={uploadFiles.length === 0 || uploadDokumentMutation.isPending}
+                          className="w-full"
+                        >
+                          {uploadDokumentMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Hochladen...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4 mr-2" />
+                              Hochladen
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Dokumenten-Liste */}
+                  {dokumente.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Noch keine Dokumente hochgeladen.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {dokumente.map((dok) => (
+                        <Card key={dok.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <FileText className="w-5 h-5 text-muted-foreground" />
+                                <div>
+                                  <p className="font-medium">{dok.dateiName}</p>
+                                  {dok.beschreibung && (
+                                    <p className="text-sm text-muted-foreground">{dok.beschreibung}</p>
+                                  )}
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatDate(dok.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  asChild
+                                >
+                                  <a href={dok.dateiUrl} target="_blank" rel="noopener noreferrer">
+                                    <Download className="w-4 h-4" />
+                                  </a>
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (confirm("Dokument wirklich löschen?")) {
+                                      deleteDokumentMutation.mutate({ dokumentId: dok.id });
+                                    }
+                                  }}
+                                  disabled={deleteDokumentMutation.isPending}
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   )}
                 </div>

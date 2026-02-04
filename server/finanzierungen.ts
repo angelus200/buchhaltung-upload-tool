@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { finanzierungen, finanzierungZahlungen, InsertFinanzierung, InsertFinanzierungZahlung } from "../drizzle/schema";
+import { finanzierungen, finanzierungZahlungen, finanzierungDokumente, InsertFinanzierung, InsertFinanzierungZahlung, InsertFinanzierungDokument } from "../drizzle/schema";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { uploadFinanzierungDokument, isStorageAvailable } from "./storage";
 
 /**
  * Finanzierungs-Router - Verwaltung von Krediten und Leasingverträgen
@@ -340,5 +341,92 @@ export const finanzierungenRouter = router({
         .orderBy(finanzierungZahlungen.faelligkeit);
 
       return result;
+    }),
+
+  /**
+   * Dokument hochladen
+   */
+  uploadDokument: protectedProcedure
+    .input(
+      z.object({
+        finanzierungId: z.number(),
+        unternehmenId: z.number(),
+        dateiName: z.string(),
+        dateiBase64: z.string(),
+        contentType: z.string(),
+        beschreibung: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      // Prüfe ob Storage verfügbar ist
+      if (!isStorageAvailable()) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Dokument-Speicher nicht verfügbar",
+        });
+      }
+
+      // Konvertiere Base64 zu Buffer
+      const buffer = Buffer.from(input.dateiBase64, "base64");
+
+      // Speichere Datei im Volume
+      const result = await uploadFinanzierungDokument(
+        buffer,
+        input.dateiName,
+        input.unternehmenId,
+        input.finanzierungId
+      );
+
+      // Speichere Dokument-Metadaten in DB
+      await db.insert(finanzierungDokumente).values({
+        finanzierungId: input.finanzierungId,
+        dateiUrl: result.url,
+        dateiName: input.dateiName,
+        dateityp: input.contentType,
+        dateiGroesse: buffer.length,
+        beschreibung: input.beschreibung,
+        createdBy: ctx.user.id,
+      } as InsertFinanzierungDokument);
+
+      return {
+        success: true,
+        url: result.url,
+        dateiName: input.dateiName,
+      };
+    }),
+
+  /**
+   * Dokumente einer Finanzierung abrufen
+   */
+  listDokumente: protectedProcedure
+    .input(z.object({ finanzierungId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const dokumente = await db
+        .select()
+        .from(finanzierungDokumente)
+        .where(eq(finanzierungDokumente.finanzierungId, input.finanzierungId))
+        .orderBy(desc(finanzierungDokumente.createdAt));
+
+      return dokumente;
+    }),
+
+  /**
+   * Dokument löschen
+   */
+  deleteDokument: protectedProcedure
+    .input(z.object({ dokumentId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      await db.delete(finanzierungDokumente).where(eq(finanzierungDokumente.id, input.dokumentId));
+
+      return { success: true };
     }),
 });

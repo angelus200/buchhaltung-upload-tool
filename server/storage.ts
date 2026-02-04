@@ -123,6 +123,38 @@ export async function uploadAuszug(
 }
 
 /**
+ * Upload eines Finanzierungs-Dokuments (Verträge, Anlagen, etc.)
+ * Ordnerstruktur: /data/belege/{unternehmenId}/finanzierungen/{finanzierungId}/
+ */
+export async function uploadFinanzierungDokument(
+  fileBuffer: Buffer,
+  filename: string,
+  unternehmenId: number,
+  finanzierungId: number
+): Promise<{ url: string; path: string }> {
+  // Ordnerstruktur: /data/belege/{unternehmenId}/finanzierungen/{finanzierungId}/
+  const dirPath = path.join(BELEGE_BASE_PATH, String(unternehmenId), 'finanzierungen', String(finanzierungId));
+
+  // Ordner erstellen falls nicht vorhanden
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+
+  // Eindeutiger Dateiname mit Timestamp
+  const safeName = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const uniqueFilename = `${Date.now()}_${safeName}`;
+  const filePath = path.join(dirPath, uniqueFilename);
+
+  // Datei speichern
+  fs.writeFileSync(filePath, fileBuffer);
+
+  // URL für Frontend
+  const url = `/belege/${unternehmenId}/finanzierungen/${finanzierungId}/${uniqueFilename}`;
+
+  return { url, path: filePath };
+}
+
+/**
  * Download-URL für eine Beleg-Datei generieren
  */
 export async function getBelegUrl(relativeUrl: string): Promise<string> {

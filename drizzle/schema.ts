@@ -1545,3 +1545,24 @@ export const finanzierungZahlungen = mysqlTable("finanzierung_zahlungen", {
 
 export type FinanzierungZahlung = typeof finanzierungZahlungen.$inferSelect;
 export type InsertFinanzierungZahlung = typeof finanzierungZahlungen.$inferInsert;
+
+/**
+ * Dokumente zu Finanzierungen (Verträge, Anlagen, etc.)
+ */
+export const finanzierungDokumente = mysqlTable("finanzierung_dokumente", {
+  id: int("id").autoincrement().primaryKey(),
+  finanzierungId: int("finanzierungId").references(() => finanzierungen.id).notNull(),
+
+  dateiUrl: varchar("dateiUrl", { length: 512 }).notNull(),
+  dateiName: varchar("dateiName", { length: 255 }).notNull(),
+  dateityp: varchar("dateityp", { length: 50 }), // pdf, jpg, png, etc.
+  dateiGroesse: int("dateiGroesse"), // in bytes
+
+  beschreibung: text("beschreibung"), // Optional: Was ist das Dokument?
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdBy: varchar("createdBy", { length: 255 }),
+});
+
+export type FinanzierungDokument = typeof finanzierungDokumente.$inferSelect;
+export type InsertFinanzierungDokument = typeof finanzierungDokumente.$inferInsert;
