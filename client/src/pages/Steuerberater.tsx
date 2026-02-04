@@ -253,42 +253,70 @@ export default function Steuerberater() {
         });
       }
 
-      console.log("✅ OCR-Ergebnis:", result);
+      console.log("✅ OCR-Ergebnis (RAW):", JSON.stringify(result, null, 2));
 
       // Felder mit erkannten Daten füllen
       const updates: any = {};
       let updateCount = 0;
 
+      console.log("🔍 Prüfe Felder:");
+      console.log("  - belegnummer:", result.belegnummer, "→", !!result.belegnummer);
+      console.log("  - belegdatum:", result.belegdatum, "→", !!result.belegdatum);
+      console.log("  - nettobetrag:", result.nettobetrag, "→", result.nettobetrag && result.nettobetrag > 0);
+      console.log("  - bruttobetrag:", result.bruttobetrag, "→", result.bruttobetrag && result.bruttobetrag > 0);
+      console.log("  - steuersatz:", result.steuersatz, "→", result.steuersatz && result.steuersatz > 0);
+      console.log("  - geschaeftspartner:", result.geschaeftspartner, "→", !!result.geschaeftspartner);
+
       if (result.belegnummer) {
         updates.rechnungsnummer = result.belegnummer;
         updateCount++;
+        console.log("  ✅ Setze rechnungsnummer:", result.belegnummer);
       }
       if (result.belegdatum) {
         updates.rechnungsdatum = result.belegdatum;
         updateCount++;
+        console.log("  ✅ Setze rechnungsdatum:", result.belegdatum);
       }
-      if (result.nettobetrag && result.nettobetrag > 0) {
+      if (result.nettobetrag != null && result.nettobetrag >= 0) {
         updates.nettobetrag = result.nettobetrag.toFixed(2);
         updateCount++;
+        console.log("  ✅ Setze nettobetrag:", result.nettobetrag.toFixed(2));
+      } else {
+        console.log("  ⚠️ Nettobetrag NICHT gesetzt:", result.nettobetrag);
       }
-      if (result.bruttobetrag && result.bruttobetrag > 0) {
+      if (result.bruttobetrag != null && result.bruttobetrag >= 0) {
         updates.bruttobetrag = result.bruttobetrag.toFixed(2);
         updateCount++;
+        console.log("  ✅ Setze bruttobetrag:", result.bruttobetrag.toFixed(2));
+      } else {
+        console.log("  ⚠️ Bruttobetrag NICHT gesetzt:", result.bruttobetrag);
       }
-      if (result.steuersatz && result.steuersatz > 0) {
+      if (result.steuersatz != null && result.steuersatz >= 0) {
         updates.steuersatz = result.steuersatz.toFixed(2);
         updateCount++;
+        console.log("  ✅ Setze steuersatz:", result.steuersatz.toFixed(2));
+      } else {
+        console.log("  ⚠️ Steuersatz NICHT gesetzt:", result.steuersatz);
       }
       if (result.geschaeftspartner) {
         updates.beschreibung = `Rechnung von ${result.geschaeftspartner}`;
         updateCount++;
+        console.log("  ✅ Setze beschreibung:", updates.beschreibung);
       }
 
+      console.log("📦 Updates-Objekt:", JSON.stringify(updates, null, 2));
+      console.log("🔢 Update Count:", updateCount);
+
       if (updateCount > 0) {
-        setNeueRechnung((prev) => ({
-          ...prev,
-          ...updates,
-        }));
+        console.log("🔄 Rufe setNeueRechnung auf mit updates:", updates);
+        setNeueRechnung((prev) => {
+          const newState = {
+            ...prev,
+            ...updates,
+          };
+          console.log("📝 Neuer State:", JSON.stringify(newState, null, 2));
+          return newState;
+        });
 
         console.log("✅ Felder aktualisiert:", updates);
 
