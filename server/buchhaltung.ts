@@ -358,6 +358,35 @@ export const buchungenRouter = router({
         company.wirtschaftsjahrBeginn
       );
 
+      // Doppelbuchungsprüfung: Suche nach ähnlichen Buchungen
+      // Gleiche Kombination = gleiches Datum + gleicher Betrag + gleicher Geschäftspartner
+      const belegdatumFormatted = input.belegdatum; // YYYY-MM-DD format
+      const potentialDuplicates = await db
+        .select()
+        .from(buchungen)
+        .where(
+          and(
+            eq(buchungen.unternehmenId, input.unternehmenId),
+            eq(buchungen.belegdatum, belegdatum),
+            eq(buchungen.bruttobetrag, input.bruttobetrag),
+            eq(buchungen.geschaeftspartner, input.geschaeftspartner)
+          )
+        )
+        .limit(1);
+
+      if (potentialDuplicates.length > 0) {
+        const duplicate = potentialDuplicates[0];
+        throw new Error(
+          `⚠️ Mögliche Doppelbuchung gefunden!\n\n` +
+          `Eine ähnliche Buchung existiert bereits:\n` +
+          `• Datum: ${new Date(duplicate.belegdatum).toLocaleDateString("de-DE")}\n` +
+          `• Betrag: ${duplicate.bruttobetrag} €\n` +
+          `• Geschäftspartner: ${duplicate.geschaeftspartner}\n` +
+          `• Belegnummer: ${duplicate.belegnummer}\n\n` +
+          `Bitte prüfen Sie, ob diese Buchung wirklich neu ist!`
+        );
+      }
+
       const values: InsertBuchung = {
         ...input,
         belegdatum,

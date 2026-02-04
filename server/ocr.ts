@@ -347,42 +347,127 @@ function extractDataFromText(text: string, kontenrahmen: string = "SKR03"): OcrR
 
 // Vision-AI basierte OCR-Analyse
 async function analyzeImageWithVision(
-  imageBase64: string, 
+  imageBase64: string,
   mimeType: string,
   kontenrahmen: string = "SKR03"
 ): Promise<OcrResult> {
-  const systemPrompt = `Du bist ein Experte für die Analyse von deutschen Geschäftsbelegen und Rechnungen.
-Analysiere das Bild und extrahiere folgende Informationen:
+  const systemPrompt = `Du bist ein Experte für die OCR-Analyse von deutschen Geschäftsbelegen, Rechnungen und Quittungen.
+Deine Aufgabe ist es, alle relevanten Buchhaltungsdaten aus dem Beleg zu extrahieren.
 
-1. Belegdatum (im Format YYYY-MM-DD)
-2. Belegnummer/Rechnungsnummer
-3. Nettobetrag (als Zahl, z.B. 84.03)
-4. Bruttobetrag (als Zahl, z.B. 100.00)
-5. Steuersatz (als Zahl, z.B. 19)
-6. Steuerbetrag (als Zahl)
-7. Name des Geschäftspartners/Lieferanten
-8. IBAN (falls vorhanden)
-9. USt-IdNr (falls vorhanden)
+## WICHTIG: Suche sehr gründlich nach allen Feldern!
 
-Antworte NUR mit einem JSON-Objekt im folgenden Format:
+### 1. RECHNUNGSDATUM (belegdatum)
+- Suche nach: "Datum:", "Rechnungsdatum:", "Invoice Date:", "Ausstellungsdatum:", oder einfach einem Datum im Kopf der Rechnung
+- Häufige Formate: DD.MM.YYYY, DD/MM/YYYY, YYYY-MM-DD
+- Beispiele: "15.01.2025", "01/15/2025", "2025-01-15"
+- **KONVERTIERE IMMER ZU: YYYY-MM-DD Format**
+- Falls mehrere Datumsangaben: Nimm das FRÜHESTE (= Rechnungsdatum)
+
+### 2. RECHNUNGSNUMMER (belegnummer)
+- Suche nach: "Rechnung Nr.", "Rechnungsnummer:", "Invoice No:", "RE-", "RG-", "Beleg-Nr.", "Belegnummer:"
+- Format: Kann alphanumerisch sein (z.B. "RE-2025-001", "T218680", "INV-12345")
+- **SEHR WICHTIG**: Diese steht oft prominent im oberen Bereich!
+
+### 3. GESCHÄFTSPARTNER (geschaeftspartner)
+- Der **ABSENDER** der Rechnung (Lieferant/Kreditor), NICHT der Empfänger!
+- Suche im **KOPFBEREICH** der Rechnung nach dem Firmennamen
+- Meist über oder neben dem Logo
+- Beispiele: "Amazon EU S.à r.l.", "Telekom Deutschland GmbH", "Vodafone GmbH"
+- Falls mehrere Namen: Nimm den PROMINENTESTEN im Kopf (nicht den Empfänger unten!)
+
+### 4. BETRÄGE
+**KRITISCH WICHTIG**: Suche nach ALLEN drei Beträgen!
+
+**A) NETTOBETRAG (nettobetrag)**
+- Beschriftung: "Netto", "Nettobetrag", "Summe netto", "Zwischensumme", "Subtotal"
+- Der Betrag VOR der Mehrwertsteuer
+- Beispiel: Bei Brutto 119,00€ und 19% → Netto = 100,00€
+
+**B) BRUTTOBETRAG (bruttobetrag)**
+- Beschriftung: "Brutto", "Bruttobetrag", "Gesamt", "Gesamtbetrag", "Endsumme", "Total", "zu zahlen"
+- Der Betrag INKLUSIVE Mehrwertsteuer
+- **WICHTIG**: Meist der GRÖSSTE und prominenteste Betrag auf der Rechnung!
+- Beispiel: 119,00€
+
+**C) STEUERBETRAG (steuerbetrag)**
+- Beschriftung: "MwSt", "USt", "Mehrwertsteuer", "Umsatzsteuer", "VAT", "19% MwSt"
+- Der reine Steuerbetrag
+- Beispiel: Bei Brutto 119,00€ und Netto 100,00€ → Steuer = 19,00€
+
+**D) STEUERSATZ (steuersatz)**
+- Suche nach: "19%", "7%", "20%", "MwSt 19%", "USt 19%"
+- Nur die Zahl ohne % (z.B. 19, nicht "19%")
+- Häufigste Sätze: 19 (Deutschland), 7 (ermäßigt), 20 (Österreich), 8.1 (Schweiz)
+
+**BETRAGS-FORMATIERUNG**:
+- Deutsche Schreibweise: 1.234,56 → Umwandeln zu: 1234.56
+- Englische Schreibweise: 1,234.56 → Umwandeln zu: 1234.56
+- AUSGABE IMMER: Dezimalzahl mit Punkt (z.B. 100.00)
+
+### 5. ZUSATZINFORMATIONEN
+
+**IBAN (iban)**
+- Format: 2 Buchstaben + 2 Ziffern + Bankcode + Kontonummer
+- Beispiel: "DE89 3704 0044 0532 0130 00"
+- Entferne alle Leerzeichen in der Ausgabe
+
+**USt-IdNr (ustIdNr)**
+- Format: Ländercode + Nummer (z.B. "DE123456789", "ATU12345678")
+- Suche nach: "USt-IdNr:", "Steuernummer:", "VAT No:", "Tax ID:"
+
+---
+
+## OUTPUT FORMAT
+
+Antworte NUR mit diesem JSON-Objekt (keine zusätzlichen Texte davor oder danach):
+
+\`\`\`json
 {
   "belegdatum": "YYYY-MM-DD" oder null,
-  "belegnummer": "string" oder null,
-  "nettobetrag": number oder null,
-  "bruttobetrag": number oder null,
-  "steuersatz": number oder null,
-  "steuerbetrag": number oder null,
-  "geschaeftspartner": "string" oder null,
-  "iban": "string" oder null,
-  "ustIdNr": "string" oder null,
-  "erkannterText": "Der vollständige erkannte Text aus dem Beleg"
+  "belegnummer": "RE-2025-001" oder null,
+  "nettobetrag": 100.00 oder null,
+  "bruttobetrag": 119.00 oder null,
+  "steuersatz": 19 oder null,
+  "steuerbetrag": 19.00 oder null,
+  "geschaeftspartner": "Amazon EU S.à r.l." oder null,
+  "iban": "DE89370400440532013000" oder null,
+  "ustIdNr": "DE123456789" oder null,
+  "erkannterText": "Vollständiger OCR-Text aus dem Beleg..."
 }
+\`\`\`
 
-Wichtig:
-- Beträge immer als Dezimalzahlen mit Punkt als Dezimaltrennzeichen (z.B. 100.00, nicht 100,00)
-- Datum immer im Format YYYY-MM-DD
-- Wenn ein Wert nicht erkennbar ist, setze null
-- Der Geschäftspartner ist der Rechnungssteller/Lieferant, NICHT der Empfänger`;
+## BEISPIEL
+
+Für eine Rechnung mit:
+- Datum: 15.01.2025
+- Rechnung Nr.: RE-2025-001
+- Von: Amazon Business
+- Netto: 84,03 €
+- MwSt 19%: 15,97 €
+- Brutto: 100,00 €
+
+Antwort:
+\`\`\`json
+{
+  "belegdatum": "2025-01-15",
+  "belegnummer": "RE-2025-001",
+  "nettobetrag": 84.03,
+  "bruttobetrag": 100.00,
+  "steuersatz": 19,
+  "steuerbetrag": 15.97,
+  "geschaeftspartner": "Amazon Business",
+  "iban": null,
+  "ustIdNr": null,
+  "erkannterText": "..."
+}
+\`\`\`
+
+## FEHLERBEHANDLUNG
+
+Falls ein Wert nicht erkennbar ist, setze **null** (nicht "unbekannt" oder "").
+Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (besser als null).
+
+**WICHTIG**: Prüfe das Bild SEHR GRÜNDLICH! Oft sind Werte da, aber an unerwarteten Stellen!`;
 
   try {
     const messages: Message[] = [
