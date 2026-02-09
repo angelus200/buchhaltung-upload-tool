@@ -69,6 +69,8 @@ export default function Steuerberater() {
   const [rechnungDetailDialogOpen, setRechnungDetailDialogOpen] = useState(false);
   const [selectedRechnung, setSelectedRechnung] = useState<number | null>(null);
   const [positionDialogOpen, setPositionDialogOpen] = useState(false);
+  const [isEditingRechnung, setIsEditingRechnung] = useState(false);
+  const [editedRechnung, setEditedRechnung] = useState<any>(null);
   
   const [neueRechnung, setNeueRechnung] = useState({
     rechnungsnummer: "",
@@ -198,6 +200,18 @@ export default function Steuerberater() {
     onSuccess: () => {
       refetchRechnungen();
       setRechnungDetailDialogOpen(false);
+    },
+  });
+  const updateRechnungMutation = trpc.steuerberater.rechnungUpdate.useMutation({
+    onSuccess: async () => {
+      await refetchRechnungDetail();
+      setIsEditingRechnung(false);
+      const toast = await import("sonner");
+      toast.toast.success("Rechnung aktualisiert");
+    },
+    onError: async (error) => {
+      const toast = await import("sonner");
+      toast.toast.error(`Fehler: ${error.message}`);
     },
   });
   const addPositionMutation = trpc.steuerberater.rechnungAddPosition.useMutation({
@@ -1311,38 +1325,165 @@ export default function Steuerberater() {
       </main>
       
       {/* Rechnungs-Detail-Dialog */}
-      <Dialog open={rechnungDetailDialogOpen} onOpenChange={setRechnungDetailDialogOpen}>
+      <Dialog open={rechnungDetailDialogOpen} onOpenChange={(open) => {
+        setRechnungDetailDialogOpen(open);
+        if (!open) {
+          setIsEditingRechnung(false);
+          setEditedRechnung(null);
+        }
+      }}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Rechnung {rechnungDetail?.rechnung?.rechnungsnummer}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Rechnung {rechnungDetail?.rechnung?.rechnungsnummer}</DialogTitle>
+              {!isEditingRechnung && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsEditingRechnung(true);
+                    setEditedRechnung({
+                      rechnungsnummer: rechnungDetail?.rechnung?.rechnungsnummer || "",
+                      rechnungsdatum: rechnungDetail?.rechnung?.rechnungsdatum || "",
+                      zeitraumVon: rechnungDetail?.rechnung?.zeitraumVon || "",
+                      zeitraumBis: rechnungDetail?.rechnung?.zeitraumBis || "",
+                      nettobetrag: rechnungDetail?.rechnung?.nettobetrag || "",
+                      steuersatz: rechnungDetail?.rechnung?.steuersatz || "",
+                      bruttobetrag: rechnungDetail?.rechnung?.bruttobetrag || "",
+                      status: rechnungDetail?.rechnung?.status || "offen",
+                      beschreibung: rechnungDetail?.rechnung?.beschreibung || "",
+                    });
+                  }}
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Bearbeiten
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           {rechnungDetail && (
             <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Rechnungsdatum</Label>
-                  <p>{formatDate(rechnungDetail.rechnung?.rechnungsdatum)}</p>
+              {isEditingRechnung ? (
+                // Edit-Modus
+                <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Rechnungsnummer *</Label>
+                      <Input
+                        value={editedRechnung?.rechnungsnummer || ""}
+                        onChange={(e) => setEditedRechnung({...editedRechnung, rechnungsnummer: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label>Rechnungsdatum *</Label>
+                      <Input
+                        type="date"
+                        value={editedRechnung?.rechnungsdatum || ""}
+                        onChange={(e) => setEditedRechnung({...editedRechnung, rechnungsdatum: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Leistungszeitraum Von</Label>
+                      <Input
+                        type="date"
+                        value={editedRechnung?.zeitraumVon || ""}
+                        onChange={(e) => setEditedRechnung({...editedRechnung, zeitraumVon: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label>Leistungszeitraum Bis</Label>
+                      <Input
+                        type="date"
+                        value={editedRechnung?.zeitraumBis || ""}
+                        onChange={(e) => setEditedRechnung({...editedRechnung, zeitraumBis: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>Nettobetrag *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editedRechnung?.nettobetrag || ""}
+                        onChange={(e) => setEditedRechnung({...editedRechnung, nettobetrag: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label>Steuersatz (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editedRechnung?.steuersatz || ""}
+                        onChange={(e) => setEditedRechnung({...editedRechnung, steuersatz: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label>Bruttobetrag *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editedRechnung?.bruttobetrag || ""}
+                        onChange={(e) => setEditedRechnung({...editedRechnung, bruttobetrag: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Status</Label>
+                      <Select
+                        value={editedRechnung?.status || "offen"}
+                        onValueChange={(v) => setEditedRechnung({...editedRechnung, status: v})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="offen">Offen</SelectItem>
+                          <SelectItem value="bezahlt">Bezahlt</SelectItem>
+                          <SelectItem value="storniert">Storniert</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Beschreibung</Label>
+                      <Input
+                        value={editedRechnung?.beschreibung || ""}
+                        onChange={(e) => setEditedRechnung({...editedRechnung, beschreibung: e.target.value})}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Status</Label>
-                  <Badge className={
-                    rechnungDetail.rechnung?.status === "bezahlt" ? "bg-green-100 text-green-800" :
-                    rechnungDetail.rechnung?.status === "storniert" ? "bg-red-100 text-red-800" :
-                    "bg-amber-100 text-amber-800"
-                  }>
-                    {rechnungDetail.rechnung?.status === "bezahlt" ? "Bezahlt" :
-                     rechnungDetail.rechnung?.status === "storniert" ? "Storniert" : "Offen"}
-                  </Badge>
+              ) : (
+                // Ansichts-Modus
+                <div className="grid grid-cols-4 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Rechnungsdatum</Label>
+                    <p>{formatDate(rechnungDetail.rechnung?.rechnungsdatum)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Status</Label>
+                    <Badge className={
+                      rechnungDetail.rechnung?.status === "bezahlt" ? "bg-green-100 text-green-800" :
+                      rechnungDetail.rechnung?.status === "storniert" ? "bg-red-100 text-red-800" :
+                      "bg-amber-100 text-amber-800"
+                    }>
+                      {rechnungDetail.rechnung?.status === "bezahlt" ? "Bezahlt" :
+                       rechnungDetail.rechnung?.status === "storniert" ? "Storniert" : "Offen"}
+                    </Badge>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Netto</Label>
+                    <p>{formatCurrency(rechnungDetail.rechnung?.nettobetrag)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Brutto</Label>
+                    <p className="font-semibold">{formatCurrency(rechnungDetail.rechnung?.bruttobetrag)}</p>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Netto</Label>
-                  <p>{formatCurrency(rechnungDetail.rechnung?.nettobetrag)}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Brutto</Label>
-                  <p className="font-semibold">{formatCurrency(rechnungDetail.rechnung?.bruttobetrag)}</p>
-                </div>
-              </div>
+              )}
 
               {/* Dokument-Download */}
               {rechnungDetail.rechnung?.dateiUrl && (
@@ -1556,29 +1697,68 @@ export default function Steuerberater() {
             </div>
           )}
           <DialogFooter className="flex justify-between">
-            <div>
-              <Button
-                variant="default"
-                className="bg-green-600 hover:bg-green-700"
-                onClick={() => selectedRechnung && inBuchungenUebernahme.mutate({ rechnungId: selectedRechnung })}
-                disabled={inBuchungenUebernahme.isPending}
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                {inBuchungenUebernahme.isPending ? "Wird übernommen..." : "In Buchungen übernehmen"}
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                onClick={() => selectedRechnung && deleteRechnungMutation.mutate({ id: selectedRechnung })}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Löschen
-              </Button>
-              <Button variant="outline" onClick={() => setRechnungDetailDialogOpen(false)}>
-                Schließen
-              </Button>
-            </div>
+            {isEditingRechnung ? (
+              // Edit-Modus Buttons
+              <div className="flex gap-2 w-full justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditingRechnung(false);
+                    setEditedRechnung(null);
+                  }}
+                >
+                  Abbrechen
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    if (!selectedRechnung || !editedRechnung) return;
+                    updateRechnungMutation.mutate({
+                      id: selectedRechnung,
+                      rechnungsnummer: editedRechnung.rechnungsnummer,
+                      rechnungsdatum: editedRechnung.rechnungsdatum,
+                      zeitraumVon: editedRechnung.zeitraumVon || undefined,
+                      zeitraumBis: editedRechnung.zeitraumBis || undefined,
+                      nettobetrag: editedRechnung.nettobetrag,
+                      steuersatz: editedRechnung.steuersatz,
+                      bruttobetrag: editedRechnung.bruttobetrag,
+                      status: editedRechnung.status,
+                      beschreibung: editedRechnung.beschreibung || undefined,
+                    });
+                  }}
+                  disabled={updateRechnungMutation.isPending}
+                >
+                  {updateRechnungMutation.isPending ? "Wird gespeichert..." : "Speichern"}
+                </Button>
+              </div>
+            ) : (
+              // Normal-Modus Buttons
+              <>
+                <div>
+                  <Button
+                    variant="default"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => selectedRechnung && inBuchungenUebernahme.mutate({ rechnungId: selectedRechnung })}
+                    disabled={inBuchungenUebernahme.isPending}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    {inBuchungenUebernahme.isPending ? "Wird übernommen..." : "In Buchungen übernehmen"}
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={() => selectedRechnung && deleteRechnungMutation.mutate({ id: selectedRechnung })}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Löschen
+                  </Button>
+                  <Button variant="outline" onClick={() => setRechnungDetailDialogOpen(false)}>
+                    Schließen
+                  </Button>
+                </div>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
