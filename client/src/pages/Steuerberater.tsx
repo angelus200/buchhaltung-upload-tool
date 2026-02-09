@@ -309,6 +309,8 @@ export default function Steuerberater() {
       console.log("  - bruttobetrag:", result.bruttobetrag, "→", result.bruttobetrag && result.bruttobetrag > 0);
       console.log("  - steuersatz:", result.steuersatz, "→", result.steuersatz && result.steuersatz > 0);
       console.log("  - geschaeftspartner:", result.geschaeftspartner, "→", !!result.geschaeftspartner);
+      console.log("  - zeitraumVon:", result.zeitraumVon, "→", !!result.zeitraumVon);
+      console.log("  - zeitraumBis:", result.zeitraumBis, "→", !!result.zeitraumBis);
 
       if (result.belegnummer) {
         updates.rechnungsnummer = result.belegnummer;
@@ -319,6 +321,16 @@ export default function Steuerberater() {
         updates.rechnungsdatum = result.belegdatum;
         updateCount++;
         console.log("  ✅ Setze rechnungsdatum:", result.belegdatum);
+      }
+      if (result.zeitraumVon) {
+        updates.zeitraumVon = result.zeitraumVon;
+        updateCount++;
+        console.log("  ✅ Setze zeitraumVon:", result.zeitraumVon);
+      }
+      if (result.zeitraumBis) {
+        updates.zeitraumBis = result.zeitraumBis;
+        updateCount++;
+        console.log("  ✅ Setze zeitraumBis:", result.zeitraumBis);
       }
       if (result.nettobetrag != null && result.nettobetrag >= 0) {
         updates.nettobetrag = result.nettobetrag.toFixed(2);

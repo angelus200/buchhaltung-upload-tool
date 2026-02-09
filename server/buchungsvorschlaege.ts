@@ -66,6 +66,15 @@ ${Object.entries(SKR04_AUFWANDSKONTEN).map(([konto, bez]) => `- ${konto}: ${bez}
 - 0.80 = wahrscheinlich korrekt
 - 0.50 = unsicher, Prüfung empfohlen
 
+**WICHTIG - Buchungstext:**
+- Buchungstext soll NUR den Lieferanten/Geschäftspartner enthalten
+- NICHT die Kontobeschreibung verwenden!
+- Beispiele:
+  * Lieferant "Jimdo GmbH" → Buchungstext: "Jimdo GmbH"
+  * Lieferant "Brevo (Sendinblue)" → Buchungstext: "Brevo"
+  * Lieferant "Telekom Deutschland GmbH" → Buchungstext: "Telekom Deutschland GmbH"
+- Falls kein Lieferant erkennbar: null setzen
+
 Antworte NUR mit JSON:
 {
   "lieferant": "string" | null,
@@ -78,15 +87,16 @@ Antworte NUR mit JSON:
   "zahlungsziel": number | null,
   "iban": "string" | null,
   "sollKonto": "string" (SKR04-Konto),
-  "buchungstext": "string" (kurze Beschreibung),
+  "buchungstext": "string" (NUR Lieferantenname, KEINE Kontobeschreibung!),
   "confidence": number (0.00 - 1.00),
-  "aiNotizen": "string" (Begründung)
+  "aiNotizen": "string" (Begründung für Kontowahl)
 }
 
 Wichtig:
 - Beträge als Dezimalzahlen mit Punkt (z.B. 100.00)
 - Datum immer YYYY-MM-DD
-- Confidence realistisch einschätzen`;
+- Confidence realistisch einschätzen
+- Buchungstext = Lieferantenname, NICHT "Gas, Strom, Wasser" o.ä.`;
 
   try {
     const messages: Message[] = [

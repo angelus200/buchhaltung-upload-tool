@@ -130,20 +130,24 @@ interface OcrResult {
   bruttobetrag: number | null;
   steuersatz: number | null;
   steuerbetrag: number | null;
-  
+
+  // Leistungszeitraum (optional, für Steuerberater-Rechnungen etc.)
+  zeitraumVon?: string | null;
+  zeitraumBis?: string | null;
+
   // Geschäftspartner
   geschaeftspartner: string | null;
   geschaeftspartnerTyp: "kreditor" | "debitor" | "sonstig" | null;
-  
+
   // Kontierung
   sachkonto: string | null;
   sachkontoBeschreibung: string | null;
   buchungsart: "aufwand" | "ertrag" | "sonstig" | null;
-  
+
   // Zusätzliche Infos
   iban: string | null;
   ustIdNr: string | null;
-  
+
   // Konfidenz
   konfidenz: number;
   erkannteFelder: string[];
@@ -507,7 +511,29 @@ Deine Aufgabe ist es, alle relevanten Buchhaltungsdaten aus dem Beleg zu extrahi
 - Mit 2 Nachkommastellen
 - Beispiele: 100.00, 1234.56, 19288.46
 
-### 5. ZUSATZINFORMATIONEN
+### 5. LEISTUNGSZEITRAUM (OPTIONAL)
+
+**Leistungszeitraum Von (zeitraumVon)**
+**Leistungszeitraum Bis (zeitraumBis)**
+
+**WICHTIG**: Nur bei Rechnungen für laufende Leistungen (z.B. Steuerberater, Buchhaltung, Lohnabrechnung)
+
+**Wo suchen:**
+- Suche nach: "Leistungszeitraum", "Abrechnungszeitraum", "Zeitraum", "für den Zeitraum"
+- "vom ... bis ...", "Monat ...", "Quartal ..."
+- Manchmal steht es bei der Rechnungsposition, z.B. "Buchführung Januar 2025"
+
+**Format:**
+- Beide Datumsangaben im Format YYYY-MM-DD
+- Beispiele:
+  * "Leistungszeitraum: 01.01.2025 - 31.01.2025" → zeitraumVon: "2025-01-01", zeitraumBis: "2025-01-31"
+  * "für den Monat Januar 2025" → zeitraumVon: "2025-01-01", zeitraumBis: "2025-01-31"
+  * "Quartal Q1/2025" → zeitraumVon: "2025-01-01", zeitraumBis: "2025-03-31"
+  * "bis 31.08.2025" (ohne "von") → zeitraumVon: null, zeitraumBis: "2025-08-31"
+
+**Falls nicht vorhanden**: Beide auf null setzen
+
+### 6. ZUSATZINFORMATIONEN
 
 **IBAN (iban)**
 - Format: 2 Buchstaben + 2 Ziffern + Bankcode + Kontonummer
@@ -531,6 +557,8 @@ Antworte NUR mit diesem JSON-Objekt (keine zusätzlichen Texte davor oder danach
   "bruttobetrag": 119.00 oder null,
   "steuersatz": 19 oder null,
   "steuerbetrag": 19.00 oder null,
+  "zeitraumVon": "YYYY-MM-DD" oder null,
+  "zeitraumBis": "YYYY-MM-DD" oder null,
   "geschaeftspartner": "Amazon EU S.à r.l." oder null,
   "iban": "DE89370400440532013000" oder null,
   "ustIdNr": "DE123456789" oder null,
@@ -683,6 +711,8 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
       bruttobetrag: typeof parsed.bruttobetrag === "number" ? parsed.bruttobetrag : null,
       steuersatz: typeof parsed.steuersatz === "number" ? parsed.steuersatz : null,
       steuerbetrag: typeof parsed.steuerbetrag === "number" ? parsed.steuerbetrag : null,
+      zeitraumVon: parsed.zeitraumVon || null,
+      zeitraumBis: parsed.zeitraumBis || null,
       geschaeftspartner: parsed.geschaeftspartner || null,
       geschaeftspartnerTyp: "kreditor",
       sachkonto: null,
@@ -703,9 +733,11 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
     if (result.nettobetrag) { konfidenzPunkte += 15; result.erkannteFelder.push("nettobetrag"); }
     if (result.steuersatz) { konfidenzPunkte += 10; result.erkannteFelder.push("steuersatz"); }
     if (result.geschaeftspartner) { konfidenzPunkte += 15; result.erkannteFelder.push("geschaeftspartner"); }
+    if (result.zeitraumVon) { konfidenzPunkte += 5; result.erkannteFelder.push("zeitraumVon"); }
+    if (result.zeitraumBis) { konfidenzPunkte += 5; result.erkannteFelder.push("zeitraumBis"); }
     if (result.iban) { konfidenzPunkte += 5; result.erkannteFelder.push("iban"); }
     if (result.ustIdNr) { konfidenzPunkte += 5; result.erkannteFelder.push("ustIdNr"); }
-    
+
     result.konfidenz = Math.min(konfidenzPunkte, 100);
 
     // Sachkonto basierend auf Geschäftspartner vorschlagen
