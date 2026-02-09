@@ -385,67 +385,133 @@ export const finanzamtRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      // Verwende Vision AI für OCR
-      const apiKey = process.env.BUILT_IN_FORGE_API_KEY;
-      const apiUrl = process.env.BUILT_IN_FORGE_API_URL;
+      console.log("[FINANZAMT-OCR] 🚀 Starte OCR-Analyse...");
+      console.log("[FINANZAMT-OCR] 📄 ContentType:", input.contentType);
 
-      if (!apiKey || !apiUrl) {
-        throw new Error("Vision AI nicht konfiguriert");
+      // Verwende die richtige Anthropic API
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+
+      if (!apiKey) {
+        console.error("[FINANZAMT-OCR] ❌ ANTHROPIC_API_KEY nicht konfiguriert!");
+        // ⚠️ WICHTIG: Nicht werfen, sondern leere Werte zurückgeben
+        // So kann der User trotzdem manuell eingeben!
+        return {
+          dokumentTyp: null,
+          steuerart: null,
+          aktenzeichen: null,
+          steuerjahr: null,
+          betreff: null,
+          betrag: null,
+          frist: null,
+          zahlungsfrist: null,
+          eingangsdatum: null,
+          zusammenfassung: null,
+          fehler: "OCR-Service ist aktuell nicht verfügbar. Bitte Daten manuell eingeben.",
+        };
       }
 
-      const prompt = `Analysiere dieses Finanzamt-Dokument und extrahiere folgende Informationen im JSON-Format:
+      try {
+        // Importiere Anthropic SDK
+        const Anthropic = (await import("@anthropic-ai/sdk")).default;
+        const anthropic = new Anthropic({ apiKey });
+
+        // Entferne data:image/...-Prefix falls vorhanden
+        const base64Data = input.dateiBase64.replace(/^data:[^;]+;base64,/, "");
+
+        const systemPrompt = `Du bist ein Experte für die OCR-Analyse von deutschen Finanzamt-Dokumenten (Steuerbescheide, Mahnungen, Einsprüche).
+
+Analysiere das Dokument und extrahiere folgende Informationen:
+
+**Dokumenttyp** (dokumentTyp):
+- "bescheid" = Steuerbescheid, Festsetzung
+- "einspruch" = Einspruch gegen Bescheid
+- "mahnung" = Zahlungserinnerung, Mahnung
+- "anfrage" = Anfrage, Auskunftsersuchen
+- "pruefung" = Betriebsprüfung, Außenprüfung
+- "schriftverkehr" = Allgemeiner Schriftverkehr
+- "sonstiges" = Sonstiges
+
+**Steuerart** (steuerart):
+- "USt" = Umsatzsteuer
+- "ESt" = Einkommensteuer
+- "KSt" = Körperschaftsteuer
+- "GewSt" = Gewerbesteuer
+- "LSt" = Lohnsteuer
+- "KapESt" = Kapitalertragsteuer
+- "sonstige" = Sonstige
+
+**Wichtige Felder:**
+- aktenzeichen: Steuernummer, Aktenzeichen (z.B. "123/456/78901", "St.-Nr. 12345")
+- steuerjahr: Betroffenes Steuerjahr als Zahl (z.B. 2024)
+- betreff: Kurzer Betreff (z.B. "Umsatzsteuerbescheid 2024")
+- betrag: Nachzahlung/Erstattung als Zahl ohne Währungssymbol
+- frist: Einspruchsfrist oder sonstige Frist im Format YYYY-MM-DD
+- zahlungsfrist: Zahlungsfrist im Format YYYY-MM-DD
+- eingangsdatum: Datum des Dokuments (meist oben rechts) im Format YYYY-MM-DD
+- zusammenfassung: Kurze Zusammenfassung (1-2 Sätze)
+
+## OUTPUT FORMAT
+
+Antworte NUR mit diesem JSON-Objekt (keine zusätzlichen Texte):
+
 {
   "dokumentTyp": "bescheid" | "einspruch" | "mahnung" | "anfrage" | "pruefung" | "schriftverkehr" | "sonstiges",
   "steuerart": "USt" | "ESt" | "KSt" | "GewSt" | "LSt" | "KapESt" | "sonstige" | null,
-  "aktenzeichen": "Steuernummer oder Aktenzeichen" | null,
-  "steuerjahr": Jahr als Zahl | null,
-  "betreff": "Kurzer Betreff/Titel des Dokuments",
-  "betrag": Betrag als Zahl (ohne Währungssymbol) | null,
-  "frist": "YYYY-MM-DD" | null,
-  "zahlungsfrist": "YYYY-MM-DD" | null,
-  "eingangsdatum": "YYYY-MM-DD" | null,
-  "zusammenfassung": "Kurze Zusammenfassung des Dokumentinhalts"
-}
+  "aktenzeichen": "123/456/78901" | null,
+  "steuerjahr": 2024 | null,
+  "betreff": "Umsatzsteuerbescheid 2024" | null,
+  "betrag": 1234.56 | null,
+  "frist": "2025-02-15" | null,
+  "zahlungsfrist": "2025-03-01" | null,
+  "eingangsdatum": "2025-01-15" | null,
+  "zusammenfassung": "Kurze Beschreibung..." | null
+}`;
 
-Gib NUR das JSON zurück, keine weiteren Erklärungen.`;
+        console.log("[FINANZAMT-OCR] 📤 Sende Anfrage an Claude Vision API...");
 
-      try {
-        const response = await fetch(`${apiUrl}/v1/chat/completions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o",
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { type: "text", text: prompt },
-                  {
-                    type: "image_url",
-                    image_url: {
-                      url: input.dateiBase64,
-                    },
+        const message = await anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 2048,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: input.contentType.includes("pdf")
+                      ? "image/png" // PDFs werden zu PNG konvertiert
+                      : (input.contentType as "image/jpeg" | "image/png" | "image/gif" | "image/webp"),
+                    data: base64Data,
                   },
-                ],
-              },
-            ],
-            max_tokens: 1000,
-          }),
+                },
+                {
+                  type: "text",
+                  text: "Analysiere dieses Finanzamt-Dokument und extrahiere die Daten als JSON:",
+                },
+              ],
+            },
+          ],
         });
 
-        if (!response.ok) {
-          throw new Error(`Vision AI Fehler: ${response.status}`);
+        console.log("[FINANZAMT-OCR] ✅ Claude Response erhalten");
+
+        // Extract text from Claude response
+        const textContent = message.content.find((block) => block.type === "text");
+        if (!textContent || textContent.type !== "text") {
+          console.error("[FINANZAMT-OCR] ❌ Keine Text-Antwort von Claude");
+          throw new Error("Keine Text-Antwort von Claude erhalten");
         }
 
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content || "{}";
+        const content = textContent.text;
+        console.log("[FINANZAMT-OCR] 📝 Raw Content (erste 300 Zeichen):", content.substring(0, 300));
 
-        // Extrahiere JSON aus der Antwort
+        // Parse JSON aus der Antwort
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
+          console.error("[FINANZAMT-OCR] ❌ Kein JSON gefunden in:", content);
           return {
             dokumentTyp: null,
             steuerart: null,
@@ -461,7 +527,10 @@ Gib NUR das JSON zurück, keine weiteren Erklärungen.`;
           };
         }
 
+        console.log("[FINANZAMT-OCR] 🔍 JSON Match gefunden");
         const parsed = JSON.parse(jsonMatch[0]);
+        console.log("[FINANZAMT-OCR] ✅ JSON geparsed:", JSON.stringify(parsed, null, 2));
+
         return {
           dokumentTyp: parsed.dokumentTyp || null,
           steuerart: parsed.steuerart || null,
@@ -476,7 +545,11 @@ Gib NUR das JSON zurück, keine weiteren Erklärungen.`;
           rohtext: null,
         };
       } catch (error) {
-        console.error("OCR-Fehler:", error);
+        console.error("[FINANZAMT-OCR] ❌ OCR-Fehler:", error);
+        console.error("[FINANZAMT-OCR] ❌ Error Stack:", error instanceof Error ? error.stack : "No stack");
+
+        // ⚠️ WICHTIG: Nicht werfen, sondern leere Werte mit Fehlermeldung zurückgeben
+        // So kann der User trotzdem manuell eingeben!
         return {
           dokumentTyp: null,
           steuerart: null,
@@ -488,7 +561,7 @@ Gib NUR das JSON zurück, keine weiteren Erklärungen.`;
           zahlungsfrist: null,
           eingangsdatum: null,
           zusammenfassung: null,
-          fehler: error instanceof Error ? error.message : "Unbekannter Fehler",
+          fehler: error instanceof Error ? error.message : "OCR-Analyse fehlgeschlagen. Bitte Daten manuell eingeben.",
         };
       }
     }),

@@ -133,6 +133,7 @@ export default function Finanzamt() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileBase64, setFileBase64] = useState<string | null>(null); // Für OCR
   const [ocrLoading, setOcrLoading] = useState(false);
   const [selectedDokumentId, setSelectedDokumentId] = useState<number | null>(null);
   const [versionDialogOpen, setVersionDialogOpen] = useState(false);
@@ -222,9 +223,25 @@ export default function Finanzamt() {
     onSuccess: (data) => {
       setOcrLoading(false);
       if (data.fehler) {
-        toast.error(`OCR-Fehler: ${data.fehler}`);
+        toast.error(`OCR-Hinweis: ${data.fehler}`, {
+          duration: 6000,
+          description: "Sie können die Daten trotzdem manuell eingeben und speichern.",
+        });
         return;
       }
+
+      // Zähle erkannte Felder
+      const erkannteFelder = Object.entries(data).filter(
+        ([key, value]) => value !== null && key !== 'rohtext' && key !== 'fehler'
+      ).length;
+
+      if (erkannteFelder === 0) {
+        toast.warning("Keine Daten erkannt - bitte manuell eingeben", {
+          duration: 4000,
+        });
+        return;
+      }
+
       // Übernehme erkannte Daten ins Formular
       setNeuesDokument(prev => ({
         ...prev,
@@ -239,11 +256,16 @@ export default function Finanzamt() {
         eingangsdatum: data.eingangsdatum || prev.eingangsdatum,
         beschreibung: data.zusammenfassung || prev.beschreibung,
       }));
-      toast.success("Dokument analysiert - Daten übernommen");
+      toast.success(`Dokument analysiert - ${erkannteFelder} Felder erkannt`, {
+        description: "Überprüfen Sie die Daten und ergänzen Sie fehlende Angaben.",
+      });
     },
     onError: (error) => {
       setOcrLoading(false);
-      toast.error(`OCR-Fehler: ${error.message}`);
+      toast.error("OCR-Analyse fehlgeschlagen", {
+        duration: 6000,
+        description: `${error.message} - Sie können die Daten trotzdem manuell eingeben und speichern.`,
+      });
     },
   });
 
@@ -302,6 +324,7 @@ export default function Finanzamt() {
       dateiName: "",
     });
     setPreviewUrl(null);
+    setFileBase64(null);
     setDragActive(false);
   };
 
@@ -313,21 +336,26 @@ export default function Finanzamt() {
     }
 
     setUploadingFile(true);
-    
+
     // Lokale Vorschau für Bilder und PDFs
     const isImage = file.type.startsWith("image/");
     const isPdf = file.type === "application/pdf";
-    
+
     if (isImage) {
       const localUrl = URL.createObjectURL(file);
       setPreviewUrl(localUrl);
     }
 
     try {
-      // Konvertiere zu Base64 für S3-Upload
+      // Konvertiere zu Base64 für S3-Upload UND OCR
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = reader.result as string;
+
+        // Speichere Base64 für OCR
+        setFileBase64(base64);
+
+        // Upload zur S3
         uploadMutation.mutate({
           unternehmenId: selectedUnternehmenId,
           dateiName: file.name,
@@ -366,23 +394,29 @@ export default function Finanzamt() {
 
   // OCR-Analyse starten
   const startOcrAnalyse = () => {
+    console.log("🎯 [OCR] Start OCR-Analyse", {
+      hatDateiUrl: !!neuesDokument.dateiUrl,
+      hatFileBase64: !!fileBase64,
+      dateiName: neuesDokument.dateiName,
+    });
+
     if (!neuesDokument.dateiUrl) {
       toast.error("Bitte zuerst eine Datei hochladen");
       return;
     }
-    setOcrLoading(true);
-    // Verwende die bereits hochgeladene Base64-Datei oder lade sie neu
-    // Da wir die URL haben, müssen wir die Datei erneut als Base64 senden
-    // Für OCR verwenden wir die previewUrl oder laden die Datei neu
-    if (previewUrl) {
-      ocrMutation.mutate({
-        dateiBase64: previewUrl,
-        contentType: neuesDokument.dateiName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
-      });
-    } else {
-      toast.error("Keine Vorschau verfügbar für OCR");
-      setOcrLoading(false);
+
+    if (!fileBase64) {
+      toast.error("Datei-Daten nicht verfügbar - bitte Datei erneut hochladen");
+      return;
     }
+
+    setOcrLoading(true);
+
+    // Verwende die gespeicherten Base64-Daten
+    ocrMutation.mutate({
+      dateiBase64: fileBase64,
+      contentType: neuesDokument.dateiName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+    });
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -748,6 +782,7 @@ export default function Finanzamt() {
                             e.stopPropagation();
                             setNeuesDokument({...neuesDokument, dateiUrl: "", dateiName: ""});
                             setPreviewUrl(null);
+                            setFileBase64(null);
                           }}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -755,8 +790,9 @@ export default function Finanzamt() {
                       </div>
                       {/* OCR-Hinweis */}
                       {!ocrLoading && (
-                        <div className="px-3 pb-2 text-xs text-muted-foreground">
-                          Klicken Sie auf "OCR" um Aktenzeichen, Beträge und Fristen automatisch zu erkennen
+                        <div className="px-3 pb-2 text-xs text-muted-foreground bg-blue-50 border-t border-blue-100">
+                          💡 <strong>Tipp:</strong> Klicken Sie auf "OCR" um Daten automatisch zu erkennen.<br/>
+                          Sie können das Dokument aber auch ohne OCR speichern und alle Felder manuell ausfüllen.
                         </div>
                       )}
                     </div>
