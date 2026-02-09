@@ -212,6 +212,23 @@ export default function Steuerberater() {
       refetchRechnungDetail();
     },
   });
+  const inBuchungenUebernahme = trpc.steuerberater.rechnungInBuchungenUebernehmen.useMutation({
+    onSuccess: async (data) => {
+      const toast = await import("sonner");
+      toast.toast.success(data.message, {
+        description: "Die Buchung wurde erfolgreich erstellt. Sie können sie jetzt bearbeiten.",
+        duration: 5000,
+      });
+      setRechnungDetailDialogOpen(false);
+    },
+    onError: async (error) => {
+      const toast = await import("sonner");
+      toast.toast.error("Fehler beim Übernehmen", {
+        description: error.message,
+        duration: 5000,
+      });
+    },
+  });
 
   // OCR Mutations
   const ocrMutation = trpc.ocr.analyzeImage.useMutation();
@@ -1283,16 +1300,27 @@ export default function Steuerberater() {
       
       {/* Rechnungs-Detail-Dialog */}
       <Dialog open={rechnungDetailDialogOpen} onOpenChange={setRechnungDetailDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Rechnung {rechnungDetail?.rechnung?.rechnungsnummer}</DialogTitle>
           </DialogHeader>
           {rechnungDetail && (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Rechnungsdatum</Label>
                   <p>{formatDate(rechnungDetail.rechnung?.rechnungsdatum)}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Status</Label>
+                  <Badge className={
+                    rechnungDetail.rechnung?.status === "bezahlt" ? "bg-green-100 text-green-800" :
+                    rechnungDetail.rechnung?.status === "storniert" ? "bg-red-100 text-red-800" :
+                    "bg-amber-100 text-amber-800"
+                  }>
+                    {rechnungDetail.rechnung?.status === "bezahlt" ? "Bezahlt" :
+                     rechnungDetail.rechnung?.status === "storniert" ? "Storniert" : "Offen"}
+                  </Badge>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Netto</Label>
@@ -1371,12 +1399,15 @@ export default function Steuerberater() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="buchfuehrung">Buchführung</SelectItem>
+                                <SelectItem value="buchhaltung">Buchhaltung</SelectItem>
                                 <SelectItem value="jahresabschluss">Jahresabschluss</SelectItem>
                                 <SelectItem value="steuererklaerung">Steuererklärung</SelectItem>
+                                <SelectItem value="lohnabrechnung">Lohnbuchhaltung</SelectItem>
                                 <SelectItem value="beratung">Beratung</SelectItem>
-                                <SelectItem value="korrektur">Korrektur</SelectItem>
-                                <SelectItem value="nachfrage">Nachfrage/Rückfrage</SelectItem>
+                                <SelectItem value="finanzamt">Finanzamt-Kommunikation</SelectItem>
+                                <SelectItem value="pruefung">Betriebsprüfung</SelectItem>
+                                <SelectItem value="kapitalertragsteuer">Kapitalertragssteueranmeldung</SelectItem>
+                                <SelectItem value="oss_eu">OSS-EU Auslandssteuer</SelectItem>
                                 <SelectItem value="sonstig">Sonstige</SelectItem>
                               </SelectContent>
                             </Select>
@@ -1450,56 +1481,61 @@ export default function Steuerberater() {
                     </DialogContent>
                   </Dialog>
                 </div>
-                
+
                 {rechnungDetail.positionen && rechnungDetail.positionen.length > 0 ? (
                   <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="text-left p-2">Beschreibung</th>
-                          <th className="text-left p-2">Kategorie</th>
-                          <th className="text-left p-2">Bewertung</th>
-                          <th className="text-right p-2">Betrag</th>
-                          <th className="p-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rechnungDetail.positionen.map((pos) => (
-                          <tr key={pos.id} className="border-t">
-                            <td className="p-2">
-                              <p>{pos.beschreibung}</p>
-                              {pos.vermeidbarUrsache && (
-                                <p className="text-xs text-red-600">Ursache: {pos.vermeidbarUrsache}</p>
-                              )}
-                            </td>
-                            <td className="p-2 capitalize">{pos.kategorie?.replace(/_/g, " ")}</td>
-                            <td className="p-2">
-                              <Badge className={
-                                pos.bewertung?.startsWith("vermeidbar") ? "bg-red-100 text-red-800" :
-                                pos.bewertung === "unklar" ? "bg-gray-100 text-gray-800" :
-                                "bg-green-100 text-green-800"
-                              }>
-                                {pos.bewertung?.startsWith("vermeidbar") ? "Vermeidbar" :
-                                 pos.bewertung === "unklar" ? "Unklar" : "Notwendig"}
-                              </Badge>
-                            </td>
-                            <td className="p-2 text-right font-medium">{formatCurrency(pos.gesamtpreis)}</td>
-                            <td className="p-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deletePositionMutation.mutate({ id: pos.id });
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4 text-red-500" />
-                              </Button>
-                            </td>
+                    <div className="max-h-96 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted sticky top-0">
+                          <tr>
+                            <th className="text-left p-2">Beschreibung</th>
+                            <th className="text-left p-2">Kategorie</th>
+                            <th className="text-left p-2">Bewertung</th>
+                            <th className="text-right p-2">Betrag</th>
+                            <th className="p-2"></th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {rechnungDetail.positionen.map((pos) => (
+                            <tr key={pos.id} className="border-t">
+                              <td className="p-2">
+                                <p className="line-clamp-2">{pos.beschreibung}</p>
+                                {pos.vermeidbarUrsache && (
+                                  <p className="text-xs text-red-600 line-clamp-1">Ursache: {pos.vermeidbarUrsache}</p>
+                                )}
+                              </td>
+                              <td className="p-2 capitalize text-xs">{pos.kategorie?.replace(/_/g, " ")}</td>
+                              <td className="p-2">
+                                <Badge className={
+                                  pos.bewertung?.startsWith("vermeidbar") ? "bg-red-100 text-red-800" :
+                                  pos.bewertung === "unklar" ? "bg-gray-100 text-gray-800" :
+                                  "bg-green-100 text-green-800"
+                                }>
+                                  {pos.bewertung?.startsWith("vermeidbar") ? "Vermeidbar" :
+                                   pos.bewertung === "unklar" ? "Unklar" : "Notwendig"}
+                                </Badge>
+                              </td>
+                              <td className="p-2 text-right font-medium">{formatCurrency(pos.gesamtpreis)}</td>
+                              <td className="p-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deletePositionMutation.mutate({ id: pos.id });
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-500" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="p-2 bg-blue-50 border-t text-xs text-muted-foreground">
+                      💡 <strong>Tipp:</strong> Für vollständige Details siehe PDF-Rechnung oben
+                    </div>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Noch keine Positionen erfasst.</p>
@@ -1507,17 +1543,30 @@ export default function Steuerberater() {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button
-              variant="destructive"
-              onClick={() => selectedRechnung && deleteRechnungMutation.mutate({ id: selectedRechnung })}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Löschen
-            </Button>
-            <Button variant="outline" onClick={() => setRechnungDetailDialogOpen(false)}>
-              Schließen
-            </Button>
+          <DialogFooter className="flex justify-between">
+            <div>
+              <Button
+                variant="default"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => selectedRechnung && inBuchungenUebernahme.mutate({ rechnungId: selectedRechnung })}
+                disabled={inBuchungenUebernahme.isPending}
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                {inBuchungenUebernahme.isPending ? "Wird übernommen..." : "In Buchungen übernehmen"}
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                onClick={() => selectedRechnung && deleteRechnungMutation.mutate({ id: selectedRechnung })}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Löschen
+              </Button>
+              <Button variant="outline" onClick={() => setRechnungDetailDialogOpen(false)}>
+                Schließen
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

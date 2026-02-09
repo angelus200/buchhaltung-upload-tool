@@ -887,10 +887,12 @@ export const steuerberaterRechnungPositionen = mysqlTable("stb_rech_pos", {
     "jahresabschluss",        // Jahresabschluss
     "steuererklaerung",       // Steuererklärung
     "buchhaltung",            // Laufende Buchhaltung
-    "lohnabrechnung",         // Lohnabrechnung
+    "lohnabrechnung",         // Lohnabrechnung / Lohnbuchhaltung
     "beratung",               // Steuerberatung
     "finanzamt",              // Finanzamt-Kommunikation
     "pruefung",               // Betriebsprüfung
+    "kapitalertragsteuer",    // Kapitalertragssteueranmeldung (NEU)
+    "oss_eu",                 // OSS-EU Auslandssteuer (NEU)
     "sonstig"                 // Sonstige Leistungen
   ]).default("sonstig").notNull(),
   /** Bewertung: Notwendig oder Vermeidbar */

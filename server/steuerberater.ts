@@ -603,32 +603,65 @@ export const steuerberaterRouter = router({
       gesamtpreis: z.string(),
       uebergabeId: z.number().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      
-      // Nächste Positionsnummer ermitteln
-      const existingPositions = await db
-        .select({ positionsnummer: steuerberaterRechnungPositionen.positionsnummer })
-        .from(steuerberaterRechnungPositionen)
-        .where(eq(steuerberaterRechnungPositionen.rechnungId, input.rechnungId));
-      
-      const maxPos = Math.max(0, ...existingPositions.map(p => p.positionsnummer || 0));
-      
-      const [result] = await db.insert(steuerberaterRechnungPositionen).values({
+
+      console.log("[STB-POSITION] 🚀 Füge Position hinzu:", {
         rechnungId: input.rechnungId,
-        positionsnummer: maxPos + 1,
-        beschreibung: input.beschreibung,
-        kategorie: input.kategorie as any,
-        bewertung: input.bewertung as any,
-        vermeidbarUrsache: input.vermeidbarUrsache || null,
-        menge: input.menge || "1.00",
+        beschreibung: input.beschreibung.substring(0, 50),
+        kategorie: input.kategorie,
+        bewertung: input.bewertung,
         einzelpreis: input.einzelpreis,
         gesamtpreis: input.gesamtpreis,
-        uebergabeId: input.uebergabeId || null,
+        userId: ctx.user.id,
       });
-      
-      return { success: true };
+
+      try {
+        // Prüfe ob Rechnung existiert
+        const [rechnung] = await db
+          .select()
+          .from(steuerberaterRechnungen)
+          .where(eq(steuerberaterRechnungen.id, input.rechnungId));
+
+        if (!rechnung) {
+          console.error("[STB-POSITION] ❌ Rechnung nicht gefunden:", input.rechnungId);
+          throw new Error("Rechnung nicht gefunden");
+        }
+
+        console.log("[STB-POSITION] ✅ Rechnung gefunden, UnternehmenId:", rechnung.unternehmenId);
+
+        // Nächste Positionsnummer ermitteln
+        const existingPositions = await db
+          .select({ positionsnummer: steuerberaterRechnungPositionen.positionsnummer })
+          .from(steuerberaterRechnungPositionen)
+          .where(eq(steuerberaterRechnungPositionen.rechnungId, input.rechnungId));
+
+        const maxPos = Math.max(0, ...existingPositions.map(p => p.positionsnummer || 0));
+        console.log("[STB-POSITION] 📊 Existierende Positionen:", existingPositions.length, "Nächste Nr:", maxPos + 1);
+
+        const [result] = await db.insert(steuerberaterRechnungPositionen).values({
+          rechnungId: input.rechnungId,
+          positionsnummer: maxPos + 1,
+          beschreibung: input.beschreibung,
+          kategorie: input.kategorie as any,
+          bewertung: input.bewertung as any,
+          vermeidbarUrsache: input.vermeidbarUrsache || null,
+          menge: input.menge || "1.00",
+          einzelpreis: input.einzelpreis,
+          gesamtpreis: input.gesamtpreis,
+          uebergabeId: input.uebergabeId || null,
+        });
+
+        const insertId = Number(result.insertId);
+        console.log("[STB-POSITION] ✅ Position erfolgreich eingefügt, ID:", insertId);
+
+        return { success: true, id: insertId };
+      } catch (error) {
+        console.error("[STB-POSITION] ❌ Fehler beim Einfügen:", error);
+        console.error("[STB-POSITION] ❌ Error Stack:", error instanceof Error ? error.stack : "No stack");
+        throw error;
+      }
     }),
 
   // Rechnungsposition aktualisieren
@@ -996,6 +1029,69 @@ export const steuerberaterRouter = router({
       return {
         uebergabe,
         csv: [header, ...rows].join("\n"),
+      };
+    }),
+
+  // Steuerberater-Rechnung in Buchungen übernehmen
+  rechnungInBuchungenUebernehmen: protectedProcedure
+    .input(z.object({
+      rechnungId: z.number(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      console.log("[STB→BUCHUNG] 🚀 Starte Übernahme von Rechnung ID:", input.rechnungId);
+
+      // Hole Rechnungsdetails
+      const [rechnung] = await db
+        .select()
+        .from(steuerberaterRechnungen)
+        .where(eq(steuerberaterRechnungen.id, input.rechnungId));
+
+      if (!rechnung) {
+        throw new Error("Rechnung nicht gefunden");
+      }
+
+      console.log("[STB→BUCHUNG] 📄 Rechnung gefunden:", {
+        rechnungsnummer: rechnung.rechnungsnummer,
+        bruttobetrag: rechnung.bruttobetrag,
+        unternehmenId: rechnung.unternehmenId,
+      });
+
+      // Erstelle Buchung aus Rechnung
+      // Sollkonto: 6827 (Buchführungskosten / Steuerberater)
+      // Habenkonto: Kreditor (Steuerberater) - erstmal ohne, User kann es zuordnen
+      const [buchungResult] = await db.insert(buchungen).values({
+        unternehmenId: rechnung.unternehmenId,
+        belegdatum: rechnung.rechnungsdatum,
+        belegnummer: rechnung.rechnungsnummer,
+        buchungstext: `Steuerberater-Rechnung ${rechnung.rechnungsnummer}${rechnung.beschreibung ? ` - ${rechnung.beschreibung}` : ""}`,
+        betrag: rechnung.bruttobetrag,
+        sollKonto: "6827", // Buchführungskosten (SKR04)
+        habenKonto: null, // User muss Kreditor zuordnen
+        steuersatz: rechnung.steuersatz,
+        steuerart: "VSt", // Vorsteuer
+        geschaeftspartner: "Steuerberater",
+        erstelltVon: ctx.user.id,
+        buchungstyp: "ausgabe",
+        status: "erfasst",
+      });
+
+      const buchungId = Number(buchungResult.insertId);
+
+      console.log("[STB→BUCHUNG] ✅ Buchung erstellt, ID:", buchungId);
+
+      // Markiere Rechnung als "bezahlt" (optional - erstmal nicht)
+      // await db
+      //   .update(steuerberaterRechnungen)
+      //   .set({ status: "bezahlt" })
+      //   .where(eq(steuerberaterRechnungen.id, input.rechnungId));
+
+      return {
+        success: true,
+        buchungId,
+        message: `Rechnung ${rechnung.rechnungsnummer} wurde als Buchung übernommen`,
       };
     }),
 });
