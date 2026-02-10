@@ -442,7 +442,8 @@ export default function Home() {
         if (result.bruttobetrag) updated.bruttobetrag = result.bruttobetrag.toFixed(2).replace(".", ",");
         if (result.steuersatz) updated.steuersatz = String(result.steuersatz);
         if (result.sachkonto) updated.sachkonto = result.sachkonto;
-        if (result.sachkontoBeschreibung) updated.buchungstext = result.sachkontoBeschreibung;
+        // Buchungstext NICHT aus sachkontoBeschreibung übernehmen - zu generisch
+        // Der Nutzer soll ihn manuell eingeben oder aus früheren Buchungen übernehmen
         // Neue Felder: IBAN und USt-ID
         if (result.iban) updated.iban = result.iban;
         if (result.ustIdNr) updated.ustIdNr = result.ustIdNr;
