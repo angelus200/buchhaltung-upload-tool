@@ -7,15 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { 
-  Send, 
-  FileText, 
-  Calendar, 
-  Euro, 
-  Plus, 
-  Download, 
-  CheckCircle, 
-  Clock, 
+import {
+  Send,
+  FileText,
+  Calendar,
+  Euro,
+  Plus,
+  Download,
+  CheckCircle,
+  Clock,
   AlertTriangle,
   Trash2,
   Eye,
@@ -29,7 +29,8 @@ import {
   RefreshCw,
   ExternalLink,
   Image,
-  File
+  File,
+  Edit
 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import { trpc } from "@/lib/trpc";
@@ -1363,7 +1364,7 @@ export default function Steuerberater() {
           </DialogHeader>
           {rechnungDetail && (
             <div className="space-y-4">
-              {isEditingRechnung ? (
+              {isEditingRechnung && editedRechnung ? (
                 // Edit-Modus
                 <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="grid grid-cols-2 gap-4">
