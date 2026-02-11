@@ -1479,10 +1479,38 @@ export const stammdatenRouter = router({
       }),
 
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(
+        z.object({
+          id: z.number(),
+          unternehmenId: z.number(), // 🔒 ADDED for security check
+        })
+      )
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
+
+        // 🔒 SECURITY: Verify unternehmenId match
+        const existing = await db
+          .select()
+          .from(gesellschafter)
+          .where(eq(gesellschafter.id, input.id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          throw new Error("Gesellschafter nicht gefunden");
+        }
+
+        if (existing[0].unternehmenId !== input.unternehmenId) {
+          console.error("🚨 SECURITY: Attempt to delete Gesellschafter from different company!", {
+            existingCompanyId: existing[0].unternehmenId,
+            requestedCompanyId: input.unternehmenId,
+            gesellschafterId: input.id,
+          });
+          throw new Error("Sie haben keine Berechtigung, diesen Gesellschafter zu löschen");
+        }
+
+        console.log("✅ DELETE Gesellschafter:", input.id, "| Company:", existing[0].unternehmenId);
+
         await db.delete(gesellschafter).where(eq(gesellschafter.id, input.id));
         return { success: true };
       }),

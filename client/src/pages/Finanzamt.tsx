@@ -116,6 +116,7 @@ export default function Finanzamt() {
   const [sortierung, setSortierung] = useState<string>("datum_desc");
   const [gruppierung, setGruppierung] = useState<string>("keine");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingDokumentId, setEditingDokumentId] = useState<number | null>(null); // 🔧 EDIT-Modus
   const [neuesDokument, setNeuesDokument] = useState<NeuesDokumentForm>({
     dokumentTyp: "bescheid",
     steuerart: "",
@@ -189,8 +190,14 @@ export default function Finanzamt() {
 
   const updateMutation = trpc.finanzamt.update.useMutation({
     onSuccess: () => {
-      toast.success("Status aktualisiert");
+      toast.success("Dokument erfolgreich aktualisiert"); // 🔧 Bessere Message
       refetchDokumente();
+      setDialogOpen(false); // 🔧 Dialog schließen
+      setEditingDokumentId(null); // 🔧 Edit-Modus beenden
+      resetForm(); // 🔧 Form zurücksetzen
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
     },
   });
 
@@ -326,6 +333,7 @@ export default function Finanzamt() {
     setPreviewUrl(null);
     setFileBase64(null);
     setDragActive(false);
+    setEditingDokumentId(null); // 🔧 Edit-Modus beenden
   };
 
   // Datei verarbeiten (für Input und Drag&Drop)
@@ -430,28 +438,69 @@ export default function Finanzamt() {
     }
   };
 
+  // 🔧 NEU: Dokument bearbeiten
+  const handleEdit = (dok: any) => {
+    setEditingDokumentId(dok.id);
+    setNeuesDokument({
+      dokumentTyp: dok.dokumentTyp,
+      steuerart: dok.steuerart || "",
+      steuerjahr: dok.steuerjahr?.toString() || "",
+      aktenzeichen: dok.aktenzeichen || "",
+      betreff: dok.betreff,
+      beschreibung: dok.beschreibung || "",
+      eingangsdatum: dok.eingangsdatum ? new Date(dok.eingangsdatum).toISOString().split("T")[0] : "",
+      frist: dok.frist ? new Date(dok.frist).toISOString().split("T")[0] : "",
+      betrag: dok.betrag || "",
+      zahlungsfrist: dok.zahlungsfrist ? new Date(dok.zahlungsfrist).toISOString().split("T")[0] : "",
+      dateiUrl: dok.dateiUrl || "",
+      dateiName: dok.dateiName || "",
+    });
+    setDialogOpen(true);
+  };
+
   const handleCreate = () => {
-    if (!selectedUnternehmenId) return;
+    if (!selectedUnternehmenId && !editingDokumentId) return;
     if (!neuesDokument.betreff) {
       toast.error("Bitte Betreff eingeben");
       return;
     }
 
-    createMutation.mutate({
-      unternehmenId: selectedUnternehmenId,
-      dokumentTyp: neuesDokument.dokumentTyp as any,
-      steuerart: neuesDokument.steuerart ? neuesDokument.steuerart as any : undefined,
-      steuerjahr: neuesDokument.steuerjahr ? parseInt(neuesDokument.steuerjahr) : undefined,
-      aktenzeichen: neuesDokument.aktenzeichen || undefined,
-      betreff: neuesDokument.betreff,
-      beschreibung: neuesDokument.beschreibung || undefined,
-      eingangsdatum: neuesDokument.eingangsdatum,
-      frist: neuesDokument.frist || undefined,
-      betrag: neuesDokument.betrag ? parseFloat(neuesDokument.betrag.replace(",", ".")) : undefined,
-      zahlungsfrist: neuesDokument.zahlungsfrist || undefined,
-      dateiUrl: neuesDokument.dateiUrl || undefined,
-      dateiName: neuesDokument.dateiName || undefined,
-    });
+    // 🔧 EDIT vs CREATE
+    if (editingDokumentId) {
+      // UPDATE
+      updateMutation.mutate({
+        id: editingDokumentId,
+        dokumentTyp: neuesDokument.dokumentTyp as any,
+        steuerart: neuesDokument.steuerart ? neuesDokument.steuerart as any : undefined,
+        steuerjahr: neuesDokument.steuerjahr ? parseInt(neuesDokument.steuerjahr) : undefined,
+        aktenzeichen: neuesDokument.aktenzeichen || undefined,
+        betreff: neuesDokument.betreff,
+        beschreibung: neuesDokument.beschreibung || undefined,
+        eingangsdatum: neuesDokument.eingangsdatum,
+        frist: neuesDokument.frist || undefined,
+        betrag: neuesDokument.betrag ? parseFloat(neuesDokument.betrag.replace(",", ".")) : undefined,
+        zahlungsfrist: neuesDokument.zahlungsfrist || undefined,
+        dateiUrl: neuesDokument.dateiUrl || undefined,
+        dateiName: neuesDokument.dateiName || undefined,
+      });
+    } else {
+      // CREATE
+      createMutation.mutate({
+        unternehmenId: selectedUnternehmenId!,
+        dokumentTyp: neuesDokument.dokumentTyp as any,
+        steuerart: neuesDokument.steuerart ? neuesDokument.steuerart as any : undefined,
+        steuerjahr: neuesDokument.steuerjahr ? parseInt(neuesDokument.steuerjahr) : undefined,
+        aktenzeichen: neuesDokument.aktenzeichen || undefined,
+        betreff: neuesDokument.betreff,
+        beschreibung: neuesDokument.beschreibung || undefined,
+        eingangsdatum: neuesDokument.eingangsdatum,
+        frist: neuesDokument.frist || undefined,
+        betrag: neuesDokument.betrag ? parseFloat(neuesDokument.betrag.replace(",", ".")) : undefined,
+        zahlungsfrist: neuesDokument.zahlungsfrist || undefined,
+        dateiUrl: neuesDokument.dateiUrl || undefined,
+        dateiName: neuesDokument.dateiName || undefined,
+      });
+    }
   };
 
   const handleStatusChange = (id: number, status: string) => {
@@ -566,9 +615,9 @@ export default function Finanzamt() {
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Neues Finanzamt-Dokument</DialogTitle>
+                <DialogTitle>{editingDokumentId ? "Dokument bearbeiten" : "Neues Finanzamt-Dokument"}</DialogTitle>
                 <DialogDescription>
-                  Erfassen Sie ein neues Dokument vom oder an das Finanzamt
+                  {editingDokumentId ? "Ändern Sie die Dokumentendaten" : "Erfassen Sie ein neues Dokument vom oder an das Finanzamt"}
                 </DialogDescription>
               </DialogHeader>
               
@@ -801,14 +850,16 @@ export default function Finanzamt() {
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Abbrechen</Button>
-                <Button onClick={handleCreate} disabled={createMutation.isPending}>
-                  {createMutation.isPending ? (
+                <Button variant="outline" onClick={() => { setDialogOpen(false); setEditingDokumentId(null); }}>Abbrechen</Button>
+                <Button onClick={handleCreate} disabled={createMutation.isPending || updateMutation.isPending}>
+                  {(createMutation.isPending || updateMutation.isPending) ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : editingDokumentId ? (
+                    <Edit className="w-4 h-4 mr-2" />
                   ) : (
                     <Plus className="w-4 h-4 mr-2" />
                   )}
-                  Anlegen
+                  {editingDokumentId ? "Aktualisieren" : "Anlegen"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -970,7 +1021,7 @@ export default function Finanzamt() {
             </Card>
 
             {/* Dokumente-Liste */}
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2">{/* 🔧 SCROLLING hinzugefügt */}
               {filteredDokumente.length === 0 ? (
                 <Card>
                   <CardContent className="py-12 text-center">
@@ -1172,8 +1223,8 @@ export default function Finanzamt() {
                             </Button>
                             
                             {/* An Steuerberater senden Button */}
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => {
                                 setSelectedDokumentId(dok.id);
@@ -1184,11 +1235,22 @@ export default function Finanzamt() {
                               <Building2 className="w-3 h-3 mr-1" />
                               An StB
                             </Button>
-                            
-                            <Button 
-                              variant="ghost" 
+
+                            {/* 🔧 NEU: Bearbeiten-Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(dok)}
+                              title="Dokument bearbeiten"
+                            >
+                              <Edit className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
                               size="icon"
                               onClick={() => handleDelete(dok.id)}
+                              title="Dokument löschen"
                             >
                               <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
                             </Button>
@@ -1215,9 +1277,9 @@ export default function Finanzamt() {
 
             {/* Bestehende Versionen anzeigen */}
             {versionen && versionen.length > 0 && (
-              <div className="mb-4">
-                <Label className="text-sm font-medium mb-2 block">Bisherige Versionen:</Label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
+              <div className="mb-4 p-4 border rounded-lg bg-muted/30">
+                <Label className="text-sm font-medium mb-3 block">Bisherige Versionen ({versionen.length}):</Label>
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">{/* 🔧 Größer + Scrollbar-Padding */}
                   {versionen.map((v: any) => (
                     <div key={v.id} className="flex items-center gap-2 text-sm p-2 bg-muted rounded">
                       <Badge variant="outline" className="text-xs">

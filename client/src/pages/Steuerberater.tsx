@@ -216,15 +216,15 @@ export default function Steuerberater() {
     },
   });
   const addPositionMutation = trpc.steuerberater.rechnungAddPosition.useMutation({
-    onSuccess: () => {
-      refetchRechnungDetail();
+    onSuccess: async () => {
+      await refetchRechnungDetail(); // 🔧 FIX: await refetch to ensure fresh data
       setPositionDialogOpen(false);
       resetPositionForm();
     },
   });
   const deletePositionMutation = trpc.steuerberater.rechnungDeletePosition.useMutation({
-    onSuccess: () => {
-      refetchRechnungDetail();
+    onSuccess: async () => {
+      await refetchRechnungDetail(); // 🔧 FIX: await refetch to ensure fresh data
     },
   });
   const inBuchungenUebernahme = trpc.steuerberater.rechnungInBuchungenUebernehmen.useMutation({
