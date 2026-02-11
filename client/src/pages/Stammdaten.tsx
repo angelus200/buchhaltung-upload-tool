@@ -373,7 +373,7 @@ export default function Stammdaten() {
   );
 
   // Lade Gesellschafter für das ausgewählte Unternehmen
-  const { data: gesellschafterList, refetch: refetchGesellschafter } = trpc.buchhaltung.gesellschafter.list.useQuery(
+  const { data: gesellschafterList, refetch: refetchGesellschafter } = trpc.stammdaten.gesellschafter.list.useQuery(
     { unternehmenId: selectedUnternehmenId! },
     { enabled: !!selectedUnternehmenId && activeTab === "gesellschafter" }
   );
@@ -560,7 +560,7 @@ export default function Stammdaten() {
   });
 
   // Mutations für Gesellschafter
-  const createGesellschafterMutation = trpc.buchhaltung.gesellschafter.create.useMutation({
+  const createGesellschafterMutation = trpc.stammdaten.gesellschafter.create.useMutation({
     onSuccess: () => {
       refetchGesellschafter();
       toast.success("Gesellschafter erstellt");
@@ -572,7 +572,7 @@ export default function Stammdaten() {
     }
   });
 
-  const deleteGesellschafterMutation = trpc.buchhaltung.gesellschafter.delete.useMutation({
+  const deleteGesellschafterMutation = trpc.stammdaten.gesellschafter.delete.useMutation({
     onSuccess: () => {
       refetchGesellschafter();
       toast.info("Gesellschafter gelöscht");
@@ -1086,28 +1086,28 @@ export default function Stammdaten() {
 
   // Gefilterte Finanzkonten nach Typ
   const gefilterteKreditkarten = finanzkontenList?.filter(f => {
-    if (f.typ !== "kreditkarte") return false;
+    if (f.finanzkonto.typ !== "kreditkarte") return false;
     if (!suchbegriff) return true;
     const searchLower = suchbegriff.toLowerCase();
-    return f.name.toLowerCase().includes(searchLower) ||
-           (f.kontonummer?.toLowerCase().includes(searchLower) ?? false);
+    return f.finanzkonto.name.toLowerCase().includes(searchLower) ||
+           (f.finanzkonto.kontonummer?.toLowerCase().includes(searchLower) ?? false);
   }) || [];
 
   const gefilterteZahlungsdienstleister = finanzkontenList?.filter(f => {
-    if (!["paypal", "stripe", "sonstiges"].includes(f.typ)) return false;
+    if (!["paypal", "stripe", "sonstiges"].includes(f.finanzkonto.typ)) return false;
     if (!suchbegriff) return true;
     const searchLower = suchbegriff.toLowerCase();
-    return f.name.toLowerCase().includes(searchLower) ||
-           (f.email?.toLowerCase().includes(searchLower) ?? false);
+    return f.finanzkonto.name.toLowerCase().includes(searchLower) ||
+           (f.finanzkonto.email?.toLowerCase().includes(searchLower) ?? false);
   }) || [];
 
   const gefilterteBrokerkonten = finanzkontenList?.filter(f => {
-    if (f.typ !== "broker") return false;
+    if (f.finanzkonto.typ !== "broker") return false;
     if (!suchbegriff) return true;
     const searchLower = suchbegriff.toLowerCase();
-    return f.name.toLowerCase().includes(searchLower) ||
-           (f.brokerName?.toLowerCase().includes(searchLower) ?? false) ||
-           (f.depotNummer?.toLowerCase().includes(searchLower) ?? false);
+    return f.finanzkonto.name.toLowerCase().includes(searchLower) ||
+           (f.finanzkonto.brokerName?.toLowerCase().includes(searchLower) ?? false) ||
+           (f.finanzkonto.depotNummer?.toLowerCase().includes(searchLower) ?? false);
   }) || [];
 
   // Gefilterte Daten für aktiven Tab
@@ -1787,7 +1787,7 @@ export default function Stammdaten() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {gefilterteKreditkarten.map((kk) => (
-                      <Card key={kk.id} className="flex flex-col">
+                      <Card key={kk.finanzkonto.id} className="flex flex-col">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
@@ -1795,9 +1795,9 @@ export default function Stammdaten() {
                                 <CreditCard className="w-5 h-5 text-pink-600" />
                               </div>
                               <div>
-                                <CardTitle className="text-base line-clamp-1">{kk.name}</CardTitle>
+                                <CardTitle className="text-base line-clamp-1">{kk.finanzkonto.name}</CardTitle>
                                 <CardDescription className="text-sm font-mono">
-                                  {kk.kontonummer || "Kein Konto"}
+                                  {kk.finanzkonto.kontonummer || "Kein Konto"}
                                 </CardDescription>
                               </div>
                             </div>
@@ -1805,22 +1805,22 @@ export default function Stammdaten() {
                         </CardHeader>
                         <CardContent className="flex-1 pt-0">
                           <div className="space-y-1 text-sm">
-                            {kk.kreditkartenNummer && (
+                            {kk.finanzkonto.kreditkartenNummer && (
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Letzte 4:</span>
-                                <span className="font-medium font-mono">****{kk.kreditkartenNummer}</span>
+                                <span className="font-medium font-mono">****{kk.finanzkonto.kreditkartenNummer}</span>
                               </div>
                             )}
-                            {kk.kreditlimit && (
+                            {kk.finanzkonto.kreditlimit && (
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Limit:</span>
-                                <span className="font-medium">{parseFloat(kk.kreditlimit.toString()).toLocaleString('de-DE')} €</span>
+                                <span className="font-medium">{parseFloat(kk.finanzkonto.kreditlimit.toString()).toLocaleString('de-DE')} €</span>
                               </div>
                             )}
-                            {kk.abrechnungstag && (
+                            {kk.finanzkonto.abrechnungstag && (
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Abrechnungstag:</span>
-                                <span className="font-medium">{kk.abrechnungstag}.</span>
+                                <span className="font-medium">{kk.finanzkonto.abrechnungstag}.</span>
                               </div>
                             )}
                           </div>
@@ -1849,7 +1849,7 @@ export default function Stammdaten() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {gefilterteZahlungsdienstleister.map((zdl) => (
-                      <Card key={zdl.id} className="flex flex-col">
+                      <Card key={zdl.finanzkonto.id} className="flex flex-col">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
@@ -1857,9 +1857,9 @@ export default function Stammdaten() {
                                 <ArrowRightLeft className="w-5 h-5 text-violet-600" />
                               </div>
                               <div>
-                                <CardTitle className="text-base line-clamp-1">{zdl.name}</CardTitle>
+                                <CardTitle className="text-base line-clamp-1">{zdl.finanzkonto.name}</CardTitle>
                                 <CardDescription className="text-sm">
-                                  {zdl.typ.toUpperCase()}
+                                  {zdl.finanzkonto.typ.toUpperCase()}
                                 </CardDescription>
                               </div>
                             </div>
@@ -1867,16 +1867,16 @@ export default function Stammdaten() {
                         </CardHeader>
                         <CardContent className="flex-1 pt-0">
                           <div className="space-y-1 text-sm">
-                            {zdl.email && (
+                            {zdl.finanzkonto.email && (
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">E-Mail:</span>
-                                <span className="font-medium truncate max-w-[150px]">{zdl.email}</span>
+                                <span className="font-medium truncate max-w-[150px]">{zdl.finanzkonto.email}</span>
                               </div>
                             )}
-                            {zdl.waehrung && (
+                            {zdl.finanzkonto.waehrung && (
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Währung:</span>
-                                <span className="font-medium">{zdl.waehrung}</span>
+                                <span className="font-medium">{zdl.finanzkonto.waehrung}</span>
                               </div>
                             )}
                           </div>
@@ -1905,7 +1905,7 @@ export default function Stammdaten() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {gefilterteBrokerkonten.map((broker) => (
-                      <Card key={broker.id} className="flex flex-col">
+                      <Card key={broker.finanzkonto.id} className="flex flex-col">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
@@ -1913,9 +1913,9 @@ export default function Stammdaten() {
                                 <PiggyBank className="w-5 h-5 text-emerald-600" />
                               </div>
                               <div>
-                                <CardTitle className="text-base line-clamp-1">{broker.name}</CardTitle>
+                                <CardTitle className="text-base line-clamp-1">{broker.finanzkonto.name}</CardTitle>
                                 <CardDescription className="text-sm font-mono">
-                                  {broker.depotNummer || "Kein Depot"}
+                                  {broker.finanzkonto.depotNummer || "Kein Depot"}
                                 </CardDescription>
                               </div>
                             </div>
@@ -1923,16 +1923,16 @@ export default function Stammdaten() {
                         </CardHeader>
                         <CardContent className="flex-1 pt-0">
                           <div className="space-y-1 text-sm">
-                            {broker.brokerName && (
+                            {broker.finanzkonto.brokerName && (
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Broker:</span>
-                                <span className="font-medium">{broker.brokerName}</span>
+                                <span className="font-medium">{broker.finanzkonto.brokerName}</span>
                               </div>
                             )}
-                            {broker.waehrung && (
+                            {broker.finanzkonto.waehrung && (
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Währung:</span>
-                                <span className="font-medium">{broker.waehrung}</span>
+                                <span className="font-medium">{broker.finanzkonto.waehrung}</span>
                               </div>
                             )}
                           </div>
