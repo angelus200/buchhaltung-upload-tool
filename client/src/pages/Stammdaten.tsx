@@ -372,6 +372,18 @@ export default function Stammdaten() {
     { enabled: !!selectedUnternehmenId && activeTab === "bankkonto" }
   );
 
+  // Lade Gesellschafter für das ausgewählte Unternehmen
+  const { data: gesellschafterList, refetch: refetchGesellschafter } = trpc.buchhaltung.gesellschafter.list.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId && activeTab === "gesellschafter" }
+  );
+
+  // Lade Finanzkonten (Kreditkarten, Zahlungsdienstleister, etc.) für das ausgewählte Unternehmen
+  const { data: finanzkontenList, refetch: refetchFinanzkonten } = trpc.finanzkonten.list.useQuery(
+    { unternehmenId: selectedUnternehmenId!, nurAktive: false },
+    { enabled: !!selectedUnternehmenId && (activeTab === "kreditkarte" || activeTab === "zahlungsdienstleister" || activeTab === "brokerkonto") }
+  );
+
   // Mutations für Kreditoren
   const createKreditorMutation = trpc.stammdaten.kreditoren.create.useMutation({
     onSuccess: () => {
@@ -541,6 +553,29 @@ export default function Stammdaten() {
     onSuccess: () => {
       refetchBankkonten();
       toast.info("Bankkonto gelöscht");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  // Mutations für Gesellschafter
+  const createGesellschafterMutation = trpc.buchhaltung.gesellschafter.create.useMutation({
+    onSuccess: () => {
+      refetchGesellschafter();
+      toast.success("Gesellschafter erstellt");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const deleteGesellschafterMutation = trpc.buchhaltung.gesellschafter.delete.useMutation({
+    onSuccess: () => {
+      refetchGesellschafter();
+      toast.info("Gesellschafter gelöscht");
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -850,6 +885,17 @@ export default function Stammdaten() {
     }
   }, [deleteBankkontoMutation]);
 
+  // Gesellschafter löschen (Datenbank)
+  const handleDeleteGesellschafter = useCallback((id: number) => {
+    if (!selectedUnternehmenId) {
+      toast.error("Bitte wählen Sie zuerst ein Unternehmen aus");
+      return;
+    }
+    if (confirm("Möchten Sie diesen Gesellschafter wirklich löschen?")) {
+      deleteGesellschafterMutation.mutate({ id, unternehmenId: selectedUnternehmenId });
+    }
+  }, [deleteGesellschafterMutation, selectedUnternehmenId]);
+
   // Kreditor bearbeiten
   const openEditKreditorDialog = useCallback((kreditor: any) => {
     setEditItem({
@@ -1029,6 +1075,41 @@ export default function Stammdaten() {
            (b.iban?.toLowerCase().includes(searchLower) ?? false);
   }) || [];
 
+  // Gefilterte Gesellschafter
+  const gefilterteGesellschafter = gesellschafterList?.filter(g => {
+    if (!suchbegriff) return true;
+    const searchLower = suchbegriff.toLowerCase();
+    return g.name.toLowerCase().includes(searchLower) ||
+           g.kontonummer.toLowerCase().includes(searchLower) ||
+           (g.ort?.toLowerCase().includes(searchLower) ?? false);
+  }) || [];
+
+  // Gefilterte Finanzkonten nach Typ
+  const gefilterteKreditkarten = finanzkontenList?.filter(f => {
+    if (f.typ !== "kreditkarte") return false;
+    if (!suchbegriff) return true;
+    const searchLower = suchbegriff.toLowerCase();
+    return f.name.toLowerCase().includes(searchLower) ||
+           (f.kontonummer?.toLowerCase().includes(searchLower) ?? false);
+  }) || [];
+
+  const gefilterteZahlungsdienstleister = finanzkontenList?.filter(f => {
+    if (!["paypal", "stripe", "sonstiges"].includes(f.typ)) return false;
+    if (!suchbegriff) return true;
+    const searchLower = suchbegriff.toLowerCase();
+    return f.name.toLowerCase().includes(searchLower) ||
+           (f.email?.toLowerCase().includes(searchLower) ?? false);
+  }) || [];
+
+  const gefilterteBrokerkonten = finanzkontenList?.filter(f => {
+    if (f.typ !== "broker") return false;
+    if (!suchbegriff) return true;
+    const searchLower = suchbegriff.toLowerCase();
+    return f.name.toLowerCase().includes(searchLower) ||
+           (f.brokerName?.toLowerCase().includes(searchLower) ?? false) ||
+           (f.depotNummer?.toLowerCase().includes(searchLower) ?? false);
+  }) || [];
+
   // Gefilterte Daten für aktiven Tab
   const gefilterteDaten = stammdaten.filter(s => {
     if (s.typ !== activeTab) return false;
@@ -1082,6 +1163,14 @@ export default function Stammdaten() {
                   count = anlagenList?.length || 0;
                 } else if (typ.value === "bankkonto") {
                   count = bankkontenList?.length || 0;
+                } else if (typ.value === "gesellschafter") {
+                  count = gesellschafterList?.length || 0;
+                } else if (typ.value === "kreditkarte") {
+                  count = gefilterteKreditkarten.length;
+                } else if (typ.value === "zahlungsdienstleister") {
+                  count = gefilterteZahlungsdienstleister.length;
+                } else if (typ.value === "brokerkonto") {
+                  count = gefilterteBrokerkonten.length;
                 } else {
                   count = stammdaten.filter(s => s.typ === typ.value).length;
                 }
@@ -1592,6 +1681,261 @@ export default function Stammdaten() {
                               </p>
                             </>
                           )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : typ.value === "gesellschafter" ? (
+                !selectedUnternehmenId ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <UserCircle className="w-12 h-12 mx-auto mb-4 opacity-50 text-indigo-600" />
+                      <p className="font-medium">Kein Unternehmen ausgewählt</p>
+                      <p className="text-sm">Bitte wählen Sie zuerst ein Unternehmen aus</p>
+                    </div>
+                  </Card>
+                ) : gefilterteGesellschafter.length === 0 ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <UserCircle className="w-12 h-12 mx-auto mb-4 opacity-50 text-indigo-600" />
+                      <p className="font-medium">Keine Gesellschafter vorhanden</p>
+                      <p className="text-sm">Legen Sie einen neuen Gesellschafter an</p>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {gefilterteGesellschafter.map((ges) => (
+                      <Card key={ges.id} className="flex flex-col">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                                <UserCircle className="w-5 h-5 text-indigo-600" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-base line-clamp-1">{ges.name}</CardTitle>
+                                <CardDescription className="text-sm font-mono">
+                                  {ges.kontonummer}
+                                </CardDescription>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteGesellschafter(ges.id)}
+                                title="Löschen"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 pt-0">
+                          <div className="space-y-1 text-sm">
+                            {ges.typ && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Typ:</span>
+                                <span className="font-medium">{ges.typ === "natuerlich" ? "Natürliche Person" : "Juristische Person"}</span>
+                              </div>
+                            )}
+                            {ges.anteil && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Anteil:</span>
+                                <span className="font-medium">{ges.anteil}%</span>
+                              </div>
+                            )}
+                            {ges.ort && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Ort:</span>
+                                <span className="font-medium">{ges.plz} {ges.ort}</span>
+                              </div>
+                            )}
+                          </div>
+                          {ges.notizen && (
+                            <>
+                              <Separator className="my-3" />
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {ges.notizen}
+                              </p>
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : typ.value === "kreditkarte" ? (
+                !selectedUnternehmenId ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50 text-pink-600" />
+                      <p className="font-medium">Kein Unternehmen ausgewählt</p>
+                      <p className="text-sm">Bitte wählen Sie zuerst ein Unternehmen aus</p>
+                    </div>
+                  </Card>
+                ) : gefilterteKreditkarten.length === 0 ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50 text-pink-600" />
+                      <p className="font-medium">Keine Kreditkarten vorhanden</p>
+                      <p className="text-sm">Legen Sie eine neue Kreditkarte an</p>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {gefilterteKreditkarten.map((kk) => (
+                      <Card key={kk.id} className="flex flex-col">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                                <CreditCard className="w-5 h-5 text-pink-600" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-base line-clamp-1">{kk.name}</CardTitle>
+                                <CardDescription className="text-sm font-mono">
+                                  {kk.kontonummer || "Kein Konto"}
+                                </CardDescription>
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 pt-0">
+                          <div className="space-y-1 text-sm">
+                            {kk.kreditkartenNummer && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Letzte 4:</span>
+                                <span className="font-medium font-mono">****{kk.kreditkartenNummer}</span>
+                              </div>
+                            )}
+                            {kk.kreditlimit && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Limit:</span>
+                                <span className="font-medium">{parseFloat(kk.kreditlimit.toString()).toLocaleString('de-DE')} €</span>
+                              </div>
+                            )}
+                            {kk.abrechnungstag && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Abrechnungstag:</span>
+                                <span className="font-medium">{kk.abrechnungstag}.</span>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : typ.value === "zahlungsdienstleister" ? (
+                !selectedUnternehmenId ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <ArrowRightLeft className="w-12 h-12 mx-auto mb-4 opacity-50 text-violet-600" />
+                      <p className="font-medium">Kein Unternehmen ausgewählt</p>
+                      <p className="text-sm">Bitte wählen Sie zuerst ein Unternehmen aus</p>
+                    </div>
+                  </Card>
+                ) : gefilterteZahlungsdienstleister.length === 0 ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <ArrowRightLeft className="w-12 h-12 mx-auto mb-4 opacity-50 text-violet-600" />
+                      <p className="font-medium">Keine Zahlungsdienstleister vorhanden</p>
+                      <p className="text-sm">Legen Sie einen neuen Zahlungsdienstleister an</p>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {gefilterteZahlungsdienstleister.map((zdl) => (
+                      <Card key={zdl.id} className="flex flex-col">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+                                <ArrowRightLeft className="w-5 h-5 text-violet-600" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-base line-clamp-1">{zdl.name}</CardTitle>
+                                <CardDescription className="text-sm">
+                                  {zdl.typ.toUpperCase()}
+                                </CardDescription>
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 pt-0">
+                          <div className="space-y-1 text-sm">
+                            {zdl.email && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">E-Mail:</span>
+                                <span className="font-medium truncate max-w-[150px]">{zdl.email}</span>
+                              </div>
+                            )}
+                            {zdl.waehrung && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Währung:</span>
+                                <span className="font-medium">{zdl.waehrung}</span>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : typ.value === "brokerkonto" ? (
+                !selectedUnternehmenId ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <PiggyBank className="w-12 h-12 mx-auto mb-4 opacity-50 text-emerald-600" />
+                      <p className="font-medium">Kein Unternehmen ausgewählt</p>
+                      <p className="text-sm">Bitte wählen Sie zuerst ein Unternehmen aus</p>
+                    </div>
+                  </Card>
+                ) : gefilterteBrokerkonten.length === 0 ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <PiggyBank className="w-12 h-12 mx-auto mb-4 opacity-50 text-emerald-600" />
+                      <p className="font-medium">Keine Brokerkonten vorhanden</p>
+                      <p className="text-sm">Legen Sie ein neues Brokerkonto an</p>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {gefilterteBrokerkonten.map((broker) => (
+                      <Card key={broker.id} className="flex flex-col">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                <PiggyBank className="w-5 h-5 text-emerald-600" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-base line-clamp-1">{broker.name}</CardTitle>
+                                <CardDescription className="text-sm font-mono">
+                                  {broker.depotNummer || "Kein Depot"}
+                                </CardDescription>
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 pt-0">
+                          <div className="space-y-1 text-sm">
+                            {broker.brokerName && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Broker:</span>
+                                <span className="font-medium">{broker.brokerName}</span>
+                              </div>
+                            )}
+                            {broker.waehrung && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Währung:</span>
+                                <span className="font-medium">{broker.waehrung}</span>
+                              </div>
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                     ))}

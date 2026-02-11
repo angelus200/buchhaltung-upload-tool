@@ -1060,22 +1060,30 @@ export const steuerberaterRouter = router({
       });
 
       // Erstelle Buchung aus Rechnung
-      // Sollkonto: 6827 (Buchführungskosten / Steuerberater)
-      // Habenkonto: Kreditor (Steuerberater) - erstmal ohne, User kann es zuordnen
+      // Sachkonto: 6827 (Buchführungskosten / Steuerberater - SKR04)
+      // Personenkonto: 70000 (Kreditor-Konto - User kann es später anpassen)
+
+      // Berechne Nettobetrag falls nicht vorhanden
+      const nettobetrag = rechnung.nettobetrag
+        ? parseFloat(rechnung.nettobetrag.toString())
+        : parseFloat(rechnung.bruttobetrag.toString()) / (1 + parseFloat(rechnung.steuersatz.toString()) / 100);
+
       const [buchungResult] = await db.insert(buchungen).values({
         unternehmenId: rechnung.unternehmenId,
+        buchungsart: "aufwand", // Steuerberaterrechnung ist Aufwand
         belegdatum: rechnung.rechnungsdatum,
         belegnummer: rechnung.rechnungsnummer,
-        buchungstext: `Steuerberater-Rechnung ${rechnung.rechnungsnummer}${rechnung.beschreibung ? ` - ${rechnung.beschreibung}` : ""}`,
-        betrag: rechnung.bruttobetrag,
-        sollKonto: "6827", // Buchführungskosten (SKR04)
-        habenKonto: null, // User muss Kreditor zuordnen
-        steuersatz: rechnung.steuersatz,
-        steuerart: "VSt", // Vorsteuer
+        geschaeftspartnerTyp: "kreditor", // Steuerberater ist Kreditor
         geschaeftspartner: "Steuerberater",
-        erstelltVon: ctx.user.id,
-        buchungstyp: "ausgabe",
-        status: "erfasst",
+        geschaeftspartnerKonto: "70000", // Placeholder - User kann anpassen
+        sachkonto: "6827", // Buchführungskosten (SKR04)
+        nettobetrag: nettobetrag.toFixed(2),
+        steuersatz: rechnung.steuersatz,
+        bruttobetrag: rechnung.bruttobetrag,
+        buchungstext: `Steuerberater-Rechnung ${rechnung.rechnungsnummer}${rechnung.beschreibung ? ` - ${rechnung.beschreibung}` : ""}`,
+        sollKonto: "6827", // Buchführungskosten (für doppelte Buchführung)
+        habenKonto: "70000", // Kreditor (für doppelte Buchführung)
+        status: "entwurf", // Buchung muss noch geprüft werden
       });
 
       const buchungId = Number(buchungResult.insertId);
