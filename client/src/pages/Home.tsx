@@ -413,13 +413,15 @@ export default function Home() {
         toast.info("PDF wird analysiert...");
         result = await pdfOcrMutation.mutateAsync({
           pdfBase64: base64,
-          kontenrahmen: "SKR04" // TODO: Aus Firmeneinstellungen laden
+          kontenrahmen: "SKR04", // TODO: Aus Firmeneinstellungen laden
+          unternehmenId: selectedUnternehmenId || undefined, // Für Sachkonto-Lookup aus vorherigen Buchungen
         });
       } else {
         result = await ocrMutation.mutateAsync({
           imageBase64: base64,
           mimeType: file.type,
-          kontenrahmen: "SKR04" // TODO: Aus Firmeneinstellungen laden
+          kontenrahmen: "SKR04", // TODO: Aus Firmeneinstellungen laden
+          unternehmenId: selectedUnternehmenId || undefined, // Für Sachkonto-Lookup aus vorherigen Buchungen
         });
       }
 

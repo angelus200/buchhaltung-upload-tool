@@ -7,6 +7,9 @@ import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { getDb } from "./db";
+import { buchungen } from "../drizzle/schema";
+import { like, desc, and, eq } from "drizzle-orm";
 
 const execAsync = promisify(exec);
 
@@ -354,11 +357,15 @@ function extractDataFromText(text: string, kontenrahmen: string = "SKR03"): OcrR
 async function analyzeImageWithVision(
   imageBase64: string,
   mimeType: string,
-  kontenrahmen: string = "SKR03"
+  kontenrahmen: string = "SKR03",
+  unternehmenId?: number
 ): Promise<OcrResult> {
   console.log("[OCR] 🚀 Starte Claude Vision Analyse...");
   console.log("[OCR] 🖼️ Image MIME Type:", mimeType);
   console.log("[OCR] 🖼️ Image Base64 Länge:", imageBase64.length);
+  if (unternehmenId) {
+    console.log("[OCR] 🏢 UnternehmenId für Sachkonto-Lookup:", unternehmenId);
+  }
 
   // Initialize Anthropic client
   const anthropic = new Anthropic({
@@ -740,20 +747,63 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
 
     result.konfidenz = Math.min(konfidenzPunkte, 100);
 
-    // Sachkonto basierend auf Geschäftspartner vorschlagen
-    if (result.geschaeftspartner) {
+    // 🔍 SCHRITT 1: Suche nach letzter Buchung für diesen Geschäftspartner (Vorrang!)
+    if (result.geschaeftspartner && unternehmenId) {
+      try {
+        const db = await getDb();
+        if (db) {
+          console.log("[OCR] 🔍 Suche letzte Buchung für Geschäftspartner:", result.geschaeftspartner);
+          console.log("[OCR]    im Unternehmen:", unternehmenId);
+
+          // Suche nach ähnlichem Geschäftspartner (case-insensitive LIKE) im selben Unternehmen
+          const lastBooking = await db
+            .select({
+              sachkonto: buchungen.sachkonto,
+              geschaeftspartner: buchungen.geschaeftspartner,
+              buchungstext: buchungen.buchungstext,
+              belegdatum: buchungen.belegdatum,
+            })
+            .from(buchungen)
+            .where(
+              and(
+                eq(buchungen.unternehmenId, unternehmenId),
+                like(buchungen.geschaeftspartner, `%${result.geschaeftspartner}%`)
+              )
+            )
+            .orderBy(desc(buchungen.belegdatum))
+            .limit(1);
+
+          if (lastBooking.length > 0 && lastBooking[0].sachkonto) {
+            result.sachkonto = lastBooking[0].sachkonto;
+            result.sachkontoBeschreibung = `Aus letzter Buchung für ${lastBooking[0].geschaeftspartner}`;
+            result.erkannteFelder.push("sachkonto");
+            console.log("[OCR] ✅ Sachkonto aus letzter Buchung übernommen:", result.sachkonto);
+            console.log("[OCR]    Letzte Buchung vom:", lastBooking[0].belegdatum);
+          } else {
+            console.log("[OCR] ℹ️ Keine frühere Buchung für diesen Geschäftspartner gefunden");
+          }
+        }
+      } catch (dbError) {
+        console.error("[OCR] ⚠️ Fehler beim Lookup der letzten Buchung:", dbError);
+        // Fahre fort mit Keyword-Matching als Fallback
+      }
+    }
+
+    // 🔍 SCHRITT 2: Sachkonto basierend auf Keywords vorschlagen (Fallback)
+    if (!result.sachkonto && result.geschaeftspartner) {
       const partnerLower = result.geschaeftspartner.toLowerCase();
       for (const [keyword, konto] of Object.entries(SACHKONTO_KEYWORDS)) {
         if (partnerLower.includes(keyword.toLowerCase())) {
           result.sachkonto = kontenrahmen === "SKR04" ? konto.skr04 : konto.skr03;
           result.sachkontoBeschreibung = konto.beschreibung;
           result.erkannteFelder.push("sachkonto");
+          console.log("[OCR] ✅ Sachkonto aus Keyword-Matching:", result.sachkonto);
           break;
         }
       }
     }
 
-    // Fallback: Versuche Sachkonto aus dem Rohtext zu ermitteln
+    // 🔍 SCHRITT 3: Fallback - Versuche Sachkonto aus dem Rohtext zu ermitteln
     if (!result.sachkonto && result.rohtext) {
       const textLower = result.rohtext.toLowerCase();
       for (const [keyword, konto] of Object.entries(SACHKONTO_KEYWORDS)) {
@@ -761,6 +811,7 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
           result.sachkonto = kontenrahmen === "SKR04" ? konto.skr04 : konto.skr03;
           result.sachkontoBeschreibung = konto.beschreibung;
           result.erkannteFelder.push("sachkonto");
+          console.log("[OCR] ✅ Sachkonto aus Rohtext-Keyword-Matching:", result.sachkonto);
           break;
         }
       }
@@ -882,13 +933,14 @@ export const ocrRouter = router({
         imageBase64: z.string(),
         mimeType: z.string(),
         kontenrahmen: z.enum(["SKR03", "SKR04", "OeKR", "RLG", "KMU", "OR", "UK_GAAP", "IFRS", "CY_GAAP"]).default("SKR03"),
+        unternehmenId: z.number().optional(), // Optional: für Sachkonto-Lookup aus vorherigen Buchungen
       })
     )
     .mutation(async ({ input }) => {
-      const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen) 
-        ? input.kontenrahmen 
+      const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen)
+        ? input.kontenrahmen
         : "SKR03";
-      return analyzeImageWithVision(input.imageBase64, input.mimeType, effectiveKontenrahmen);
+      return analyzeImageWithVision(input.imageBase64, input.mimeType, effectiveKontenrahmen, input.unternehmenId);
     }),
 
   // Simulierte OCR für Demo-Zwecke (Fallback)
@@ -950,12 +1002,16 @@ export const ocrRouter = router({
       z.object({
         pdfBase64: z.string(),
         kontenrahmen: z.enum(["SKR03", "SKR04", "OeKR", "RLG", "KMU", "OR", "UK_GAAP", "IFRS", "CY_GAAP"]).default("SKR03"),
+        unternehmenId: z.number().optional(), // Optional: für Sachkonto-Lookup aus vorherigen Buchungen
       })
     )
     .mutation(async ({ input }) => {
       console.log("[OCR] 🚀 PDF-Analyse gestartet...");
       console.log("[OCR] 📄 PDF Base64 Länge:", input.pdfBase64.length);
       console.log("[OCR] 🔧 Kontenrahmen:", input.kontenrahmen);
+      if (input.unternehmenId) {
+        console.log("[OCR] 🏢 UnternehmenId:", input.unternehmenId);
+      }
 
       try {
         // Konvertiere PDF zu Bild
@@ -971,7 +1027,7 @@ export const ocrRouter = router({
           : "SKR03";
 
         console.log("[OCR] 🤖 Rufe analyzeImageWithVision auf...");
-        const result = await analyzeImageWithVision(imageBase64, mimeType, effectiveKontenrahmen);
+        const result = await analyzeImageWithVision(imageBase64, mimeType, effectiveKontenrahmen, input.unternehmenId);
 
         console.log("[OCR] ✅ PDF-Analyse abgeschlossen!");
         console.log("[OCR] 📊 Ergebnis:", JSON.stringify({
