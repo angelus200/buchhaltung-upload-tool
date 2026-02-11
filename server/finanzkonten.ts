@@ -180,6 +180,7 @@ export const finanzkontenRouter = router({
     .input(
       z.object({
         id: z.number().int().positive(),
+        unternehmenId: z.number().int().positive(), // 🔒 ADDED for security check
         sachkontoId: z.number().int().positive().optional(),
         typ: z.enum(["bank", "kreditkarte", "broker", "kasse", "paypal", "stripe", "sonstiges"]),
         name: z.string().min(1, "Name ist erforderlich"),
@@ -221,6 +222,21 @@ export const finanzkontenRouter = router({
         });
       }
 
+      // 🔒 SECURITY: Verify unternehmenId match (prevent cross-company editing)
+      if (existing[0].unternehmenId !== input.unternehmenId) {
+        console.error("🚨 SECURITY: Attempt to edit Finanzkonto from different company!", {
+          existingCompanyId: existing[0].unternehmenId,
+          requestedCompanyId: input.unternehmenId,
+          finanzkontoId: input.id,
+        });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Sie haben keine Berechtigung, dieses Finanzkonto zu bearbeiten",
+        });
+      }
+
+      console.log("✅ UPDATE Finanzkonto:", input.id, "| Company:", existing[0].unternehmenId);
+
       // Update
       await db
         .update(finanzkonten)
@@ -254,7 +270,12 @@ export const finanzkontenRouter = router({
    * Finanzkonto löschen (soft delete durch aktiv = false)
    */
   delete: protectedProcedure
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        unternehmenId: z.number().int().positive(), // 🔒 ADDED for security check
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) {
@@ -277,6 +298,21 @@ export const finanzkontenRouter = router({
           message: "Finanzkonto nicht gefunden",
         });
       }
+
+      // 🔒 SECURITY: Verify unternehmenId match (prevent cross-company deletion)
+      if (existing[0].unternehmenId !== input.unternehmenId) {
+        console.error("🚨 SECURITY: Attempt to delete Finanzkonto from different company!", {
+          existingCompanyId: existing[0].unternehmenId,
+          requestedCompanyId: input.unternehmenId,
+          finanzkontoId: input.id,
+        });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Sie haben keine Berechtigung, dieses Finanzkonto zu löschen",
+        });
+      }
+
+      console.log("✅ DELETE Finanzkonto:", input.id, "| Company:", existing[0].unternehmenId);
 
       // Soft delete
       await db

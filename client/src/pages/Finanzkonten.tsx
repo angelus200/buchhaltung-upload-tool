@@ -213,8 +213,12 @@ export default function Finanzkonten() {
   };
 
   const handleDelete = (id: number) => {
+    if (!selectedUnternehmen) {
+      toast.error("Bitte wählen Sie zuerst ein Unternehmen aus");
+      return;
+    }
     if (confirm("Möchten Sie dieses Finanzkonto wirklich deaktivieren?")) {
-      deleteMutation.mutate({ id });
+      deleteMutation.mutate({ id, unternehmenId: selectedUnternehmen });
     }
   };
 
@@ -224,6 +228,7 @@ export default function Finanzkonten() {
     if (isEditing && formData.id) {
       updateMutation.mutate({
         id: formData.id,
+        unternehmenId: selectedUnternehmen, // 🔒 ADDED for security check
         ...formData,
         abrechnungstag: formData.abrechnungstag || undefined,
       });
