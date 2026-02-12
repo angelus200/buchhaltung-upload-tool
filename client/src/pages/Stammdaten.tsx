@@ -577,6 +577,16 @@ export default function Stammdaten() {
       refetchGesellschafter();
       toast.info("Gesellschafter gelöscht");
     },
+  });
+
+  // Mutations für Finanzkonten
+  const createFinanzkontoMutation = trpc.finanzkonten.create.useMutation({
+    onSuccess: () => {
+      refetchFinanzkonten();
+      toast.success("Finanzkonto erstellt");
+      setDialogOpen(false);
+      resetForm();
+    },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
     }
@@ -809,13 +819,88 @@ export default function Stammdaten() {
       return;
     }
 
+    // Gesellschafter (Datenbank)
+    if (activeTab === "gesellschafter") {
+      if (!selectedUnternehmenId) {
+        toast.error("Bitte wählen Sie zuerst ein Unternehmen aus");
+        return;
+      }
+
+      const gesellschafterData = {
+        kontonummer: formKontonummer,
+        name: formData.name || "",
+        typ: (formData.typ as "natuerlich" | "juristisch") || undefined,
+        anteil: formData.anteil || undefined,
+        einlage: formData.einlage || undefined,
+        eintrittsdatum: formData.eintrittsdatum || undefined,
+        strasse: formData.strasse || undefined,
+        plz: formData.plz || undefined,
+        ort: formData.ort || undefined,
+        steuerId: formData.steuerId || undefined,
+        notizen: formNotizen || undefined,
+      };
+
+      if (editItem) {
+        // Update not implemented yet - needs mutation
+        toast.error("Bearbeiten von Gesellschaftern ist noch nicht implementiert");
+      } else {
+        createGesellschafterMutation.mutate({ unternehmenId: selectedUnternehmenId, ...gesellschafterData });
+      }
+      return;
+    }
+
+    // Kreditkarten, Zahlungsdienstleister, Brokerkonten (Datenbank)
+    if (activeTab === "kreditkarte" || activeTab === "zahlungsdienstleister" || activeTab === "brokerkonto") {
+      if (!selectedUnternehmenId) {
+        toast.error("Bitte wählen Sie zuerst ein Unternehmen aus");
+        return;
+      }
+
+      // Bestimme den typ basierend auf activeTab und formData
+      let typ: string;
+      if (activeTab === "kreditkarte") {
+        typ = "kreditkarte";
+      } else if (activeTab === "zahlungsdienstleister") {
+        typ = formData.typ || "paypal"; // paypal, stripe, klarna, etc.
+      } else {
+        typ = "broker";
+      }
+
+      const finanzkontoData = {
+        typ,
+        name: formData.name || "",
+        sachkontoId: formData.sachkontoId ? parseInt(formData.sachkontoId) : undefined,
+        // Kreditkarten-spezifisch
+        kreditkartenNummer: formData.kreditkartenNummer || undefined,
+        kreditlimit: formData.kreditlimit || undefined,
+        abrechnungstag: formData.abrechnungstag ? parseInt(formData.abrechnungstag) : undefined,
+        // Zahlungsdienstleister-spezifisch
+        email: formData.email || undefined,
+        waehrung: formData.waehrung || undefined,
+        // Broker-spezifisch
+        depotNummer: formData.depotNummer || undefined,
+        brokerName: formData.brokerName || undefined,
+        // Gemeinsame Felder
+        kontonummer: formKontonummer || undefined,
+        notizen: formNotizen || undefined,
+      };
+
+      if (editItem) {
+        // Update not implemented yet
+        toast.error("Bearbeiten von Finanzkonten ist noch nicht implementiert");
+      } else {
+        createFinanzkontoMutation.mutate({ unternehmenId: selectedUnternehmenId, ...finanzkontoData });
+      }
+      return;
+    }
+
     // Standard-Behandlung für andere Stammdaten (LocalStorage)
     const now = new Date().toISOString();
     const name = formData[activeTypConfig.felder[0].key] || "Unbenannt";
-    
+
     if (editItem) {
-      const updated = stammdaten.map(s => 
-        s.id === editItem.id 
+      const updated = stammdaten.map(s =>
+        s.id === editItem.id
           ? { ...s, name, kontonummer: formKontonummer, details: formData, notizen: formNotizen, aktualisiertAm: now }
           : s
       );
@@ -841,7 +926,7 @@ export default function Stammdaten() {
 
     setDialogOpen(false);
     resetForm();
-  }, [activeTab, activeTypConfig, formData, formKontonummer, formNotizen, editItem, stammdaten, resetForm, selectedUnternehmenId, editingSachkontoId, createSachkontoMutation, updateSachkontoMutation, createKreditorMutation, updateKreditorMutation, createDebitorMutation, updateDebitorMutation]);
+  }, [activeTab, activeTypConfig, formData, formKontonummer, formNotizen, editItem, stammdaten, resetForm, selectedUnternehmenId, editingSachkontoId, createSachkontoMutation, updateSachkontoMutation, createKreditorMutation, updateKreditorMutation, createDebitorMutation, updateDebitorMutation, createGesellschafterMutation, createFinanzkontoMutation]);
 
   const handleDelete = useCallback((id: string) => {
     const updated = stammdaten.filter(s => s.id !== id);

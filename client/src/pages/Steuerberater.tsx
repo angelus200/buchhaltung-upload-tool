@@ -132,6 +132,9 @@ export default function Steuerberater() {
     }
   }, []);
 
+  // tRPC Utils für Cache-Invalidation
+  const trpcUtils = trpc.useUtils();
+
   // Queries
   const { data: unternehmen } = trpc.unternehmen.list.useQuery();
   const { data: uebergaben, refetch: refetchUebergaben } = trpc.steuerberater.list.useQuery(
@@ -217,14 +220,16 @@ export default function Steuerberater() {
   });
   const addPositionMutation = trpc.steuerberater.rechnungAddPosition.useMutation({
     onSuccess: async () => {
-      await refetchRechnungDetail(); // 🔧 FIX: await refetch to ensure fresh data
+      await trpcUtils.steuerberater.rechnungGetById.invalidate({ id: selectedRechnung! });
+      await refetchRechnungDetail();
       setPositionDialogOpen(false);
       resetPositionForm();
     },
   });
   const deletePositionMutation = trpc.steuerberater.rechnungDeletePosition.useMutation({
     onSuccess: async () => {
-      await refetchRechnungDetail(); // 🔧 FIX: await refetch to ensure fresh data
+      await trpcUtils.steuerberater.rechnungGetById.invalidate({ id: selectedRechnung! });
+      await refetchRechnungDetail();
     },
   });
   const inBuchungenUebernahme = trpc.steuerberater.rechnungInBuchungenUebernehmen.useMutation({
@@ -234,6 +239,8 @@ export default function Steuerberater() {
         description: "Die Buchung wurde erfolgreich erstellt. Sie können sie jetzt bearbeiten.",
         duration: 5000,
       });
+      // 🔧 FIX: Invalidiere Buchungen-Cache damit die neue Buchung in der Übersicht erscheint
+      await trpcUtils.buchungen.list.invalidate();
       setRechnungDetailDialogOpen(false);
     },
     onError: async (error) => {

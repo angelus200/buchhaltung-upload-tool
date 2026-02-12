@@ -1,16 +1,58 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { 
-  steuerberaterUebergaben, 
+import {
+  steuerberaterUebergaben,
   steuerberaterUebergabePositionen,
   steuerberaterRechnungen,
   steuerberaterRechnungPositionen,
   buchungen,
   users,
-  finanzamtDokumente
+  finanzamtDokumente,
+  unternehmen
 } from "../drizzle/schema";
 import { eq, and, desc, gte, lte, sql, count, sum } from "drizzle-orm";
+
+/**
+ * Berechnet Wirtschaftsjahr und Periode basierend auf Belegdatum und Wirtschaftsjahrbeginn
+ *
+ * Beispiel 1: wirtschaftsjahrBeginn = 1 (Kalenderjahr)
+ *   - 15.03.2026 → WJ 2026, Periode 3
+ *
+ * Beispiel 2: wirtschaftsjahrBeginn = 7 (beginnt am 1. Juli)
+ *   - 15.01.2026 → WJ 2025, Periode 7 (7. Monat des am 1.7.2025 begonnenen GJ)
+ *   - 15.07.2026 → WJ 2026, Periode 1 (1. Monat des am 1.7.2026 begonnenen GJ)
+ */
+function calculateWirtschaftsjahrPeriode(
+  belegdatum: Date,
+  wirtschaftsjahrBeginn: number
+): { wirtschaftsjahr: number; periode: number } {
+  const jahr = belegdatum.getFullYear();
+  const monat = belegdatum.getMonth() + 1; // 1-12
+
+  if (wirtschaftsjahrBeginn === 1) {
+    // Einfacher Fall: Kalenderjahr = Geschäftsjahr
+    return {
+      wirtschaftsjahr: jahr,
+      periode: monat
+    };
+  }
+
+  // Geschäftsjahr beginnt in einem anderen Monat
+  if (monat >= wirtschaftsjahrBeginn) {
+    // Wir sind im aktuellen Geschäftsjahr (beginnt in diesem Kalenderjahr)
+    return {
+      wirtschaftsjahr: jahr,
+      periode: monat - wirtschaftsjahrBeginn + 1
+    };
+  } else {
+    // Wir sind noch im vorherigen Geschäftsjahr (begann im letzten Kalenderjahr)
+    return {
+      wirtschaftsjahr: jahr - 1,
+      periode: 12 - wirtschaftsjahrBeginn + monat + 1
+    };
+  }
+}
 
 // Hilfsfunktion: Empfehlungen basierend auf Analyse generieren
 function generateEmpfehlungen(
@@ -1068,6 +1110,24 @@ export const steuerberaterRouter = router({
         ? parseFloat(rechnung.nettobetrag.toString())
         : parseFloat(rechnung.bruttobetrag.toString()) / (1 + parseFloat(rechnung.steuersatz.toString()) / 100);
 
+      // 🔧 FIX: Unternehmen laden um wirtschaftsjahrBeginn zu bekommen
+      const [company] = await db
+        .select()
+        .from(unternehmen)
+        .where(eq(unternehmen.id, rechnung.unternehmenId))
+        .limit(1);
+
+      if (!company) throw new Error("Unternehmen nicht gefunden");
+
+      // 🔧 FIX: Wirtschaftsjahr und Periode aus Rechnungsdatum berechnen
+      const belegdatum = new Date(rechnung.rechnungsdatum);
+      const { wirtschaftsjahr, periode } = calculateWirtschaftsjahrPeriode(
+        belegdatum,
+        company.wirtschaftsjahrBeginn
+      );
+
+      console.log("[STB→BUCHUNG] 📅 Berechnete Periode:", { wirtschaftsjahr, periode, belegdatum: rechnung.rechnungsdatum, wirtschaftsjahrBeginn: company.wirtschaftsjahrBeginn });
+
       const [buchungResult] = await db.insert(buchungen).values({
         unternehmenId: rechnung.unternehmenId,
         buchungsart: "aufwand", // Steuerberaterrechnung ist Aufwand
@@ -1084,6 +1144,8 @@ export const steuerberaterRouter = router({
         sollKonto: "6827", // Buchführungskosten (für doppelte Buchführung)
         habenKonto: "70000", // Kreditor (für doppelte Buchführung)
         status: "entwurf", // Buchung muss noch geprüft werden
+        wirtschaftsjahr,  // 🔧 FIX: Jetzt korrekt berechnet
+        periode,          // 🔧 FIX: Jetzt korrekt berechnet
       });
 
       const buchungId = Number(buchungResult.insertId);
