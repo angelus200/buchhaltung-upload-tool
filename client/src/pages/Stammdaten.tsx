@@ -572,6 +572,18 @@ export default function Stammdaten() {
     }
   });
 
+  const updateGesellschafterMutation = trpc.stammdaten.gesellschafter.update.useMutation({
+    onSuccess: () => {
+      refetchGesellschafter();
+      toast.success("Gesellschafter aktualisiert");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
   const deleteGesellschafterMutation = trpc.stammdaten.gesellschafter.delete.useMutation({
     onSuccess: () => {
       refetchGesellschafter();
@@ -584,6 +596,18 @@ export default function Stammdaten() {
     onSuccess: () => {
       refetchFinanzkonten();
       toast.success("Finanzkonto erstellt");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const updateFinanzkontoMutation = trpc.finanzkonten.update.useMutation({
+    onSuccess: () => {
+      refetchFinanzkonten();
+      toast.success("Finanzkonto aktualisiert");
       setDialogOpen(false);
       resetForm();
     },
@@ -841,8 +865,11 @@ export default function Stammdaten() {
       };
 
       if (editItem) {
-        // Update not implemented yet - needs mutation
-        toast.error("Bearbeiten von Gesellschaftern ist noch nicht implementiert");
+        updateGesellschafterMutation.mutate({
+          id: parseInt(editItem.id),
+          unternehmenId: selectedUnternehmenId,
+          ...gesellschafterData
+        });
       } else {
         createGesellschafterMutation.mutate({ unternehmenId: selectedUnternehmenId, ...gesellschafterData });
       }
@@ -886,8 +913,12 @@ export default function Stammdaten() {
       };
 
       if (editItem) {
-        // Update not implemented yet
-        toast.error("Bearbeiten von Finanzkonten ist noch nicht implementiert");
+        updateFinanzkontoMutation.mutate({
+          id: parseInt(editItem.finanzkonto?.id || editItem.id),
+          unternehmenId: selectedUnternehmenId,
+          ...finanzkontoData,
+          aktiv: true,
+        });
       } else {
         createFinanzkontoMutation.mutate({ unternehmenId: selectedUnternehmenId, ...finanzkontoData });
       }
@@ -926,7 +957,7 @@ export default function Stammdaten() {
 
     setDialogOpen(false);
     resetForm();
-  }, [activeTab, activeTypConfig, formData, formKontonummer, formNotizen, editItem, stammdaten, resetForm, selectedUnternehmenId, editingSachkontoId, createSachkontoMutation, updateSachkontoMutation, createKreditorMutation, updateKreditorMutation, createDebitorMutation, updateDebitorMutation, createGesellschafterMutation, createFinanzkontoMutation]);
+  }, [activeTab, activeTypConfig, formData, formKontonummer, formNotizen, editItem, stammdaten, resetForm, selectedUnternehmenId, editingSachkontoId, createSachkontoMutation, updateSachkontoMutation, createKreditorMutation, updateKreditorMutation, createDebitorMutation, updateDebitorMutation, createGesellschafterMutation, updateGesellschafterMutation, createFinanzkontoMutation, updateFinanzkontoMutation]);
 
   const handleDelete = useCallback((id: string) => {
     const updated = stammdaten.filter(s => s.id !== id);
@@ -1809,6 +1840,50 @@ export default function Stammdaten() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setEditItem({
+                                    id: ges.id.toString(),
+                                    typ: "gesellschafter",
+                                    name: ges.name,
+                                    kontonummer: ges.kontonummer,
+                                    details: {
+                                      name: ges.name,
+                                      typ: ges.typ,
+                                      anteil: ges.anteil,
+                                      einlage: ges.einlage,
+                                      eintrittsdatum: ges.eintrittsdatum,
+                                      strasse: ges.strasse,
+                                      plz: ges.plz,
+                                      ort: ges.ort,
+                                      steuerId: ges.steuerId,
+                                    },
+                                    notizen: ges.notizen || "",
+                                    erstelltAm: "",
+                                    aktualisiertAm: "",
+                                  });
+                                  setFormData({
+                                    name: ges.name,
+                                    typ: ges.typ,
+                                    anteil: ges.anteil,
+                                    einlage: ges.einlage,
+                                    eintrittsdatum: ges.eintrittsdatum,
+                                    strasse: ges.strasse,
+                                    plz: ges.plz,
+                                    ort: ges.ort,
+                                    steuerId: ges.steuerId,
+                                  });
+                                  setFormKontonummer(ges.kontonummer);
+                                  setFormNotizen(ges.notizen || "");
+                                  setDialogOpen(true);
+                                }}
+                                title="Bearbeiten"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                 onClick={() => handleDeleteGesellschafter(ges.id)}
                                 title="Löschen"
@@ -1886,6 +1961,38 @@ export default function Stammdaten() {
                                 </CardDescription>
                               </div>
                             </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setEditItem({
+                                    id: kk.finanzkonto.id.toString(),
+                                    finanzkonto: kk.finanzkonto,
+                                    typ: "kreditkarte",
+                                    name: kk.finanzkonto.name,
+                                    kontonummer: kk.finanzkonto.kontonummer || "",
+                                    details: {},
+                                    notizen: kk.finanzkonto.notizen || "",
+                                    erstelltAm: "",
+                                    aktualisiertAm: "",
+                                  });
+                                  setFormData({
+                                    name: kk.finanzkonto.name,
+                                    kreditkartenNummer: kk.finanzkonto.kreditkartenNummer,
+                                    kreditlimit: kk.finanzkonto.kreditlimit,
+                                    abrechnungstag: kk.finanzkonto.abrechnungstag,
+                                  });
+                                  setFormKontonummer(kk.finanzkonto.kontonummer || "");
+                                  setFormNotizen(kk.finanzkonto.notizen || "");
+                                  setDialogOpen(true);
+                                }}
+                                title="Bearbeiten"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent className="flex-1 pt-0">
@@ -1947,6 +2054,38 @@ export default function Stammdaten() {
                                   {zdl.finanzkonto.typ.toUpperCase()}
                                 </CardDescription>
                               </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setEditItem({
+                                    id: zdl.finanzkonto.id.toString(),
+                                    finanzkonto: zdl.finanzkonto,
+                                    typ: "zahlungsdienstleister",
+                                    name: zdl.finanzkonto.name,
+                                    kontonummer: zdl.finanzkonto.kontonummer || "",
+                                    details: {},
+                                    notizen: zdl.finanzkonto.notizen || "",
+                                    erstelltAm: "",
+                                    aktualisiertAm: "",
+                                  });
+                                  setFormData({
+                                    name: zdl.finanzkonto.name,
+                                    typ: zdl.finanzkonto.typ,
+                                    email: zdl.finanzkonto.email,
+                                    waehrung: zdl.finanzkonto.waehrung,
+                                  });
+                                  setFormKontonummer(zdl.finanzkonto.kontonummer || "");
+                                  setFormNotizen(zdl.finanzkonto.notizen || "");
+                                  setDialogOpen(true);
+                                }}
+                                title="Bearbeiten"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </div>
                         </CardHeader>

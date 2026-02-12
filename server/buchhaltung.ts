@@ -1478,6 +1478,58 @@ export const stammdatenRouter = router({
         return { id: result[0].insertId };
       }),
 
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          unternehmenId: z.number(), // 🔒 REQUIRED for security check
+          kontonummer: z.string().optional(),
+          name: z.string().optional(),
+          typ: z.enum(["natuerlich", "juristisch"]).optional(),
+          anteil: z.string().optional(),
+          einlage: z.string().optional(),
+          eintrittsdatum: z.string().optional(),
+          strasse: z.string().optional(),
+          plz: z.string().optional(),
+          ort: z.string().optional(),
+          steuerId: z.string().optional(),
+          notizen: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+
+        // 🔒 SECURITY: Verify unternehmenId match
+        const existing = await db
+          .select()
+          .from(gesellschafter)
+          .where(eq(gesellschafter.id, input.id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          throw new Error("Gesellschafter nicht gefunden");
+        }
+
+        if (existing[0].unternehmenId !== input.unternehmenId) {
+          console.error("🚨 SECURITY: Attempt to update Gesellschafter from different company!", {
+            existingCompanyId: existing[0].unternehmenId,
+            requestedCompanyId: input.unternehmenId,
+            gesellschafterId: input.id,
+          });
+          throw new Error("Sie haben keine Berechtigung, diesen Gesellschafter zu bearbeiten");
+        }
+
+        const { id, unternehmenId, eintrittsdatum, ...updateData } = input;
+
+        await db.update(gesellschafter).set({
+          ...updateData,
+          eintrittsdatum: eintrittsdatum ? new Date(eintrittsdatum) : undefined,
+        }).where(eq(gesellschafter.id, input.id));
+
+        return { success: true };
+      }),
+
     delete: protectedProcedure
       .input(
         z.object({
