@@ -102,6 +102,11 @@ export default function Auszuege() {
   const [uploadSaldoEnde, setUploadSaldoEnde] = useState("");
   const [uploading, setUploading] = useState(false);
 
+  // CSV-Import State
+  const [csvImportDialogOpen, setCsvImportDialogOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+
   // Queries
   const { data: unternehmen } = trpc.unternehmen.list.useQuery();
   const { data: auszuege, refetch: refetchAuszuege } = trpc.auszuege.list.useQuery(
@@ -211,6 +216,30 @@ export default function Auszuege() {
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const importCSVMutation = trpc.auszuege.importCSV.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `${data.imported} Position(en) importiert, ${data.skipped} übersprungen`
+      );
+      refetchDetail();
+      setCsvImportDialogOpen(false);
+      setCsvFile(null);
+
+      // Auto-Zuordnung vorschlagen
+      if (data.imported > 0) {
+        const shouldAutoMatch = confirm(
+          `${data.imported} Positionen erfolgreich importiert.\n\nJetzt automatisch zuordnen?`
+        );
+        if (shouldAutoMatch && selectedAuszug) {
+          autoZuordnenMutation.mutate({ auszugId: selectedAuszug });
+        }
+      }
+    },
+    onError: (error) => {
+      toast.error(`Import fehlgeschlagen: ${error.message}`);
     },
   });
 
@@ -693,6 +722,14 @@ export default function Auszuege() {
                     Datei öffnen
                   </Button>
                   <Button
+                    variant="outline"
+                    onClick={() => setCsvImportDialogOpen(true)}
+                    disabled={!auszugDetail}
+                  >
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    CSV importieren
+                  </Button>
+                  <Button
                     variant="destructive"
                     onClick={() => {
                       if (confirm("Auszug wirklich löschen?")) {
@@ -848,6 +885,108 @@ export default function Auszuege() {
                 </Card>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* CSV Import Dialog */}
+        <Dialog open={csvImportDialogOpen} onOpenChange={setCsvImportDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>CSV importieren</DialogTitle>
+              <DialogDescription>
+                Sparkasse Rottal-Inn CSV-Datei hochladen und Positionen automatisch importieren
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="csv-file">CSV-Datei auswählen</Label>
+                <Input
+                  id="csv-file"
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error("Datei zu groß (max. 5MB)");
+                        return;
+                      }
+                      setCsvFile(file);
+                    }
+                  }}
+                />
+                {csvFile && (
+                  <p className="text-sm text-muted-foreground">
+                    📄 {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+                <p className="font-medium mb-1">ℹ️ Hinweis:</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Nur Sparkasse-Format wird unterstützt</li>
+                  <li>Duplikate werden automatisch übersprungen</li>
+                  <li>Encoding: ISO-8859-1 oder UTF-8</li>
+                </ul>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCsvImportDialogOpen(false);
+                  setCsvFile(null);
+                }}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!csvFile || !selectedAuszug) return;
+
+                  setImporting(true);
+                  try {
+                    // Datei als ArrayBuffer lesen (wichtig für binäre Encodings)
+                    const arrayBuffer = await csvFile.arrayBuffer();
+                    const uint8Array = new Uint8Array(arrayBuffer);
+
+                    // Zu Base64 konvertieren
+                    let binaryString = '';
+                    for (let i = 0; i < uint8Array.length; i++) {
+                      binaryString += String.fromCharCode(uint8Array[i]);
+                    }
+                    const base64 = btoa(binaryString);
+
+                    // Import starten
+                    importCSVMutation.mutate({
+                      auszugId: selectedAuszug,
+                      csvBase64: base64,
+                    });
+                  } catch (error) {
+                    toast.error("Fehler beim Lesen der Datei");
+                    console.error(error);
+                  } finally {
+                    setImporting(false);
+                  }
+                }}
+                disabled={!csvFile || importing}
+              >
+                {importing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Wird importiert...
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Importieren
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
