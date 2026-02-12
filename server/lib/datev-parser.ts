@@ -71,7 +71,7 @@ export interface DatevParseResult {
  * Parse German number format (comma as decimal separator)
  * Examples: "1234,56" -> 1234.56, "1.234,56" -> 1234.56
  */
-function parseGermanNumber(value: string): number {
+export function parseGermanNumber(value: string): number {
   if (!value || value.trim() === '') return 0;
 
   // Remove thousand separators (dots) and replace comma with dot
@@ -87,7 +87,7 @@ function parseGermanNumber(value: string): number {
  * Parse German date format (DDMM or DDMMYYYY)
  * Examples: "0101" -> 01.01.current_year, "01012025" -> 01.01.2025
  */
-function parseGermanDate(value: string, referenceYear?: number): Date | null {
+export function parseGermanDate(value: string, referenceYear?: number): Date | null {
   if (!value || value.trim() === '') return null;
 
   const cleaned = value.replace(/[^0-9]/g, '');
