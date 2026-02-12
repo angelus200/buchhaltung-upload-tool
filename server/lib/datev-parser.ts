@@ -84,8 +84,8 @@ export function parseGermanNumber(value: string): number {
 }
 
 /**
- * Parse German date format (DDMM or DDMMYYYY)
- * Examples: "0101" -> 01.01.current_year, "01012025" -> 01.01.2025
+ * Parse German date format (DDMM, DDMMYY or DDMMYYYY)
+ * Examples: "0101" -> 01.01.current_year, "120226" -> 12.02.2026, "01012025" -> 01.01.2025
  */
 export function parseGermanDate(value: string, referenceYear?: number): Date | null {
   if (!value || value.trim() === '') return null;
@@ -97,6 +97,18 @@ export function parseGermanDate(value: string, referenceYear?: number): Date | n
     const day = parseInt(cleaned.substring(0, 2), 10);
     const month = parseInt(cleaned.substring(2, 4), 10);
     const year = referenceYear || new Date().getFullYear();
+
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+      return new Date(year, month - 1, day);
+    }
+  } else if (cleaned.length === 6) {
+    // DDMMYY format (Sparkasse: "12.02.26" -> "120226")
+    const day = parseInt(cleaned.substring(0, 2), 10);
+    const month = parseInt(cleaned.substring(2, 4), 10);
+    const yearShort = parseInt(cleaned.substring(4, 6), 10);
+
+    // Zweistellige Jahreszahlen: 00-99 -> 2000-2099
+    const year = yearShort < 100 ? 2000 + yearShort : yearShort;
 
     if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
       return new Date(year, month - 1, day);
