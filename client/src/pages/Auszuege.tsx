@@ -193,6 +193,16 @@ export default function Auszuege() {
     },
   });
 
+  const buchungAusPositionMutation = trpc.auszuege.buchungAusPosition.useMutation({
+    onSuccess: () => {
+      toast.success("Buchung erstellt und Position zugeordnet");
+      refetchDetail();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
   const deleteMutation = trpc.auszuege.delete.useMutation({
     onSuccess: () => {
       toast.success("Auszug gelöscht");
@@ -777,13 +787,39 @@ export default function Auszuege() {
                                           setSelectedPosition(position);
                                           setZuordnungDialogOpen(true);
                                         }}
+                                        title="Zu existierender Buchung zuordnen"
                                       >
                                         <LinkIcon className="w-4 h-4" />
                                       </Button>
                                       <Button
                                         variant="ghost"
                                         size="sm"
+                                        onClick={() => {
+                                          const sachkonto = prompt("Sachkonto (z.B. 4200):");
+                                          if (!sachkonto) return;
+                                          const gegenkonto = prompt("Gegenkonto (z.B. 1200):");
+                                          if (!gegenkonto) return;
+                                          const steuersatzStr = prompt("Steuersatz % (0, 7, 19):", "19");
+                                          const steuersatz = steuersatzStr ? parseFloat(steuersatzStr) : 19;
+                                          const geschaeftspartner = prompt("Geschäftspartner (optional):");
+
+                                          buchungAusPositionMutation.mutate({
+                                            positionId: position.id,
+                                            sachkonto,
+                                            gegenkonto,
+                                            steuersatz,
+                                            geschaeftspartner: geschaeftspartner || undefined,
+                                          });
+                                        }}
+                                        title="Neue Buchung aus Position erstellen"
+                                      >
+                                        <FileText className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
                                         onClick={() => ignorierenMutation.mutate({ positionId: position.id })}
+                                        title="Position ignorieren"
                                       >
                                         <XCircle className="w-4 h-4" />
                                       </Button>
@@ -796,6 +832,7 @@ export default function Auszuege() {
                                       onClick={() =>
                                         zuordnungAufhebenMutation.mutate({ positionId: position.id })
                                       }
+                                      title="Zuordnung aufheben"
                                     >
                                       <XCircle className="w-4 h-4" />
                                     </Button>

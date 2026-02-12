@@ -1,10 +1,44 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { auszuege, auszugPositionen, buchungen, InsertAuszug, InsertAuszugPosition } from "../drizzle/schema";
+import { auszuege, auszugPositionen, buchungen, InsertAuszug, InsertAuszugPosition, unternehmen } from "../drizzle/schema";
 import { eq, and, gte, lte, sql, or, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { uploadAuszug } from "./storage";
+
+/**
+ * Berechnet Wirtschaftsjahr und Periode basierend auf Belegdatum und Wirtschaftsjahrbeginn
+ */
+function calculateWirtschaftsjahrPeriode(
+  belegdatum: Date,
+  wirtschaftsjahrBeginn: number
+): { wirtschaftsjahr: number; periode: number } {
+  const jahr = belegdatum.getFullYear();
+  const monat = belegdatum.getMonth() + 1; // 1-12
+
+  if (wirtschaftsjahrBeginn === 1) {
+    // Kalenderjahr = Geschäftsjahr
+    return {
+      wirtschaftsjahr: jahr,
+      periode: monat
+    };
+  }
+
+  // Geschäftsjahr beginnt in einem anderen Monat
+  if (monat >= wirtschaftsjahrBeginn) {
+    // Wir sind im aktuellen Geschäftsjahr
+    return {
+      wirtschaftsjahr: jahr,
+      periode: monat - wirtschaftsjahrBeginn + 1
+    };
+  } else {
+    // Wir sind noch im vorherigen Geschäftsjahr
+    return {
+      wirtschaftsjahr: jahr - 1,
+      periode: 12 - wirtschaftsjahrBeginn + monat + 1
+    };
+  }
+}
 
 /**
  * Auszüge Router - Verwaltung von Kontoauszügen, Kreditkartenauszügen, Zahlungsdienstleister-Auszügen
@@ -377,6 +411,97 @@ export const auszuegeRouter = router({
         .limit(10);
 
       return passendeBuchungen;
+    }),
+
+  /**
+   * Buchung aus Position erstellen
+   */
+  buchungAusPosition: protectedProcedure
+    .input(
+      z.object({
+        positionId: z.number(),
+        sachkonto: z.string(),
+        gegenkonto: z.string(),
+        steuersatz: z.number().optional(),
+        geschaeftspartner: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      // Position laden
+      const [position] = await db
+        .select()
+        .from(auszugPositionen)
+        .where(eq(auszugPositionen.id, input.positionId))
+        .limit(1);
+
+      if (!position) throw new TRPCError({ code: "NOT_FOUND", message: "Position nicht gefunden" });
+
+      // Auszug laden
+      const [auszug] = await db
+        .select()
+        .from(auszuege)
+        .where(eq(auszuege.id, position.auszugId))
+        .limit(1);
+
+      if (!auszug) throw new TRPCError({ code: "NOT_FOUND", message: "Auszug nicht gefunden" });
+
+      // Unternehmen laden für Wirtschaftsjahr-Berechnung
+      const [company] = await db
+        .select()
+        .from(unternehmen)
+        .where(eq(unternehmen.id, auszug.unternehmenId))
+        .limit(1);
+
+      if (!company) throw new TRPCError({ code: "NOT_FOUND", message: "Unternehmen nicht gefunden" });
+
+      // Wirtschaftsjahr und Periode berechnen
+      const belegdatum = new Date(position.datum);
+      const { wirtschaftsjahr, periode } = calculateWirtschaftsjahrPeriode(
+        belegdatum,
+        company.wirtschaftsjahrBeginn
+      );
+
+      // Betrag berechnen
+      const bruttobetrag = parseFloat(position.betrag.toString());
+      const steuersatz = input.steuersatz || 0;
+      const steuerbetrag = (bruttobetrag * steuersatz) / (100 + steuersatz);
+      const nettobetrag = bruttobetrag - steuerbetrag;
+
+      // Buchung erstellen
+      const [result] = await db.insert(buchungen).values({
+        unternehmenId: auszug.unternehmenId,
+        wirtschaftsjahr,
+        periode,
+        belegdatum,
+        belegnummer: `AZ-${position.id}`,
+        belegart: "Bank",
+        geschaeftspartner: input.geschaeftspartner || position.buchungstext.substring(0, 100),
+        buchungstext: position.buchungstext,
+        sachkonto: input.sachkonto,
+        gegenkonto: input.gegenkonto,
+        bruttobetrag: bruttobetrag.toString(),
+        nettobetrag: nettobetrag.toFixed(2),
+        steuerbetrag: steuerbetrag.toFixed(2),
+        steuersatz: steuersatz.toString(),
+        waehrung: auszug.waehrung,
+        erstelltVon: ctx.user.id,
+      });
+
+      const buchungId = result.insertId;
+
+      // Position als zugeordnet markieren
+      await db
+        .update(auszugPositionen)
+        .set({
+          zugeordneteBuchungId: buchungId,
+          status: "zugeordnet",
+        })
+        .where(eq(auszugPositionen.id, input.positionId));
+
+      return { success: true, buchungId };
     }),
 
   /**

@@ -616,6 +616,26 @@ export default function Stammdaten() {
     }
   });
 
+  const deleteKreditkarteMutation = trpc.finanzkonten.creditCards.delete.useMutation({
+    onSuccess: () => {
+      refetchFinanzkonten();
+      toast.info("Kreditkarte gelöscht");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
+  const deleteZahlungsdienstleisterMutation = trpc.finanzkonten.paymentProviders.delete.useMutation({
+    onSuccess: () => {
+      refetchFinanzkonten();
+      toast.info("Zahlungsdienstleister gelöscht");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    }
+  });
+
   // Konvertierungs-Mutations
   const convertToDebitorMutation = trpc.stammdaten.kreditoren.convertToDebitor.useMutation({
     onSuccess: () => {
@@ -1011,6 +1031,20 @@ export default function Stammdaten() {
       deleteGesellschafterMutation.mutate({ id, unternehmenId: selectedUnternehmenId });
     }
   }, [deleteGesellschafterMutation, selectedUnternehmenId]);
+
+  // Kreditkarte löschen (Datenbank)
+  const handleDeleteKreditkarte = useCallback((id: number) => {
+    if (confirm("Möchten Sie diese Kreditkarte wirklich löschen?")) {
+      deleteKreditkarteMutation.mutate({ id });
+    }
+  }, [deleteKreditkarteMutation]);
+
+  // Zahlungsdienstleister löschen (Datenbank)
+  const handleDeleteZahlungsdienstleister = useCallback((id: number) => {
+    if (confirm("Möchten Sie diesen Zahlungsdienstleister wirklich löschen?")) {
+      deleteZahlungsdienstleisterMutation.mutate({ id });
+    }
+  }, [deleteZahlungsdienstleisterMutation]);
 
   // Kreditor bearbeiten
   const openEditKreditorDialog = useCallback((kreditor: any) => {
@@ -1992,6 +2026,15 @@ export default function Stammdaten() {
                               >
                                 <Edit2 className="w-4 h-4" />
                               </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteKreditkarte(kk.finanzkonto.id)}
+                                title="Löschen"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </div>
                         </CardHeader>
@@ -2085,6 +2128,15 @@ export default function Stammdaten() {
                                 title="Bearbeiten"
                               >
                                 <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteZahlungsdienstleister(zdl.finanzkonto.id)}
+                                title="Löschen"
+                              >
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
                           </div>
