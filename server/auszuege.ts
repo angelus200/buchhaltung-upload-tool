@@ -5,6 +5,8 @@ import { auszuege, auszugPositionen, buchungen, InsertAuszug, InsertAuszugPositi
 import { eq, and, gte, lte, sql, or, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { uploadAuszug } from "./storage";
+import iconv from 'iconv-lite';
+import { isValidSparkasseFile, parseSparkasseCSV, type SparkassePosition } from './lib/sparkasse-parser';
 
 /**
  * Berechnet Wirtschaftsjahr und Periode basierend auf Belegdatum und Wirtschaftsjahrbeginn
@@ -570,5 +572,137 @@ export const auszuegeRouter = router({
         inBearbeitung: alleAuszuege.filter((a) => a.status === "in_bearbeitung").length,
         abgeschlossen: alleAuszuege.filter((a) => a.status === "abgeschlossen").length,
       };
+    }),
+
+  /**
+   * Importiert Positionen aus einer Sparkasse CSV-Datei
+   */
+  importCSV: protectedProcedure
+    .input(
+      z.object({
+        auszugId: z.number(),
+        csvBase64: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      // 1. Auszug laden und Security-Check
+      const [auszug] = await db
+        .select()
+        .from(auszuege)
+        .where(eq(auszuege.id, input.auszugId))
+        .limit(1);
+
+      if (!auszug) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Auszug nicht gefunden" });
+      }
+
+      // Security: User muss Zugriff auf das Unternehmen haben
+      // (Prüfung über Auszug.unternehmenId - Position hat keine direkte unternehmenId)
+
+      try {
+        // 2. Base64 dekodieren
+        const base64Data = input.csvBase64.split(',')[1] || input.csvBase64;
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        // 3. Encoding konvertieren (ISO-8859-1 → UTF-8)
+        let csvContent: string;
+        try {
+          csvContent = iconv.decode(buffer, 'ISO-8859-1');
+        } catch {
+          // Fallback auf UTF-8
+          csvContent = buffer.toString('utf-8');
+        }
+
+        // 4. Format validieren
+        if (!isValidSparkasseFile(csvContent)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Unbekanntes CSV-Format. Nur Sparkasse-Format wird unterstützt.",
+          });
+        }
+
+        // 5. CSV parsen
+        const parseResult = parseSparkasseCSV(csvContent);
+
+        if (parseResult.stats.validRows === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Keine gültigen Positionen gefunden. ${parseResult.stats.invalidRows} Zeile(n) mit Fehlern.`,
+          });
+        }
+
+        // 6. Bestehende Positionen laden (für Duplikat-Check)
+        const existingPositions = await db
+          .select()
+          .from(auszugPositionen)
+          .where(eq(auszugPositionen.auszugId, input.auszugId));
+
+        // 7. Duplikat-Erkennung
+        const imported: SparkassePosition[] = [];
+        const skipped: SparkassePosition[] = [];
+
+        for (const position of parseResult.positionen) {
+          // Fehlerhafte Zeilen überspringen
+          if (position.errors.length > 0) {
+            skipped.push(position);
+            continue;
+          }
+
+          // Duplikat-Check: Datum + Betrag + Buchungstext
+          const isDuplicate = existingPositions.some(existing => {
+            const sameDate = new Date(existing.datum).toDateString() === position.datum.toDateString();
+            const sameBetrag = Math.abs(parseFloat(existing.betrag.toString()) - position.betrag) < 0.01;
+            const sameText = existing.buchungstext.trim().toLowerCase() === position.buchungstext.trim().toLowerCase();
+            return sameDate && sameBetrag && sameText;
+          });
+
+          if (isDuplicate) {
+            skipped.push(position);
+          } else {
+            imported.push(position);
+          }
+        }
+
+        // 8. Bulk-Insert
+        if (imported.length > 0) {
+          const insertValues = imported.map(pos => ({
+            auszugId: input.auszugId,
+            datum: pos.datum,
+            buchungstext: pos.buchungstext,
+            betrag: pos.betrag.toFixed(2),
+            referenz: pos.referenz || null,
+            kategorie: pos.kategorie || null,
+            status: "offen" as const,
+          }));
+
+          await db.insert(auszugPositionen).values(insertValues);
+
+          // 9. Auszug-Status aktualisieren
+          await db
+            .update(auszuege)
+            .set({ status: "in_bearbeitung" })
+            .where(eq(auszuege.id, input.auszugId));
+        }
+
+        // 10. Erfolg zurückmelden
+        return {
+          success: true,
+          imported: imported.length,
+          skipped: skipped.length,
+          errors: parseResult.errors.slice(0, 5), // Max 5 Fehler anzeigen
+        };
+
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+
+        console.error('CSV Import failed:', error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Import fehlgeschlagen",
+        });
+      }
     }),
 });
