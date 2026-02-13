@@ -14,6 +14,8 @@ import { isValidAmexFile, parseAmexCSV, type AmexPosition } from './lib/amex-par
 import { isValidVRBankFile, parseVRBankCSV, type VRBankPosition } from './lib/vrbank-parser';
 import { isValidKingdomFile, parseKingdomCSV, type KingdomPosition } from './lib/kingdom-parser';
 import { isValidBilderlingsFile, parseBilderlingsCSV, type BilderlingsPosition } from './lib/bilderlings-parser';
+import { isValidQontoFile, parseQontoCSV, type QontoPosition } from './lib/qonto-parser';
+import { isValidRelioFile, parseRelioCSV, type RelioPosition } from './lib/relio-parser';
 
 /**
  * Berechnet Wirtschaftsjahr und Periode basierend auf Belegdatum und Wirtschaftsjahrbeginn
@@ -624,7 +626,7 @@ export const auszuegeRouter = router({
         }
 
         // 4. Format-Erkennung (Chain of Responsibility - vom spezifischsten zum allgemeinsten)
-        let format: 'SPARKASSE' | 'VRBANK' | 'PAYPAL' | 'SUMUP' | 'SOLDO' | 'AMEX' | 'KINGDOM' | 'BILDERLINGS' | null = null;
+        let format: 'SPARKASSE' | 'VRBANK' | 'PAYPAL' | 'SUMUP' | 'SOLDO' | 'AMEX' | 'KINGDOM' | 'BILDERLINGS' | 'QONTO' | 'RELIO' | null = null;
         let parseResult:
           ReturnType<typeof parseSparkasseCSV> |
           ReturnType<typeof parseVRBankCSV> |
@@ -633,7 +635,9 @@ export const auszuegeRouter = router({
           ReturnType<typeof parseSoldoCSV> |
           ReturnType<typeof parseAmexCSV> |
           ReturnType<typeof parseKingdomCSV> |
-          ReturnType<typeof parseBilderlingsCSV>;
+          ReturnType<typeof parseBilderlingsCSV> |
+          ReturnType<typeof parseQontoCSV> |
+          ReturnType<typeof parseRelioCSV>;
 
         if (isValidVRBankFile(csvContent)) {
           // VR Bank zuerst (spezifischer als Sparkasse)
@@ -642,6 +646,12 @@ export const auszuegeRouter = router({
         } else if (isValidSparkasseFile(csvContent)) {
           format = 'SPARKASSE';
           parseResult = parseSparkasseCSV(csvContent);
+        } else if (isValidQontoFile(csvContent)) {
+          format = 'QONTO';
+          parseResult = parseQontoCSV(csvContent);
+        } else if (isValidRelioFile(csvContent)) {
+          format = 'RELIO';
+          parseResult = parseRelioCSV(csvContent);
         } else if (isValidPayPalFile(csvContent)) {
           format = 'PAYPAL';
           parseResult = parsePayPalCSV(csvContent);
@@ -663,7 +673,7 @@ export const auszuegeRouter = router({
         } else {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Unbekanntes CSV-Format. Unterstützte Formate: Sparkasse, VR Bank, PayPal, Sumup, Soldo, American Express, Kingdom Bank, Bilderlings",
+            message: "Unbekanntes CSV-Format. Unterstützte Formate: Sparkasse, VR Bank, PayPal, Sumup, Soldo, American Express, Kingdom Bank, Bilderlings, Qonto, Relio",
           });
         }
 
@@ -681,8 +691,8 @@ export const auszuegeRouter = router({
           .where(eq(auszugPositionen.auszugId, input.auszugId));
 
         // 7. Duplikat-Erkennung
-        const imported: (SparkassePosition | VRBankPosition | PayPalPosition | SumupPosition | SoldoPosition | AmexPosition | KingdomPosition | BilderlingsPosition)[] = [];
-        const skipped: (SparkassePosition | VRBankPosition | PayPalPosition | SumupPosition | SoldoPosition | AmexPosition | KingdomPosition | BilderlingsPosition)[] = [];
+        const imported: (SparkassePosition | VRBankPosition | PayPalPosition | SumupPosition | SoldoPosition | AmexPosition | KingdomPosition | BilderlingsPosition | QontoPosition | RelioPosition)[] = [];
+        const skipped: (SparkassePosition | VRBankPosition | PayPalPosition | SumupPosition | SoldoPosition | AmexPosition | KingdomPosition | BilderlingsPosition | QontoPosition | RelioPosition)[] = [];
 
         for (const position of parseResult.positionen) {
           // Fehlerhafte Zeilen überspringen
