@@ -616,25 +616,8 @@ export default function Stammdaten() {
     }
   });
 
-  const deleteKreditkarteMutation = trpc.finanzkonten.creditCards.delete.useMutation({
-    onSuccess: () => {
-      refetchFinanzkonten();
-      toast.info("Kreditkarte gelöscht");
-    },
-    onError: (error) => {
-      toast.error(`Fehler: ${error.message}`);
-    }
-  });
-
-  const deleteZahlungsdienstleisterMutation = trpc.finanzkonten.paymentProviders.delete.useMutation({
-    onSuccess: () => {
-      refetchFinanzkonten();
-      toast.info("Zahlungsdienstleister gelöscht");
-    },
-    onError: (error) => {
-      toast.error(`Fehler: ${error.message}`);
-    }
-  });
+  // 🔧 FIX BUG 1&2: Haupt-delete Mutation verwenden (Legacy Sub-Router entfernt)
+  // deleteKreditkarteMutation und deleteZahlungsdienstleisterMutation nutzen jetzt deleteMutation
 
   // Konvertierungs-Mutations
   const convertToDebitorMutation = trpc.stammdaten.kreditoren.convertToDebitor.useMutation({
@@ -1035,16 +1018,16 @@ export default function Stammdaten() {
   // Kreditkarte löschen (Datenbank)
   const handleDeleteKreditkarte = useCallback((id: number) => {
     if (confirm("Möchten Sie diese Kreditkarte wirklich löschen?")) {
-      deleteKreditkarteMutation.mutate({ id });
+      deleteMutation.mutate({ id, unternehmenId: selectedUnternehmen! });
     }
-  }, [deleteKreditkarteMutation]);
+  }, [deleteMutation, selectedUnternehmen]);
 
   // Zahlungsdienstleister löschen (Datenbank)
   const handleDeleteZahlungsdienstleister = useCallback((id: number) => {
     if (confirm("Möchten Sie diesen Zahlungsdienstleister wirklich löschen?")) {
-      deleteZahlungsdienstleisterMutation.mutate({ id });
+      deleteMutation.mutate({ id, unternehmenId: selectedUnternehmen! });
     }
-  }, [deleteZahlungsdienstleisterMutation]);
+  }, [deleteMutation, selectedUnternehmen]);
 
   // Kreditor bearbeiten
   const openEditKreditorDialog = useCallback((kreditor: any) => {
