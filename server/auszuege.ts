@@ -9,6 +9,11 @@ import iconv from 'iconv-lite';
 import { isValidSparkasseFile, parseSparkasseCSV, type SparkassePosition } from './lib/sparkasse-parser';
 import { isValidPayPalFile, parsePayPalCSV, type PayPalPosition } from './lib/paypal-parser';
 import { isValidSumupFile, parseSumupCSV, type SumupPosition } from './lib/sumup-parser';
+import { isValidSoldoFile, parseSoldoCSV, type SoldoPosition } from './lib/soldo-parser';
+import { isValidAmexFile, parseAmexCSV, type AmexPosition } from './lib/amex-parser';
+import { isValidVRBankFile, parseVRBankCSV, type VRBankPosition } from './lib/vrbank-parser';
+import { isValidKingdomFile, parseKingdomCSV, type KingdomPosition } from './lib/kingdom-parser';
+import { isValidBilderlingsFile, parseBilderlingsCSV, type BilderlingsPosition } from './lib/bilderlings-parser';
 
 /**
  * Berechnet Wirtschaftsjahr und Periode basierend auf Belegdatum und Wirtschaftsjahrbeginn
@@ -618,11 +623,23 @@ export const auszuegeRouter = router({
           csvContent = buffer.toString('utf-8');
         }
 
-        // 4. Format-Erkennung
-        let format: 'SPARKASSE' | 'PAYPAL' | 'SUMUP' | null = null;
-        let parseResult: ReturnType<typeof parseSparkasseCSV> | ReturnType<typeof parsePayPalCSV> | ReturnType<typeof parseSumupCSV>;
+        // 4. Format-Erkennung (Chain of Responsibility - vom spezifischsten zum allgemeinsten)
+        let format: 'SPARKASSE' | 'VRBANK' | 'PAYPAL' | 'SUMUP' | 'SOLDO' | 'AMEX' | 'KINGDOM' | 'BILDERLINGS' | null = null;
+        let parseResult:
+          ReturnType<typeof parseSparkasseCSV> |
+          ReturnType<typeof parseVRBankCSV> |
+          ReturnType<typeof parsePayPalCSV> |
+          ReturnType<typeof parseSumupCSV> |
+          ReturnType<typeof parseSoldoCSV> |
+          ReturnType<typeof parseAmexCSV> |
+          ReturnType<typeof parseKingdomCSV> |
+          ReturnType<typeof parseBilderlingsCSV>;
 
-        if (isValidSparkasseFile(csvContent)) {
+        if (isValidVRBankFile(csvContent)) {
+          // VR Bank zuerst (spezifischer als Sparkasse)
+          format = 'VRBANK';
+          parseResult = parseVRBankCSV(csvContent);
+        } else if (isValidSparkasseFile(csvContent)) {
           format = 'SPARKASSE';
           parseResult = parseSparkasseCSV(csvContent);
         } else if (isValidPayPalFile(csvContent)) {
@@ -631,10 +648,22 @@ export const auszuegeRouter = router({
         } else if (isValidSumupFile(csvContent)) {
           format = 'SUMUP';
           parseResult = parseSumupCSV(csvContent);
+        } else if (isValidSoldoFile(csvContent)) {
+          format = 'SOLDO';
+          parseResult = parseSoldoCSV(csvContent);
+        } else if (isValidAmexFile(csvContent)) {
+          format = 'AMEX';
+          parseResult = parseAmexCSV(csvContent);
+        } else if (isValidKingdomFile(csvContent)) {
+          format = 'KINGDOM';
+          parseResult = parseKingdomCSV(csvContent);
+        } else if (isValidBilderlingsFile(csvContent)) {
+          format = 'BILDERLINGS';
+          parseResult = parseBilderlingsCSV(csvContent);
         } else {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Unbekanntes CSV-Format. Unterstützte Formate: Sparkasse, PayPal, Sumup",
+            message: "Unbekanntes CSV-Format. Unterstützte Formate: Sparkasse, VR Bank, PayPal, Sumup, Soldo, American Express, Kingdom Bank, Bilderlings",
           });
         }
 
@@ -652,8 +681,8 @@ export const auszuegeRouter = router({
           .where(eq(auszugPositionen.auszugId, input.auszugId));
 
         // 7. Duplikat-Erkennung
-        const imported: (SparkassePosition | PayPalPosition | SumupPosition)[] = [];
-        const skipped: (SparkassePosition | PayPalPosition | SumupPosition)[] = [];
+        const imported: (SparkassePosition | VRBankPosition | PayPalPosition | SumupPosition | SoldoPosition | AmexPosition | KingdomPosition | BilderlingsPosition)[] = [];
+        const skipped: (SparkassePosition | VRBankPosition | PayPalPosition | SumupPosition | SoldoPosition | AmexPosition | KingdomPosition | BilderlingsPosition)[] = [];
 
         for (const position of parseResult.positionen) {
           // Fehlerhafte Zeilen überspringen
