@@ -365,8 +365,9 @@ export default function Uebersicht() {
   const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(
     null
   );
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  // 🔧 FIX BUG 4: Default-Filter deaktiviert → zeigt ALLE Buchungen (auch mit NULL wirtschaftsjahr/periode)
+  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
   const [filterSachkonto, setFilterSachkonto] = useState("");
   const [filterImportRef, setFilterImportRef] = useState("");
   const [filterGeschaeftspartner, setFilterGeschaeftspartner] = useState("");
@@ -562,8 +563,9 @@ export default function Uebersicht() {
     });
   }, [buchungen, showOnlyGuV]);
 
-  const monatName =
-    MONATE.find((m) => m.value === String(selectedMonth))?.label || "";
+  const monatName = selectedMonth
+    ? MONATE.find((m) => m.value === String(selectedMonth))?.label || ""
+    : "Alle Monate";
 
   // Funktion zum Prüfen und Speichern einer neuen Buchung
   const handleCreateBuchung = async (data: any) => {
@@ -716,13 +718,14 @@ export default function Uebersicht() {
 
           {/* Monat */}
           <Select
-            value={String(selectedMonth)}
-            onValueChange={(v) => setSelectedMonth(Number(v))}
+            value={selectedMonth ? String(selectedMonth) : "alle"}
+            onValueChange={(v) => setSelectedMonth(v === "alle" ? undefined : Number(v))}
           >
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="alle">Alle Monate</SelectItem>
               {MONATE.map((m) => (
                 <SelectItem key={m.value} value={m.value}>
                   {m.label}
@@ -733,13 +736,14 @@ export default function Uebersicht() {
 
           {/* Jahr */}
           <Select
-            value={String(selectedYear)}
-            onValueChange={(v) => setSelectedYear(Number(v))}
+            value={selectedYear ? String(selectedYear) : "alle"}
+            onValueChange={(v) => setSelectedYear(v === "alle" ? undefined : Number(v))}
           >
             <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="alle">Alle Jahre</SelectItem>
               <SelectItem value="2025">2025</SelectItem>
               <SelectItem value="2024">2024</SelectItem>
               <SelectItem value="2023">2023</SelectItem>
