@@ -408,19 +408,21 @@ export default function Home() {
       });
 
       // Wähle die richtige OCR-Methode basierend auf Dateityp
+      const kontenrahmen = selectedUnternehmenData?.kontenrahmen || "SKR04";
+
       let result;
       if (isPdf) {
         toast.info("PDF wird analysiert...");
         result = await pdfOcrMutation.mutateAsync({
           pdfBase64: base64,
-          kontenrahmen: "SKR04", // TODO: Aus Firmeneinstellungen laden
+          kontenrahmen,
           unternehmenId: selectedUnternehmenId || undefined, // Für Sachkonto-Lookup aus vorherigen Buchungen
         });
       } else {
         result = await ocrMutation.mutateAsync({
           imageBase64: base64,
           mimeType: file.type,
-          kontenrahmen: "SKR04", // TODO: Aus Firmeneinstellungen laden
+          kontenrahmen,
           unternehmenId: selectedUnternehmenId || undefined, // Für Sachkonto-Lookup aus vorherigen Buchungen
         });
       }
