@@ -1,0 +1,6 @@
+"Transaction ID","Date","Time","Type","Payment Method","Amount","Fee","Net Amount","Currency","Status","Description","Customer Name","Card Last 4 Digits"
+"SUMUP123ABC456","02/12/2026","14:30:00","Sale","Card","50.00","1.25","48.75","EUR","Successful","Coffee and cake","John Doe","1234"
+"SUMUP123ABC457","02/12/2026","15:45:00","Sale","Card","125.50","3.14","122.36","EUR","Successful","Lunch","Jane Smith","5678"
+"SUMUP123ABC458","02/11/2026","10:20:00","Sale","Cash","30.00","0.00","30.00","EUR","Successful","Breakfast","Bob Wilson",""
+"SUMUP123ABC459","02/11/2026","16:30:00","Refund","Card","-25.00","-0.63","-25.63","EUR","Successful","Cancellation","Alice Brown","9012"
+"SUMUP123ABC460","02/10/2026","12:00:00","Sale","Card","80.00","2.00","78.00","EUR","Pending","Lunch","Charlie Green","3456"

@@ -1,0 +1,6 @@
+"Transaktions-ID";"Datum";"Uhrzeit";"Typ";"Zahlungsmethode";"Betrag";"Gebühr";"Nettobetrag";"Währung";"Status";"Beschreibung";"Kundenname";"Letzte 4 Ziffern der Karte"
+"SUMUP123ABC456";"12.02.2026";"14:30:00";"Verkauf";"Karte";"50,00";"1,25";"48,75";"EUR";"Erfolgreich";"Kaffee und Kuchen";"Max Mustermann";"1234"
+"SUMUP123ABC457";"12.02.2026";"15:45:00";"Verkauf";"Karte";"125,50";"3,14";"122,36";"EUR";"Erfolgreich";"Mittagessen";"Anna Schmidt";"5678"
+"SUMUP123ABC458";"11.02.2026";"10:20:00";"Verkauf";"Bargeld";"30,00";"0,00";"30,00";"EUR";"Erfolgreich";"Frühstück";"Lisa Weber";""
+"SUMUP123ABC459";"11.02.2026";"16:30:00";"Rückerstattung";"Karte";"-25,00";"-0,63";"-25,63";"EUR";"Erfolgreich";"Stornierung";"Peter Müller";"9012"
+"SUMUP123ABC460";"10.02.2026";"12:00:00";"Verkauf";"Karte";"80,00";"2,00";"78,00";"EUR";"Ausstehend";"Mittagessen";"Julia Klein";"3456"
