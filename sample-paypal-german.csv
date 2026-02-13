@@ -1,0 +1,5 @@
+"Datum","Uhrzeit","Zeitzone","Name","Typ","Status","Währung","Brutto","Gebühr","Netto","Absender E-Mail-Adresse","Empfänger E-Mail-Adresse","Transaktionscode","Zugehöriger Transaktionscode","Rechnungsnummer","Hinweis"
+"12.02.2026","14:30:00","MEZ","Max Mustermann","Zahlung erhalten","Abgeschlossen","EUR","100,00","2,50","97,50","","empfaenger@beispiel.de","ABC123DEF456","","INV-2026-001","Zahlung für Dienstleistung"
+"11.02.2026","09:15:00","MEZ","Anna Schmidt","Zahlung gesendet","Abgeschlossen","EUR","-50,00","-1,50","-51,50","absender@beispiel.de","","GHI789JKL012","","","Erstattung"
+"10.02.2026","16:45:00","MEZ","Firma GmbH","Zahlung erhalten","Abgeschlossen","EUR","250,00","5,00","245,00","","empfaenger@beispiel.de","MNO345PQR678","","INV-2026-002","Rechnung Februar 2026"
+"09.02.2026","11:20:00","MEZ","Test User","Zahlung erhalten","Ausstehend","EUR","75,00","1,75","73,25","","empfaenger@beispiel.de","STU901VWX234","","","Diese Zeile wird übersprungen (nicht abgeschlossen)"

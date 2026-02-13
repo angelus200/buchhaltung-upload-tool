@@ -1,0 +1,5 @@
+"Date","Time","Timezone","Name","Type","Status","Currency","Gross","Fee","Net","From Email Address","To Email Address","Transaction ID","Related Transaction ID","Invoice Number","Note"
+"02/12/2026","14:30:00","CET","John Doe","Payment Received","Completed","EUR","100.00","2.50","97.50","","recipient@example.com","ABC123DEF456","","INV-2026-001","Payment for services"
+"02/11/2026","09:15:00","CET","Jane Smith","Payment Sent","Completed","EUR","-50.00","-1.50","-51.50","sender@example.com","","GHI789JKL012","","","Refund"
+"02/10/2026","16:45:00","CET","Company Ltd","Payment Received","Completed","EUR","250.00","5.00","245.00","","recipient@example.com","MNO345PQR678","","INV-2026-002","February 2026 Invoice"
+"02/09/2026","11:20:00","CET","Test User","Payment Received","Pending","EUR","75.00","1.75","73.25","","recipient@example.com","STU901VWX234","","","This row will be skipped (not completed)"
