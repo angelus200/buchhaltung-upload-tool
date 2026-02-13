@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { uploadAuszug } from "./storage";
 import iconv from 'iconv-lite';
 import { isValidSparkasseFile, parseSparkasseCSV, type SparkassePosition } from './lib/sparkasse-parser';
+import { isValidPayPalFile, parsePayPalCSV, type PayPalPosition } from './lib/paypal-parser';
 
 /**
  * Berechnet Wirtschaftsjahr und Periode basierend auf Belegdatum und Wirtschaftsjahrbeginn
@@ -616,16 +617,22 @@ export const auszuegeRouter = router({
           csvContent = buffer.toString('utf-8');
         }
 
-        // 4. Format validieren
-        if (!isValidSparkasseFile(csvContent)) {
+        // 4. Format-Erkennung
+        let format: 'SPARKASSE' | 'PAYPAL' | null = null;
+        let parseResult: ReturnType<typeof parseSparkasseCSV> | ReturnType<typeof parsePayPalCSV>;
+
+        if (isValidSparkasseFile(csvContent)) {
+          format = 'SPARKASSE';
+          parseResult = parseSparkasseCSV(csvContent);
+        } else if (isValidPayPalFile(csvContent)) {
+          format = 'PAYPAL';
+          parseResult = parsePayPalCSV(csvContent);
+        } else {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Unbekanntes CSV-Format. Nur Sparkasse-Format wird unterstützt.",
+            message: "Unbekanntes CSV-Format. Unterstützte Formate: Sparkasse, PayPal",
           });
         }
-
-        // 5. CSV parsen
-        const parseResult = parseSparkasseCSV(csvContent);
 
         if (parseResult.stats.validRows === 0) {
           throw new TRPCError({
@@ -641,8 +648,8 @@ export const auszuegeRouter = router({
           .where(eq(auszugPositionen.auszugId, input.auszugId));
 
         // 7. Duplikat-Erkennung
-        const imported: SparkassePosition[] = [];
-        const skipped: SparkassePosition[] = [];
+        const imported: (SparkassePosition | PayPalPosition)[] = [];
+        const skipped: (SparkassePosition | PayPalPosition)[] = [];
 
         for (const position of parseResult.positionen) {
           // Fehlerhafte Zeilen überspringen
