@@ -8,6 +8,7 @@ import { uploadAuszug } from "./storage";
 import iconv from 'iconv-lite';
 import { isValidSparkasseFile, parseSparkasseCSV, type SparkassePosition } from './lib/sparkasse-parser';
 import { isValidPayPalFile, parsePayPalCSV, type PayPalPosition } from './lib/paypal-parser';
+import { isValidSumupFile, parseSumupCSV, type SumupPosition } from './lib/sumup-parser';
 
 /**
  * Berechnet Wirtschaftsjahr und Periode basierend auf Belegdatum und Wirtschaftsjahrbeginn
@@ -618,8 +619,8 @@ export const auszuegeRouter = router({
         }
 
         // 4. Format-Erkennung
-        let format: 'SPARKASSE' | 'PAYPAL' | null = null;
-        let parseResult: ReturnType<typeof parseSparkasseCSV> | ReturnType<typeof parsePayPalCSV>;
+        let format: 'SPARKASSE' | 'PAYPAL' | 'SUMUP' | null = null;
+        let parseResult: ReturnType<typeof parseSparkasseCSV> | ReturnType<typeof parsePayPalCSV> | ReturnType<typeof parseSumupCSV>;
 
         if (isValidSparkasseFile(csvContent)) {
           format = 'SPARKASSE';
@@ -627,10 +628,13 @@ export const auszuegeRouter = router({
         } else if (isValidPayPalFile(csvContent)) {
           format = 'PAYPAL';
           parseResult = parsePayPalCSV(csvContent);
+        } else if (isValidSumupFile(csvContent)) {
+          format = 'SUMUP';
+          parseResult = parseSumupCSV(csvContent);
         } else {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Unbekanntes CSV-Format. Unterstützte Formate: Sparkasse, PayPal",
+            message: "Unbekanntes CSV-Format. Unterstützte Formate: Sparkasse, PayPal, Sumup",
           });
         }
 
@@ -648,8 +652,8 @@ export const auszuegeRouter = router({
           .where(eq(auszugPositionen.auszugId, input.auszugId));
 
         // 7. Duplikat-Erkennung
-        const imported: (SparkassePosition | PayPalPosition)[] = [];
-        const skipped: (SparkassePosition | PayPalPosition)[] = [];
+        const imported: (SparkassePosition | PayPalPosition | SumupPosition)[] = [];
+        const skipped: (SparkassePosition | PayPalPosition | SumupPosition)[] = [];
 
         for (const position of parseResult.positionen) {
           // Fehlerhafte Zeilen überspringen
