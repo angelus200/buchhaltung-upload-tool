@@ -225,7 +225,7 @@ export const finanzierungenRouter = router({
    * Einzelne Finanzierung abrufen
    */
   getById: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: z.number(), unternehmenId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return null;
@@ -233,7 +233,12 @@ export const finanzierungenRouter = router({
       const [finanzierung] = await db
         .select()
         .from(finanzierungen)
-        .where(eq(finanzierungen.id, input.id))
+        .where(
+          and(
+            eq(finanzierungen.id, input.id),
+            eq(finanzierungen.unternehmenId, input.unternehmenId)
+          )
+        )
         .limit(1);
 
       if (!finanzierung) return null;
@@ -321,6 +326,7 @@ export const finanzierungenRouter = router({
     .input(
       z.object({
         id: z.number(),
+        unternehmenId: z.number(),
         bezeichnung: z.string().optional(),
         beschreibung: z.string().optional(),
         restschuld: z.string().optional(),
@@ -342,7 +348,12 @@ export const finanzierungenRouter = router({
       await db
         .update(finanzierungen)
         .set(updateData)
-        .where(eq(finanzierungen.id, input.id));
+        .where(
+          and(
+            eq(finanzierungen.id, input.id),
+            eq(finanzierungen.unternehmenId, input.unternehmenId)
+          )
+        );
 
       return { success: true };
     }),
@@ -351,10 +362,26 @@ export const finanzierungenRouter = router({
    * Finanzierung löschen
    */
   delete: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: z.number(), unternehmenId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      // Prüfe ob Finanzierung existiert und zum Unternehmen gehört
+      const [finanzierung] = await db
+        .select()
+        .from(finanzierungen)
+        .where(
+          and(
+            eq(finanzierungen.id, input.id),
+            eq(finanzierungen.unternehmenId, input.unternehmenId)
+          )
+        )
+        .limit(1);
+
+      if (!finanzierung) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Finanzierung nicht gefunden" });
+      }
 
       // Erst Zahlungen löschen
       await db.delete(finanzierungZahlungen).where(eq(finanzierungZahlungen.finanzierungId, input.id));
@@ -369,7 +396,7 @@ export const finanzierungenRouter = router({
    * Zahlungsplan generieren
    */
   generateZahlungsplan: protectedProcedure
-    .input(z.object({ finanzierungId: z.number() }))
+    .input(z.object({ finanzierungId: z.number(), unternehmenId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
@@ -378,7 +405,12 @@ export const finanzierungenRouter = router({
       const [finanzierung] = await db
         .select()
         .from(finanzierungen)
-        .where(eq(finanzierungen.id, input.finanzierungId))
+        .where(
+          and(
+            eq(finanzierungen.id, input.finanzierungId),
+            eq(finanzierungen.unternehmenId, input.unternehmenId)
+          )
+        )
         .limit(1);
 
       if (!finanzierung) {
@@ -538,6 +570,22 @@ export const finanzierungenRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
 
+      // Prüfe ob Finanzierung zum Unternehmen gehört
+      const [finanzierung] = await db
+        .select()
+        .from(finanzierungen)
+        .where(
+          and(
+            eq(finanzierungen.id, input.finanzierungId),
+            eq(finanzierungen.unternehmenId, input.unternehmenId)
+          )
+        )
+        .limit(1);
+
+      if (!finanzierung) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Finanzierung nicht gefunden" });
+      }
+
       // Prüfe ob Storage verfügbar ist
       if (!isStorageAvailable()) {
         throw new TRPCError({
@@ -597,10 +645,30 @@ export const finanzierungenRouter = router({
    * Dokument löschen
    */
   deleteDokument: protectedProcedure
-    .input(z.object({ dokumentId: z.number() }))
+    .input(z.object({ dokumentId: z.number(), unternehmenId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      // Prüfe ob Dokument existiert und Finanzierung zum Unternehmen gehört
+      const [dokument] = await db
+        .select({
+          dokument: finanzierungDokumente,
+          finanzierung: finanzierungen,
+        })
+        .from(finanzierungDokumente)
+        .innerJoin(finanzierungen, eq(finanzierungDokumente.finanzierungId, finanzierungen.id))
+        .where(
+          and(
+            eq(finanzierungDokumente.id, input.dokumentId),
+            eq(finanzierungen.unternehmenId, input.unternehmenId)
+          )
+        )
+        .limit(1);
+
+      if (!dokument) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Dokument nicht gefunden" });
+      }
 
       await db.delete(finanzierungDokumente).where(eq(finanzierungDokumente.id, input.dokumentId));
 
@@ -670,7 +738,12 @@ export const finanzierungenRouter = router({
       const [finanzierung] = await db
         .select()
         .from(finanzierungen)
-        .where(eq(finanzierungen.id, input.finanzierungId))
+        .where(
+          and(
+            eq(finanzierungen.id, input.finanzierungId),
+            eq(finanzierungen.unternehmenId, input.unternehmenId)
+          )
+        )
         .limit(1);
 
       if (!finanzierung) {

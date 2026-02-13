@@ -93,14 +93,19 @@ export const jahresabschlussRouter = router({
 
     // Einzelnes Anlagegut abrufen
     get: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number(), unternehmenId: z.number() }))
       .query(async ({ input }) => {
         const db = await getDb();
         if (!db) return null;
         const result = await db
           .select()
           .from(anlagevermoegen)
-          .where(eq(anlagevermoegen.id, input.id))
+          .where(
+            and(
+              eq(anlagevermoegen.id, input.id),
+              eq(anlagevermoegen.unternehmenId, input.unternehmenId)
+            )
+          )
           .limit(1);
         return result[0] || null;
       }),
@@ -142,6 +147,7 @@ export const jahresabschlussRouter = router({
       .input(
         z.object({
           id: z.number(),
+          unternehmenId: z.number(),
           kontonummer: z.string().optional(),
           bezeichnung: z.string().optional(),
           kategorie: z.string().optional(),
@@ -161,7 +167,7 @@ export const jahresabschlussRouter = router({
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
-        const { id, anschaffungsdatum, ...rest } = input;
+        const { id, unternehmenId, anschaffungsdatum, ...rest } = input;
         const updateData: Record<string, unknown> = { ...rest };
         if (anschaffungsdatum) {
           updateData.anschaffungsdatum = new Date(anschaffungsdatum);
@@ -169,17 +175,29 @@ export const jahresabschlussRouter = router({
         await db
           .update(anlagevermoegen)
           .set(updateData)
-          .where(eq(anlagevermoegen.id, id));
+          .where(
+            and(
+              eq(anlagevermoegen.id, id),
+              eq(anlagevermoegen.unternehmenId, unternehmenId)
+            )
+          );
         return { success: true };
       }),
 
     // Anlagegut löschen
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number(), unternehmenId: z.number() }))
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
-        await db.delete(anlagevermoegen).where(eq(anlagevermoegen.id, input.id));
+        await db
+          .delete(anlagevermoegen)
+          .where(
+            and(
+              eq(anlagevermoegen.id, input.id),
+              eq(anlagevermoegen.unternehmenId, input.unternehmenId)
+            )
+          );
         return { success: true };
       }),
 
@@ -654,6 +672,7 @@ export const jahresabschlussRouter = router({
       .input(
         z.object({
           id: z.number(),
+          unternehmenId: z.number(),
           stichtag: z.string().optional(),
         })
       )
@@ -664,7 +683,12 @@ export const jahresabschlussRouter = router({
         const konto = await db
           .select()
           .from(bankkonten)
-          .where(eq(bankkonten.id, input.id))
+          .where(
+            and(
+              eq(bankkonten.id, input.id),
+              eq(bankkonten.unternehmenId, input.unternehmenId)
+            )
+          )
           .limit(1);
 
         if (!konto[0]) return null;
@@ -736,6 +760,7 @@ export const jahresabschlussRouter = router({
       .input(
         z.object({
           id: z.number(),
+          unternehmenId: z.number(),
           kontonummer: z.string().optional(),
           bezeichnung: z.string().optional(),
           bankname: z.string().optional(),
@@ -752,18 +777,33 @@ export const jahresabschlussRouter = router({
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
-        const { id, ...data } = input;
-        await db.update(bankkonten).set(data).where(eq(bankkonten.id, id));
+        const { id, unternehmenId, ...data } = input;
+        await db
+          .update(bankkonten)
+          .set(data)
+          .where(
+            and(
+              eq(bankkonten.id, id),
+              eq(bankkonten.unternehmenId, unternehmenId)
+            )
+          );
         return { success: true };
       }),
 
     // Bankkonto löschen
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number(), unternehmenId: z.number() }))
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
-        await db.delete(bankkonten).where(eq(bankkonten.id, input.id));
+        await db
+          .delete(bankkonten)
+          .where(
+            and(
+              eq(bankkonten.id, input.id),
+              eq(bankkonten.unternehmenId, input.unternehmenId)
+            )
+          );
         return { success: true };
       }),
   }),
@@ -815,26 +855,41 @@ export const jahresabschlussRouter = router({
 
     // Beteiligung aktualisieren
     update: protectedProcedure
-      .input(z.object({ id: z.number() }).passthrough())
+      .input(z.object({ id: z.number(), unternehmenId: z.number() }).passthrough())
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
-        const { id, erwerbsdatum, ...rest } = input as any;
+        const { id, unternehmenId, erwerbsdatum, ...rest } = input as any;
         const updateData: Record<string, unknown> = { ...rest };
         if (erwerbsdatum) {
           updateData.erwerbsdatum = new Date(erwerbsdatum);
         }
-        await db.update(beteiligungen).set(updateData).where(eq(beteiligungen.id, id));
+        await db
+          .update(beteiligungen)
+          .set(updateData)
+          .where(
+            and(
+              eq(beteiligungen.id, id),
+              eq(beteiligungen.unternehmenId, unternehmenId)
+            )
+          );
         return { success: true };
       }),
 
     // Beteiligung löschen
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number(), unternehmenId: z.number() }))
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
-        await db.delete(beteiligungen).where(eq(beteiligungen.id, input.id));
+        await db
+          .delete(beteiligungen)
+          .where(
+            and(
+              eq(beteiligungen.id, input.id),
+              eq(beteiligungen.unternehmenId, input.unternehmenId)
+            )
+          );
         return { success: true };
       }),
   }),
@@ -888,26 +943,41 @@ export const jahresabschlussRouter = router({
 
     // Gesellschafter aktualisieren
     update: protectedProcedure
-      .input(z.object({ id: z.number() }).passthrough())
+      .input(z.object({ id: z.number(), unternehmenId: z.number() }).passthrough())
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
-        const { id, eintrittsdatum, ...rest } = input as any;
+        const { id, unternehmenId, eintrittsdatum, ...rest } = input as any;
         const updateData: Record<string, unknown> = { ...rest };
         if (eintrittsdatum) {
           updateData.eintrittsdatum = new Date(eintrittsdatum);
         }
-        await db.update(gesellschafter).set(updateData).where(eq(gesellschafter.id, id));
+        await db
+          .update(gesellschafter)
+          .set(updateData)
+          .where(
+            and(
+              eq(gesellschafter.id, id),
+              eq(gesellschafter.unternehmenId, unternehmenId)
+            )
+          );
         return { success: true };
       }),
 
     // Gesellschafter löschen
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number(), unternehmenId: z.number() }))
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
-        await db.delete(gesellschafter).where(eq(gesellschafter.id, input.id));
+        await db
+          .delete(gesellschafter)
+          .where(
+            and(
+              eq(gesellschafter.id, input.id),
+              eq(gesellschafter.unternehmenId, input.unternehmenId)
+            )
+          );
         return { success: true };
       }),
   }),
@@ -969,6 +1039,7 @@ export const jahresabschlussRouter = router({
       .input(
         z.object({
           id: z.number(),
+          unternehmenId: z.number(),
           sachkonto: z.string().optional(),
           kontobezeichnung: z.string().optional(),
           sollbetrag: z.string().optional(),
@@ -979,18 +1050,33 @@ export const jahresabschlussRouter = router({
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
-        const { id, ...data } = input;
-        await db.update(eroeffnungsbilanz).set(data).where(eq(eroeffnungsbilanz.id, id));
+        const { id, unternehmenId, ...data } = input;
+        await db
+          .update(eroeffnungsbilanz)
+          .set(data)
+          .where(
+            and(
+              eq(eroeffnungsbilanz.id, id),
+              eq(eroeffnungsbilanz.unternehmenId, unternehmenId)
+            )
+          );
         return { success: true };
       }),
 
     // Eröffnungsbilanz-Position löschen
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number(), unternehmenId: z.number() }))
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Datenbank nicht verfügbar");
-        await db.delete(eroeffnungsbilanz).where(eq(eroeffnungsbilanz.id, input.id));
+        await db
+          .delete(eroeffnungsbilanz)
+          .where(
+            and(
+              eq(eroeffnungsbilanz.id, input.id),
+              eq(eroeffnungsbilanz.unternehmenId, input.unternehmenId)
+            )
+          );
         return { success: true };
       }),
 
