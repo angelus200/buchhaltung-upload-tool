@@ -1025,16 +1025,16 @@ export default function Stammdaten() {
   // Kreditkarte löschen (Datenbank)
   const handleDeleteKreditkarte = useCallback((id: number) => {
     if (confirm("Möchten Sie diese Kreditkarte wirklich löschen?")) {
-      deleteFinanzkontoMutation.mutate({ id, unternehmenId: selectedUnternehmen! });
+      deleteFinanzkontoMutation.mutate({ id, unternehmenId: selectedUnternehmenId! });
     }
-  }, [deleteFinanzkontoMutation, selectedUnternehmen]);
+  }, [deleteFinanzkontoMutation, selectedUnternehmenId]);
 
   // Zahlungsdienstleister löschen (Datenbank)
   const handleDeleteZahlungsdienstleister = useCallback((id: number) => {
     if (confirm("Möchten Sie diesen Zahlungsdienstleister wirklich löschen?")) {
-      deleteFinanzkontoMutation.mutate({ id, unternehmenId: selectedUnternehmen! });
+      deleteFinanzkontoMutation.mutate({ id, unternehmenId: selectedUnternehmenId! });
     }
-  }, [deleteFinanzkontoMutation, selectedUnternehmen]);
+  }, [deleteFinanzkontoMutation, selectedUnternehmenId]);
 
   // Kreditor bearbeiten
   const openEditKreditorDialog = useCallback((kreditor: any) => {
