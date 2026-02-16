@@ -1,3 +1,4 @@
+// Build: 2026-02-16-1805 - Force new frontend hash for Railway deploy
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
