@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { stripe } from "./lib/stripe";
+import Stripe from "stripe";
 import { getDb } from "./db";
 import { subscriptions, onboardingOrders } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -128,7 +129,7 @@ export const stripeRouter = router({
         // Update subscription mit clerkUserId
         const result = await db
           .update(subscriptions)
-          .set({ clerkUserId: ctx.user.id })
+          .set({ clerkUserId: String(ctx.user.id) })
           .where(eq(subscriptions.stripeCustomerId, session.customer));
 
         console.log("🔵 User linked to subscription:", result);
@@ -159,7 +160,7 @@ export const stripeRouter = router({
       const [subscription] = await db
         .select()
         .from(subscriptions)
-        .where(eq(subscriptions.clerkUserId, ctx.user.id))
+        .where(eq(subscriptions.clerkUserId, String(ctx.user.id)))
         .limit(1);
 
       if (!subscription) {

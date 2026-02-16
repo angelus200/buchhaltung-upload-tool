@@ -146,7 +146,9 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
             stripePriceId: priceId,
             plan: plan,
             status: status as any,
-            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            currentPeriodEnd: (subscription as any).current_period_end
+              ? new Date((subscription as any).current_period_end * 1000)
+              : null,
           })
           .where(eq(subscriptions.stripeCustomerId, customerId));
 
