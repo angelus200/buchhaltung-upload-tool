@@ -55,10 +55,17 @@ export default function ProtectedRoute({ children, requireSubscription = true }:
       );
     }
 
-    // Kein aktives Abo → Redirect zur Landing Page
-    if (!subscription || subscription.status !== "active") {
-      console.log("🔵 No active subscription, redirecting to landing page");
+    // BESTANDSKUNDEN-SCHUTZ:
+    // User ohne Subscription in DB = Bestandskunde (vor Stripe-Integration) → Durchlassen
+    // User mit Subscription aber status !== "active" = Neukunde mit abgelaufenem Abo → Blockieren
+    if (subscription && subscription.status !== "active") {
+      console.log("🔵 Inactive subscription found, redirecting to landing page");
       return <Redirect to="/" />;
+    }
+
+    // Kein Subscription-Eintrag = Bestandskunde → Durchlassen
+    if (!subscription) {
+      console.log("🔵 No subscription found - legacy user, allowing access");
     }
   }
 

@@ -19,10 +19,10 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
 
-  // Wenn bereits eingeloggt, zum Dashboard weiterleiten
+  // Wenn bereits eingeloggt, zur App weiterleiten
   useEffect(() => {
     if (user && !isLoading) {
-      setLocation("/dashboard");
+      setLocation("/app");
     }
   }, [user, isLoading, setLocation]);
 
@@ -138,7 +138,7 @@ export default function Login() {
                 <TabsContent value="signin" className="mt-0">
                   <SignIn
                     routing="hash"
-                    afterSignInUrl="/dashboard"
+                    afterSignInUrl="/app"
                     appearance={{
                       elements: {
                         rootBox: "w-full",
@@ -152,7 +152,7 @@ export default function Login() {
                 <TabsContent value="signup" className="mt-0">
                   <SignUp
                     routing="hash"
-                    afterSignUpUrl="/dashboard"
+                    afterSignUpUrl="/app"
                     appearance={{
                       elements: {
                         rootBox: "w-full",

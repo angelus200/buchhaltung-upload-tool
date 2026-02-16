@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, ArrowRight, Sparkles } from "lucide-react";
@@ -63,7 +64,14 @@ export default function LandingPage() {
             <Sparkles className="w-8 h-8 text-cyan-600" />
             <h1 className="text-2xl font-bold text-gray-900">Buchhaltung-KI</h1>
           </div>
-          <p className="text-sm text-gray-600">by Non Dom Group</p>
+          <div className="flex items-center gap-4">
+            <Link href="/login">
+              <Button variant="ghost" className="text-gray-700 hover:text-cyan-600">
+                Anmelden
+              </Button>
+            </Link>
+            <p className="text-sm text-gray-600 hidden md:block">by Non Dom Group</p>
+          </div>
         </div>
       </header>
 
