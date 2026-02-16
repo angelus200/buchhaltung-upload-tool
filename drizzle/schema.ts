@@ -1674,3 +1674,40 @@ export const dropboxSyncLog = mysqlTable("dropbox_sync_log", {
 
 export type DropboxSyncLog = typeof dropboxSyncLog.$inferSelect;
 export type InsertDropboxSyncLog = typeof dropboxSyncLog.$inferInsert;
+
+/**
+ * Stripe Subscriptions - Verwaltung der monatlichen Abos
+ */
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  clerkUserId: varchar("clerkUserId", { length: 255 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }).notNull(),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  stripePriceId: varchar("stripePriceId", { length: 255 }),
+  plan: mysqlEnum("plan", ["starter", "business", "enterprise"]).notNull(),
+  status: mysqlEnum("status", ["active", "canceled", "past_due", "trialing", "incomplete"]).notNull().default("incomplete"),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  email: varchar("email", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+/**
+ * Onboarding Orders - Einmalige Pakete (Basis, Komplett, Schulungen)
+ */
+export const onboardingOrders = mysqlTable("onboarding_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }).notNull(),
+  clerkUserId: varchar("clerkUserId", { length: 255 }),
+  packageType: mysqlEnum("packageType", ["basis", "komplett", "enterprise", "schulung_einzel", "schulung_team", "schulung_intensiv"]).notNull(),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+  status: mysqlEnum("status", ["paid", "pending", "refunded"]).notNull().default("pending"),
+  amount: int("amount").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OnboardingOrder = typeof onboardingOrders.$inferSelect;
+export type InsertOnboardingOrder = typeof onboardingOrders.$inferInsert;

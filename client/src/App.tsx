@@ -41,6 +41,9 @@ import Jahresabschluss from "./pages/Jahresabschluss";
 import Hilfe from "./pages/Hilfe";
 import SteuerberaterHandbuch from "./pages/SteuerberaterHandbuch";
 import MwstAbrechnung from "./pages/MwstAbrechnung";
+import LandingPage from "./pages/LandingPage";
+import SignUpAfterPayment from "./pages/SignUpAfterPayment";
+import Setup from "./pages/Setup";
 import Auszuege from "./pages/Auszuege";
 import Finanzierungen from "./pages/Finanzierungen";
 import Buchungsvorschlaege from "./pages/Buchungsvorschlaege";
@@ -53,8 +56,17 @@ function Router() {
   return (
     <Switch>
       {/* Öffentliche Seiten */}
+      <Route path={"/"} component={LandingPage} />
+      <Route path={"/sign-up"} component={SignUpAfterPayment} />
       <Route path={"/login"} component={Login} />
       <Route path={"/steuerberater-handbuch"} component={SteuerberaterHandbuch} />
+
+      {/* Setup nach Sign-Up (geschützt) */}
+      <Route path={"/app/setup"}>
+        <ProtectedRoute>
+          <Setup />
+        </ProtectedRoute>
+      </Route>
 
       {/* Admin-Only Routen (nur für Benutzer mit role === 'admin') */}
       <Route path={"/admin"}>
@@ -63,16 +75,17 @@ function Router() {
         </AdminRoute>
       </Route>
 
+      {/* App Hauptseite (geschützt) */}
+      <Route path={"/app"}>
+        <ProtectedRoute>
+          <Home />
+        </ProtectedRoute>
+      </Route>
+
       {/* Geschützte Routen (für alle authentifizierten Benutzer) */}
       <Route path={"/dashboard"}>
         <ProtectedRoute>
           <Dashboard />
-        </ProtectedRoute>
-      </Route>
-
-      <Route path={"/"}>
-        <ProtectedRoute>
-          <Home />
         </ProtectedRoute>
       </Route>
 
