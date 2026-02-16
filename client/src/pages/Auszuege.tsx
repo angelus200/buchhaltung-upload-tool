@@ -292,7 +292,7 @@ export default function Auszuege() {
       uploadMutation.mutate({
         unternehmenId: selectedUnternehmen,
         typ: uploadTyp,
-        kontoId: uploadKontoId ? parseInt(uploadKontoId) : undefined,
+        kontoId: uploadKontoId ? parseInt(uploadKontoId) : null,
         kontoBezeichnung: uploadKontoBezeichnung || undefined,
         dateiBase64: base64,
         dateiname: uploadedFile.name,

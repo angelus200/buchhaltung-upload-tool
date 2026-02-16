@@ -123,7 +123,7 @@ export const auszuegeRouter = router({
       z.object({
         unternehmenId: z.number(),
         typ: z.enum(["bankkonto", "kreditkarte", "zahlungsdienstleister"]),
-        kontoId: z.number().optional(),
+        kontoId: z.number().nullable().optional(),
         kontoBezeichnung: z.string().optional(),
         dateiBase64: z.string(),
         dateiname: z.string(),
@@ -155,7 +155,7 @@ export const auszuegeRouter = router({
         const [result] = await db.insert(auszuege).values({
           unternehmenId: input.unternehmenId,
           typ: input.typ,
-          kontoId: input.kontoId,
+          kontoId: input.kontoId ?? null,
           kontoBezeichnung: input.kontoBezeichnung,
           dateiUrl: uploadResult.url,
           dateiname: input.dateiname,
