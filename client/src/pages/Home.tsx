@@ -1446,6 +1446,9 @@ export default function Home() {
                                   belegBetragNetto: buchung.belegBetragNetto ? buchung.belegBetragNetto.replace(",", ".") : undefined,
                                   belegBetragBrutto: buchung.belegBetragBrutto ? buchung.belegBetragBrutto.replace(",", ".") : undefined,
                                   wechselkurs: buchung.wechselkurs || undefined,
+                                  // Zahlungsfelder
+                                  zahlungsstatus: buchung.zahlungsstatus || "offen",
+                                  faelligkeitsdatum: buchung.faelligkeitsdatum || null,
                                 });
 
                                 // 3. Buchung aus der Liste entfernen

@@ -336,6 +336,12 @@ export const buchungenRouter = router({
         belegBetragNetto: z.string().nullable().optional(),
         belegBetragBrutto: z.string().nullable().optional(),
         wechselkurs: z.string().nullable().optional(),
+        // Zahlungsfelder
+        zahlungsstatus: z.enum(["offen", "teilweise_bezahlt", "bezahlt", "ueberfaellig"]).optional(),
+        faelligkeitsdatum: z.string().nullable().optional(),
+        bezahltAm: z.string().nullable().optional(),
+        bezahlterBetrag: z.string().nullable().optional(),
+        zahlungsreferenz: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -357,6 +363,10 @@ export const buchungenRouter = router({
         belegdatum,
         company.wirtschaftsjahrBeginn
       );
+
+      // Date-Konvertierung für Zahlungsfelder
+      const faelligkeitsdatum = input.faelligkeitsdatum ? new Date(input.faelligkeitsdatum) : null;
+      const bezahltAm = input.bezahltAm ? new Date(input.bezahltAm) : null;
 
       // Doppelbuchungsprüfung: Suche nach ähnlichen Buchungen
       // Gleiche Kombination = gleiches Datum + gleicher Betrag + gleicher Geschäftspartner
@@ -390,6 +400,8 @@ export const buchungenRouter = router({
       const values: InsertBuchung = {
         ...input,
         belegdatum,
+        faelligkeitsdatum,
+        bezahltAm,
         nettobetrag: input.nettobetrag,
         steuersatz: input.steuersatz,
         bruttobetrag: input.bruttobetrag,
