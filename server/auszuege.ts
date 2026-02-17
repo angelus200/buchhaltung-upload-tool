@@ -151,6 +151,20 @@ export const auszuegeRouter = router({
           input.typ
         );
 
+        // TEMPORÄR — Debug-Logging VOR dem INSERT
+        console.log('🔴 AUSZUG-UPLOAD DEBUG:', {
+          saldoAnfang_raw: input.saldoAnfang,
+          saldoAnfang_type: typeof input.saldoAnfang,
+          saldoAnfang_trimmed: input.saldoAnfang?.trim(),
+          saldoAnfang_result: input.saldoAnfang?.trim() || null,
+          saldoEnde_raw: input.saldoEnde,
+          saldoEnde_type: typeof input.saldoEnde,
+          saldoEnde_trimmed: input.saldoEnde?.trim(),
+          saldoEnde_result: input.saldoEnde?.trim() || null,
+          kontoBezeichnung_raw: input.kontoBezeichnung,
+          kontoBezeichnung_result: input.kontoBezeichnung?.trim() || null,
+        });
+
         // Auszug in Datenbank speichern
         const [result] = await db.insert(auszuege).values({
           unternehmenId: input.unternehmenId,
