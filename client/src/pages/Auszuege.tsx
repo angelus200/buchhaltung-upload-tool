@@ -298,8 +298,8 @@ export default function Auszuege() {
         dateiname: uploadedFile.name,
         zeitraumVon: uploadZeitraumVon,
         zeitraumBis: uploadZeitraumBis,
-        saldoAnfang: uploadSaldoAnfang || undefined,
-        saldoEnde: uploadSaldoEnde || undefined,
+        saldoAnfang: uploadSaldoAnfang?.trim() || undefined,
+        saldoEnde: uploadSaldoEnde?.trim() || undefined,
         waehrung: "EUR",
       });
     } catch (error) {
