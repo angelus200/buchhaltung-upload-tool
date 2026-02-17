@@ -483,16 +483,32 @@ export default function Auszuege() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedAuszug(auszug.id);
-                              setDetailDialogOpen(true);
-                            }}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedAuszug(auszug.id);
+                                setDetailDialogOpen(true);
+                              }}
+                              title="Ansehen"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm("Auszug wirklich löschen?")) {
+                                  deleteMutation.mutate({ id: auszug.id });
+                                }
+                              }}
+                              disabled={deleteMutation.isPending}
+                              title="Löschen"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
