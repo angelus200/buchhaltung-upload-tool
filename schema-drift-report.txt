@@ -1,0 +1,733 @@
+SCHEMA-DRIFT REPORT
+Generiert: 2026-02-18T11:55:37.985Z
+
+Tabellen geprüft: 41
+Tabellen existieren: 41
+Tabellen fehlen: 0
+
+============================================================
+
+
+=== USERS ===
+Spalten: 9
+  - id: int NOT NULL
+  - clerkId: varchar(64) NOT NULL
+  - name: text
+  - email: varchar(320)
+  - loginMethod: varchar(64)
+  - role: enum('user','admin') NOT NULL DEFAULT user
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+  - lastSignedIn: timestamp NOT NULL DEFAULT now()
+
+=== UNTERNEHMEN ===
+Spalten: 25
+  - id: int NOT NULL
+  - name: varchar(255) NOT NULL
+  - rechtsform: varchar(100)
+  - steuernummer: varchar(50)
+  - ustIdNr: varchar(50)
+  - handelsregister: varchar(100)
+  - strasse: varchar(255)
+  - plz: varchar(10)
+  - ort: varchar(100)
+  - landCode: enum('DE','AT','CH','UK','CY') NOT NULL DEFAULT DE
+  - land: varchar(100) DEFAULT Deutschland
+  - waehrung: enum('EUR','CHF','GBP') NOT NULL DEFAULT EUR
+  - telefon: varchar(50)
+  - email: varchar(320)
+  - website: varchar(255)
+  - kontenrahmen: enum('SKR03','SKR04','OeKR','RLG','KMU','OR','UK_GAAP','IFRS','CY_GAAP') NOT NULL DEFAULT SKR03
+  - wirtschaftsjahrBeginn: int NOT NULL DEFAULT 1
+  - beraternummer: varchar(20)
+  - mandantennummer: varchar(20)
+  - farbe: varchar(20) DEFAULT #0d9488
+  - logoUrl: text
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - createdBy: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== USER_UNTERNEHMEN ===
+Spalten: 12
+  - id: int NOT NULL
+  - userId: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - rolle: enum('admin','buchhalter','viewer') NOT NULL DEFAULT buchhalter
+  - buchungenLesen: tinyint(1) NOT NULL DEFAULT 1
+  - buchungenSchreiben: tinyint(1) NOT NULL DEFAULT 0
+  - stammdatenLesen: tinyint(1) NOT NULL DEFAULT 1
+  - stammdatenSchreiben: tinyint(1) NOT NULL DEFAULT 0
+  - berichteLesen: tinyint(1) NOT NULL DEFAULT 1
+  - berichteExportieren: tinyint(1) NOT NULL DEFAULT 0
+  - einladungenVerwalten: tinyint(1) NOT NULL DEFAULT 0
+  - createdAt: timestamp NOT NULL DEFAULT now()
+
+=== KREDITOREN ===
+Spalten: 24
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - kontonummer: varchar(20) NOT NULL
+  - name: varchar(255) NOT NULL
+  - kurzbezeichnung: varchar(50)
+  - strasse: varchar(255)
+  - plz: varchar(10)
+  - ort: varchar(100)
+  - land: varchar(100)
+  - telefon: varchar(50)
+  - email: varchar(320)
+  - ustIdNr: varchar(50)
+  - steuernummer: varchar(50)
+  - iban: varchar(34)
+  - bic: varchar(11)
+  - zahlungsziel: int DEFAULT 30
+  - skonto: decimal(5,2)
+  - skontofrist: int
+  - standardSachkonto: varchar(20)
+  - notizen: text
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+  - datevKontonummer: varchar(20)
+
+=== DEBITOREN ===
+Spalten: 19
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - kontonummer: varchar(20) NOT NULL
+  - name: varchar(255) NOT NULL
+  - kurzbezeichnung: varchar(50)
+  - strasse: varchar(255)
+  - plz: varchar(10)
+  - ort: varchar(100)
+  - land: varchar(100)
+  - telefon: varchar(50)
+  - email: varchar(320)
+  - ustIdNr: varchar(50)
+  - kreditlimit: decimal(15,2)
+  - zahlungsziel: int DEFAULT 14
+  - notizen: text
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+  - datevKontonummer: varchar(20)
+
+=== ANLAGEVERMOEGEN ===
+Spalten: 18
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - kontonummer: varchar(20) NOT NULL
+  - bezeichnung: varchar(255) NOT NULL
+  - kategorie: varchar(100)
+  - anschaffungsdatum: date
+  - anschaffungskosten: decimal(15,2)
+  - nutzungsdauer: int
+  - abschreibungsmethode: enum('linear','degressiv','keine') DEFAULT linear
+  - restwert: decimal(15,2)
+  - standort: varchar(255)
+  - inventarnummer: varchar(50)
+  - seriennummer: varchar(100)
+  - notizen: text
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+  - sachkonto: varchar(20)
+
+=== BETEILIGUNGEN ===
+Spalten: 15
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - kontonummer: varchar(20) NOT NULL
+  - name: varchar(255) NOT NULL
+  - rechtsform: varchar(100)
+  - anteil: decimal(5,2)
+  - buchwert: decimal(15,2)
+  - erwerbsdatum: date
+  - sitz: varchar(255)
+  - handelsregister: varchar(100)
+  - notizen: text
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+  - sachkonto: varchar(20)
+
+=== GESELLSCHAFTER ===
+Spalten: 17
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - kontonummer: varchar(20) NOT NULL
+  - name: varchar(255) NOT NULL
+  - typ: enum('natuerlich','juristisch') DEFAULT natuerlich
+  - anteil: decimal(5,2)
+  - einlage: decimal(15,2)
+  - eintrittsdatum: date
+  - strasse: varchar(255)
+  - plz: varchar(10)
+  - ort: varchar(100)
+  - steuerId: varchar(50)
+  - notizen: text
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+  - sachkonto: varchar(20)
+
+=== BANKKONTEN ===
+Spalten: 15
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - kontonummer: varchar(20) NOT NULL
+  - bezeichnung: varchar(255) NOT NULL
+  - bankname: varchar(255)
+  - iban: varchar(34)
+  - bic: varchar(11)
+  - kontotyp: enum('girokonto','sparkonto','festgeld','kreditkarte','sonstig') DEFAULT girokonto
+  - waehrung: varchar(3) DEFAULT EUR
+  - notizen: text
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+  - sachkonto: varchar(20)
+  - anfangsbestand: decimal(15,2) DEFAULT 0.00
+
+=== KOSTENSTELLEN ===
+Spalten: 10
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - nummer: varchar(20) NOT NULL
+  - bezeichnung: varchar(255) NOT NULL
+  - verantwortlicher: varchar(255)
+  - budget: decimal(15,2)
+  - notizen: text
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== VERTRAEGE ===
+Spalten: 17
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - bezeichnung: varchar(255) NOT NULL
+  - vertragsart: enum('miete','leasing','wartung','versicherung','abo','sonstig') DEFAULT sonstig
+  - vertragspartner: varchar(255)
+  - vertragsnummer: varchar(100)
+  - beginn: date
+  - ende: date
+  - kuendigungsfrist: varchar(100)
+  - monatlicheBetrag: decimal(15,2)
+  - zahlungsrhythmus: enum('monatlich','quartalsweise','halbjaehrlich','jaehrlich') DEFAULT monatlich
+  - buchungskonto: varchar(20)
+  - kostenstelleId: int
+  - notizen: text
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== BUCHUNGEN ===
+Spalten: 40
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - buchungsart: enum('aufwand','ertrag','anlage','sonstig') NOT NULL
+  - belegdatum: date NOT NULL
+  - belegnummer: varchar(50) NOT NULL
+  - geschaeftspartnerTyp: enum('kreditor','debitor','gesellschafter','sonstig') NOT NULL
+  - geschaeftspartner: varchar(255) NOT NULL
+  - geschaeftspartnerKonto: varchar(20) NOT NULL
+  - sachkonto: varchar(20) NOT NULL
+  - kostenstelleId: int
+  - nettobetrag: decimal(15,2) NOT NULL
+  - steuersatz: decimal(5,2) NOT NULL
+  - bruttobetrag: decimal(15,2) NOT NULL
+  - buchungstext: text
+  - belegUrl: varchar(500)
+  - status: enum('entwurf','geprueft','exportiert') NOT NULL DEFAULT entwurf
+  - exportiertAm: timestamp
+  - zahlungsstatus: enum('offen','teilweise_bezahlt','bezahlt','ueberfaellig') NOT NULL DEFAULT offen
+  - faelligkeitsdatum: date
+  - bezahltAm: date
+  - bezahlterBetrag: decimal(15,2)
+  - zahlungsreferenz: varchar(100)
+  - createdBy: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+  - sollKonto: varchar(20)
+  - habenKonto: varchar(20)
+  - datevBelegnummer: varchar(50)
+  - datevBuchungszeile: int
+  - datevBelegId: varchar(100)
+  - wirtschaftsjahr: int
+  - periode: int
+  - datevBuchungstext: text
+  - importQuelle: enum('manuell','datev_gdpdu','datev_csv','datev_ascii','api')
+  - importDatum: timestamp
+  - importReferenz: varchar(255)
+  - belegWaehrung: varchar(3)
+  - belegBetragNetto: decimal(15,2)
+  - belegBetragBrutto: decimal(15,2)
+  - wechselkurs: decimal(10,6)
+
+=== NOTIZEN ===
+Spalten: 9
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - titel: varchar(255) NOT NULL
+  - kategorie: enum('vertrag','kreditor','debitor','buchung','allgemein') DEFAULT allgemein
+  - bezug: varchar(255)
+  - inhalt: text
+  - createdBy: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== AKTIVITAETSPROTOKOLL ===
+Spalten: 11
+  - id: int NOT NULL
+  - unternehmenId: int
+  - userId: int NOT NULL
+  - aktion: enum('buchung_erstellt','buchung_bearbeitet','buchung_geloescht','buchung_exportiert','stammdaten_erstellt','stammdaten_bearbeitet','stammdaten_geloescht','unternehmen_erstellt','unternehmen_bearbeitet','benutzer_hinzugefuegt','benutzer_entfernt','rolle_geaendert','berechtigungen_geaendert','login','logout') NOT NULL
+  - entitaetTyp: varchar(50)
+  - entitaetId: int
+  - entitaetName: varchar(255)
+  - details: text
+  - ipAdresse: varchar(45)
+  - userAgent: varchar(500)
+  - createdAt: timestamp NOT NULL DEFAULT now()
+
+=== BERECHTIGUNGEN ===
+Spalten: 8
+  - id: int NOT NULL
+  - rollenName: enum('admin','buchhalter','viewer') NOT NULL
+  - bereich: varchar(50) NOT NULL
+  - lesen: tinyint(1) NOT NULL DEFAULT 1
+  - erstellen: tinyint(1) NOT NULL DEFAULT 0
+  - bearbeiten: tinyint(1) NOT NULL DEFAULT 0
+  - loeschen: tinyint(1) NOT NULL DEFAULT 0
+  - exportieren: tinyint(1) NOT NULL DEFAULT 0
+
+=== EINLADUNGEN ===
+Spalten: 13
+  - id: int NOT NULL
+  - code: varchar(64) NOT NULL
+  - email: varchar(320) NOT NULL
+  - unternehmenId: int NOT NULL
+  - rolle: enum('admin','buchhalter','viewer') NOT NULL DEFAULT buchhalter
+  - eingeladenVon: int NOT NULL
+  - status: enum('pending','accepted','expired','cancelled') NOT NULL DEFAULT pending
+  - expiresAt: timestamp NOT NULL
+  - acceptedAt: timestamp
+  - acceptedBy: int
+  - nachricht: text
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== SACHKONTEN ===
+Spalten: 12
+  - id: int NOT NULL
+  - unternehmenId: int
+  - kontenrahmen: enum('SKR03','SKR04','OeKR','RLG','KMU','OR','UK_GAAP','IFRS','CY_GAAP') NOT NULL DEFAULT SKR04
+  - kontonummer: varchar(20) NOT NULL
+  - bezeichnung: varchar(255) NOT NULL
+  - kategorie: varchar(100)
+  - kontotyp: enum('aktiv','passiv','aufwand','ertrag','neutral') DEFAULT aufwand
+  - standardSteuersatz: decimal(5,2)
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - notizen: text
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== FINANZAMT_DOKUMENTE ===
+Spalten: 21
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - dokumentTyp: enum('schriftverkehr','bescheid','einspruch','mahnung','anfrage','pruefung','sonstiges') NOT NULL DEFAULT schriftverkehr
+  - steuerart: enum('USt','ESt','KSt','GewSt','LSt','KapESt','sonstige')
+  - zeitraumVon: date
+  - zeitraumBis: date
+  - steuerjahr: int
+  - aktenzeichen: varchar(50)
+  - betreff: varchar(500) NOT NULL
+  - beschreibung: text
+  - eingangsdatum: date NOT NULL
+  - frist: date
+  - betrag: decimal(15,2)
+  - zahlungsfrist: date
+  - status: enum('neu','in_bearbeitung','einspruch','erledigt','archiviert') NOT NULL DEFAULT neu
+  - bezugDokumentId: int
+  - dateiUrl: text
+  - dateiName: varchar(255)
+  - erstelltVon: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== AUFGABEN ===
+Spalten: 17
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - titel: varchar(500) NOT NULL
+  - beschreibung: text
+  - kategorie: enum('finanzamt','buchhaltung','steuern','personal','allgemein','frist','zahlung','pruefung') NOT NULL DEFAULT allgemein
+  - prioritaet: enum('niedrig','normal','hoch','dringend') NOT NULL DEFAULT normal
+  - status: enum('offen','in_bearbeitung','wartend','erledigt','storniert') NOT NULL DEFAULT offen
+  - faelligkeitsdatum: date
+  - erinnerungsdatum: date
+  - zugewiesenAn: int
+  - erstelltVon: int
+  - finanzamtDokumentId: int
+  - erledigtAm: date
+  - erledigtVon: int
+  - notizen: text
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== FA_DOK_VERSIONEN ===
+Spalten: 11
+  - id: int NOT NULL
+  - dokumentId: int NOT NULL
+  - version: int NOT NULL
+  - versionTyp: enum('original','einspruch','antwort','ergaenzung','korrektur','anlage') NOT NULL DEFAULT original
+  - betreff: varchar(500)
+  - beschreibung: text
+  - datum: date NOT NULL
+  - dateiUrl: text
+  - dateiName: varchar(255)
+  - erstelltVon: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+
+=== STB_UEBERGABEN ===
+Spalten: 19
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - bezeichnung: varchar(255) NOT NULL
+  - beschreibung: text
+  - uebergabeart: enum('datev_export','email','portal','persoenlich','post','cloud','sonstig') NOT NULL DEFAULT datev_export
+  - zeitraumVon: date
+  - zeitraumBis: date
+  - uebergabedatum: date NOT NULL
+  - anzahlBuchungen: int DEFAULT 0
+  - anzahlBelege: int DEFAULT 0
+  - gesamtbetrag: decimal(15,2)
+  - status: enum('vorbereitet','uebergeben','bestaetigt','rueckfrage','abgeschlossen') NOT NULL DEFAULT vorbereitet
+  - bestaetigtAm: timestamp
+  - rueckfragen: text
+  - dateiUrl: text
+  - dateiName: varchar(255)
+  - erstelltVon: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== STB_UEB_POS ===
+Spalten: 10
+  - id: int NOT NULL
+  - uebergabeId: int NOT NULL
+  - buchungId: int
+  - finanzamtDokumentId: int
+  - positionstyp: enum('buchung','beleg','dokument','finanzamt') NOT NULL DEFAULT buchung
+  - beschreibung: varchar(500)
+  - betrag: decimal(15,2)
+  - dateiUrl: text
+  - dateiName: varchar(255)
+  - createdAt: timestamp NOT NULL DEFAULT now()
+
+=== STB_RECHNUNGEN ===
+Spalten: 17
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - rechnungsnummer: varchar(100) NOT NULL
+  - rechnungsdatum: date NOT NULL
+  - zeitraumVon: date
+  - zeitraumBis: date
+  - nettobetrag: decimal(15,2) NOT NULL
+  - steuersatz: decimal(5,2) DEFAULT 19.00
+  - bruttobetrag: decimal(15,2) NOT NULL
+  - status: enum('offen','bezahlt','storniert') NOT NULL DEFAULT offen
+  - zahlungsdatum: date
+  - beschreibung: text
+  - dateiUrl: text
+  - dateiName: varchar(255)
+  - erstelltVon: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== STB_RECH_POS ===
+Spalten: 12
+  - id: int NOT NULL
+  - rechnungId: int NOT NULL
+  - positionsnummer: int DEFAULT 1
+  - beschreibung: varchar(500) NOT NULL
+  - kategorie: enum('jahresabschluss','steuererklaerung','buchhaltung','lohnabrechnung','beratung','finanzamt','pruefung','sonstig') NOT NULL DEFAULT sonstig
+  - bewertung: enum('notwendig','vermeidbar_nachfrage','vermeidbar_korrektur','vermeidbar_beleg','vermeidbar_info','unklar') NOT NULL DEFAULT unklar
+  - vermeidbarUrsache: text
+  - menge: decimal(10,2) DEFAULT 1.00
+  - einzelpreis: decimal(15,2) NOT NULL
+  - gesamtpreis: decimal(15,2) NOT NULL
+  - uebergabeId: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+
+=== BUCHUNGSVORLAGEN ===
+Spalten: 16
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - name: varchar(255) NOT NULL
+  - beschreibung: text
+  - sollKonto: varchar(20) NOT NULL
+  - habenKonto: varchar(20) NOT NULL
+  - betrag: decimal(15,2)
+  - buchungstext: varchar(500) NOT NULL
+  - ustSatz: decimal(5,2) NOT NULL DEFAULT 0.00
+  - kategorie: enum('miete','gehalt','versicherung','telefon','internet','energie','fahrzeug','büromaterial','abschreibung','sonstig') NOT NULL DEFAULT sonstig
+  - geschaeftspartner: varchar(255)
+  - farbe: varchar(20)
+  - sortierung: int DEFAULT 0
+  - erstelltVon: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== KONTIERUNGSREGELN ===
+Spalten: 15
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - suchbegriff: varchar(255) NOT NULL
+  - sollKonto: varchar(20) NOT NULL
+  - habenKonto: varchar(20) NOT NULL
+  - ustSatz: decimal(5,2) NOT NULL DEFAULT 0.00
+  - prioritaet: int NOT NULL DEFAULT 0
+  - beschreibung: text
+  - geschaeftspartner: varchar(255)
+  - verwendungen: int NOT NULL DEFAULT 0
+  - erfolgsrate: decimal(5,2) DEFAULT 100.00
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - erstelltVon: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== MONATSABSCHLUSS ===
+Spalten: 12
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - jahr: int NOT NULL
+  - monat: int NOT NULL
+  - status: enum('offen','in_arbeit','geprueft','abgeschlossen','korrektur') NOT NULL DEFAULT offen
+  - abgeschlossenAm: timestamp
+  - abgeschlossenVon: int
+  - gesperrt: tinyint(1) NOT NULL DEFAULT 0
+  - notizen: text
+  - erstelltVon: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== MONATSABSCHLUSS_ITEMS ===
+Spalten: 12
+  - id: int NOT NULL
+  - monatsabschlussId: int NOT NULL
+  - beschreibung: varchar(500) NOT NULL
+  - kategorie: enum('belege','abstimmung','steuer','personal','pruefung','bericht','sonstig') NOT NULL DEFAULT sonstig
+  - erledigt: tinyint(1) NOT NULL DEFAULT 0
+  - erledigtAm: timestamp
+  - erledigtVon: int
+  - pflicht: tinyint(1) NOT NULL DEFAULT 1
+  - sortierung: int DEFAULT 0
+  - notizen: text
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== ARTIKEL ===
+Spalten: 16
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - artikelnummer: varchar(100) NOT NULL
+  - bezeichnung: varchar(255) NOT NULL
+  - beschreibung: text
+  - kategorie: enum('rohstoff','halbfertig','fertigware','handelsware','verbrauchsmaterial') NOT NULL
+  - einheit: enum('stueck','kg','liter','meter','karton') NOT NULL
+  - einkaufspreis: decimal(15,2)
+  - verkaufspreis: decimal(15,2)
+  - mindestbestand: decimal(15,2)
+  - zielbestand: decimal(15,2)
+  - lieferantId: int
+  - sachkontoId: int
+  - aktiv: tinyint(1) NOT NULL DEFAULT 1
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== LAGERORTE ===
+Spalten: 8
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - name: varchar(255) NOT NULL
+  - beschreibung: text
+  - adresse: varchar(500)
+  - istHauptlager: tinyint(1) NOT NULL DEFAULT 0
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== LAGERBESTAENDE ===
+Spalten: 8
+  - id: int NOT NULL
+  - artikelId: int NOT NULL
+  - lagerortId: int NOT NULL
+  - menge: decimal(15,2) NOT NULL DEFAULT 0.00
+  - reservierteMenge: decimal(15,2) DEFAULT 0.00
+  - letzteBewegung: timestamp
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== BESTANDSBEWEGUNGEN ===
+Spalten: 13
+  - id: int NOT NULL
+  - artikelId: int NOT NULL
+  - lagerortId: int NOT NULL
+  - bewegungsart: enum('eingang','ausgang','korrektur','umbuchung','inventur') NOT NULL
+  - menge: decimal(15,2) NOT NULL
+  - vorherMenge: decimal(15,2)
+  - nachherMenge: decimal(15,2)
+  - referenzTyp: varchar(50)
+  - referenzId: int
+  - buchungId: int
+  - notiz: text
+  - erstelltVon: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+
+=== INVENTUREN ===
+Spalten: 11
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - bezeichnung: varchar(255) NOT NULL
+  - stichtag: date NOT NULL
+  - status: enum('geplant','in_arbeit','abgeschlossen','storniert') NOT NULL DEFAULT geplant
+  - lagerortId: int
+  - erstelltVon: int
+  - abgeschlossenVon: int
+  - abgeschlossenAm: timestamp
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== INVENTURPOSITIONEN ===
+Spalten: 12
+  - id: int NOT NULL
+  - inventurId: int NOT NULL
+  - artikelId: int NOT NULL
+  - lagerortId: int NOT NULL
+  - sollMenge: decimal(15,2) NOT NULL
+  - istMenge: decimal(15,2)
+  - differenz: decimal(15,2)
+  - gezaehltVon: int
+  - gezaehltAm: timestamp
+  - kommentar: text
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== EROEFFNUNGSBILANZ ===
+Spalten: 13
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - jahr: int NOT NULL
+  - sachkonto: varchar(20) NOT NULL
+  - kontobezeichnung: varchar(255)
+  - sollbetrag: decimal(15,2) NOT NULL DEFAULT 0.00
+  - habenbetrag: decimal(15,2) NOT NULL DEFAULT 0.00
+  - importQuelle: enum('manuell','datev','api') DEFAULT manuell
+  - importDatum: timestamp
+  - notizen: text
+  - erstelltVon: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== BELEGE ===
+Spalten: 16
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - buchungId: int
+  - datevBelegId: varchar(100)
+  - externeReferenz: varchar(100)
+  - dateiName: varchar(255) NOT NULL
+  - dateiPfad: varchar(500)
+  - dateiUrl: varchar(500)
+  - dateiGroesse: int
+  - dateiTyp: enum('pdf','png','jpg','jpeg','tiff','sonstig') DEFAULT pdf
+  - belegdatum: date
+  - beschreibung: text
+  - notizen: text
+  - uploadedBy: int
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== FINANZKONTEN ===
+Spalten: 20
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - sachkontoId: int
+  - typ: enum('bank','kreditkarte','broker','kasse','paypal','stripe','sonstiges') NOT NULL
+  - name: varchar(255) NOT NULL
+  - kontonummer: varchar(50)
+  - iban: varchar(34)
+  - bic: varchar(11)
+  - bankName: varchar(255)
+  - kreditkartenNummer: varchar(20)
+  - kreditlimit: decimal(15,2)
+  - abrechnungstag: int
+  - depotNummer: varchar(50)
+  - brokerName: varchar(255)
+  - email: varchar(255)
+  - waehrung: varchar(3) DEFAULT EUR
+  - aktiv: tinyint(1) DEFAULT 1
+  - notizen: text
+  - createdAt: timestamp NOT NULL DEFAULT now()
+  - updatedAt: timestamp NOT NULL DEFAULT now()
+
+=== AUSZUEGE ===
+Spalten: 17
+  - id: int NOT NULL
+  - unternehmenId: int NOT NULL
+  - typ: enum('bankkonto','kreditkarte','zahlungsdienstleister') NOT NULL
+  - kontoId: int
+  - kontoBezeichnung: varchar(255)
+  - dateiUrl: text NOT NULL
+  - dateiname: varchar(255) NOT NULL
+  - zeitraumVon: date NOT NULL
+  - zeitraumBis: date NOT NULL
+  - saldoAnfang: decimal(15,2)
+  - saldoEnde: decimal(15,2)
+  - waehrung: varchar(3) DEFAULT EUR
+  - status: enum('neu','in_bearbeitung','abgeschlossen') DEFAULT neu
+  - erstelltVon: varchar(255) NOT NULL
+  - createdAt: timestamp DEFAULT CURRENT_TIMESTAMP
+  - updatedAt: timestamp DEFAULT CURRENT_TIMESTAMP
+  - notizen: text
+
+=== AUSZUG_POSITIONEN ===
+Spalten: 12
+  - id: int NOT NULL
+  - auszugId: int NOT NULL
+  - datum: date NOT NULL
+  - buchungstext: text NOT NULL
+  - betrag: decimal(15,2) NOT NULL
+  - saldo: decimal(15,2)
+  - referenz: varchar(255)
+  - kategorie: varchar(255)
+  - zugeordneteBuchungId: int
+  - status: enum('offen','zugeordnet','ignoriert') DEFAULT offen
+  - createdAt: timestamp DEFAULT CURRENT_TIMESTAMP
+  - updatedAt: timestamp DEFAULT CURRENT_TIMESTAMP
+
+=== SUBSCRIPTIONS ===
+Spalten: 11
+  - id: int NOT NULL
+  - clerkUserId: varchar(255)
+  - stripeCustomerId: varchar(255) NOT NULL
+  - stripeSubscriptionId: varchar(255)
+  - stripePriceId: varchar(255)
+  - plan: enum('starter','business','enterprise') NOT NULL
+  - status: enum('active','canceled','past_due','trialing','incomplete') NOT NULL DEFAULT incomplete
+  - currentPeriodEnd: datetime
+  - email: varchar(255)
+  - createdAt: datetime DEFAULT CURRENT_TIMESTAMP
+  - updatedAt: datetime DEFAULT CURRENT_TIMESTAMP
+
+=== ONBOARDING_ORDERS ===
+Spalten: 8
+  - id: int NOT NULL
+  - stripeCustomerId: varchar(255) NOT NULL
+  - clerkUserId: varchar(255)
+  - packageType: enum('basis','komplett','enterprise','schulung_einzel','schulung_team','schulung_intensiv') NOT NULL
+  - stripePaymentIntentId: varchar(255)
+  - status: enum('paid','pending','refunded') NOT NULL DEFAULT pending
+  - amount: int NOT NULL
+  - createdAt: datetime DEFAULT CURRENT_TIMESTAMP

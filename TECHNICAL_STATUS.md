@@ -1,6 +1,6 @@
 # TECHNICAL_STATUS.md
 ## Buchhaltung-KI.App — Technischer Status
-### Letzte Aktualisierung: 18.02.2026 (20:45 Uhr)
+### Letzte Aktualisierung: 18.02.2026 (22:15 Uhr)
 
 ---
 
@@ -22,7 +22,8 @@
 | Buchungen gesamt | 40.722 (~30 Mio EUR) |
 | Firmen konfiguriert | 6 von 32 (2 DE, 2 AT, 2 CH) |
 | Finanzkonten | 66 über 6 Firmen |
-| Tabelle auszuege | 17 Spalten (inkl. notizen) |
+| Tabellen gesamt | 52 (inkl. 6 neu erstellte) |
+| Schema-Drift Status | ⚠️ 1 Tabelle mit Konflikten (auszuege), 6 Tabellen nachträglich erstellt |
 
 ---
 
@@ -70,14 +71,32 @@
 - **Commit:** d6cbb24
 - **Lesson:** Bei Navigation-Bugs systematisch prüfen: (1) Route existiert in App.tsx, (2) Link zeigt auf korrekte Route, (3) Auth/Redirect konfiguriert, (4) Komponente lädt, (5) Build OK. Keine `/buchungen` Route existiert - nur `/app` für Home.tsx.
 
+### ✅ Schema-Drift: 6 Tabellen fehlen in MySQL
+- **Entdeckt am:** 18.02.2026, vollständige Schema-Analyse
+- **Root Cause:** Drizzle-Schema-Definitionen wurden nicht nach MySQL migriert. Features crashen still bei DB-Zugriff.
+- **Fehlende Tabellen:**
+  1. `finanzierungen` (29 Spalten) — Finanzierungs-Modul
+  2. `finanzierung_zahlungen` (10 Spalten) — Zahlungspläne
+  3. `finanzierung_dokumente` (9 Spalten) — Vertrags-Uploads
+  4. `buchungsvorschlaege` (24 Spalten) — **KI-Vorschläge (Kernfeature!)**
+  5. `dropbox_connections` (20 Spalten) — Dropbox-Integration
+  6. `dropbox_sync_log` (11 Spalten) — Sync-Historie
+- **Fix:** 6 × CREATE TABLE mit korrekten Foreign Keys ausgeführt
+- **Verifizierung:** `SHOW TABLES` + `DESCRIBE` für alle Tabellen erfolgreich
+- **Impact:** Finanzierungs-Modul, KI-Buchungsvorschläge und Dropbox-Integration jetzt funktionsfähig
+- **Commit:** [wird gepusht]
+- **Lesson:** Schema-Drift ist kritisch. Empfehlung: `drizzle-kit push` in CI/CD-Pipeline integrieren + wöchentlicher Schema-Check via Cron-Job. Vollständiger Report: `SCHEMA-DRIFT-REPORT.md`
+
 ---
 
 ## OFFENE BUGS / AUFGABEN
 
-### PRIO 1 — Schema-Drift prüfen
-- DESCRIBE für ALLE Tabellen gegen drizzle/schema.ts vergleichen
-- Es könnten weitere fehlende Spalten existieren
-- **Status:** ⬜ Offen
+### PRIO 1 — Schema-Drift vollständig beheben
+- ✅ **ERLEDIGT:** Vollständige Analyse durchgeführt (42 Tabellen, 52 in MySQL)
+- ✅ **ERLEDIGT:** 6 fehlende Tabellen erstellt (finanzierungen, buchungsvorschlaege, dropbox_*)
+- ⬜ **OFFEN:** `auszuege` Tabelle hat 4 Spalten-Konflikte (erstelltVon varchar statt int, Nullable-Unterschiede)
+- ⬜ **OFFEN:** 4 Legacy-Tabellen in MySQL prüfen (broker_accounts, checked_duplicates, credit_cards, payment_providers)
+- **Status:** 🟡 Teilweise behoben — kritische Tabellen erstellt, Spalten-Drift offen
 
 ### PRIO 2 — STB-Positionen nicht sichtbar nach Speichern
 - 3x gemeldet
@@ -111,6 +130,13 @@
 
 | Datum | Tabelle | Problem | Fix | Status |
 |-------|---------|---------|-----|--------|
+| 18.02.2026 | finanzierungen | Tabelle fehlte komplett in MySQL | CREATE TABLE (29 Spalten) | ✅ Behoben |
+| 18.02.2026 | finanzierung_zahlungen | Tabelle fehlte komplett in MySQL | CREATE TABLE (10 Spalten) | ✅ Behoben |
+| 18.02.2026 | finanzierung_dokumente | Tabelle fehlte komplett in MySQL | CREATE TABLE (9 Spalten) | ✅ Behoben |
+| 18.02.2026 | buchungsvorschlaege | Tabelle fehlte komplett in MySQL | CREATE TABLE (24 Spalten) | ✅ Behoben |
+| 18.02.2026 | dropbox_connections | Tabelle fehlte komplett in MySQL | CREATE TABLE (20 Spalten) | ✅ Behoben |
+| 18.02.2026 | dropbox_sync_log | Tabelle fehlte komplett in MySQL | CREATE TABLE (11 Spalten) | ✅ Behoben |
+| 18.02.2026 | auszuege | Spalte `erstelltVon` ist varchar statt int, 3 Spalten nullable statt NOT NULL | — | ⬜ Offen |
 | 17.02.2026 | auszuege | Spalte `notizen` fehlte in MySQL | ALTER TABLE ADD COLUMN | ✅ Behoben |
 
 ---
@@ -130,6 +156,8 @@
 6. **Date-Konvertierung explizit machen.** Frontend sendet Strings, DB erwartet Date-Objekte. Immer `new Date(input.feld)` vor dem INSERT.
 
 7. **Kein Refactoring beim Bug-Fixen.** Redundante aber funktionierende Zeilen stehen lassen. Nur den Bug fixen, nicht nebenbei aufräumen.
+
+8. **Schema-Drift kann Features still crashen lassen.** 6 komplett fehlende Tabellen führten dazu dass Finanzierungen, Buchungsvorschläge und Dropbox-Integration unbenutzbar waren ohne Fehlermeldung im Frontend. Empfehlung: (1) `drizzle-kit push` in CI/CD-Pipeline, (2) Wöchentlicher automatisierter Schema-Check, (3) Backend-Startup-Check für kritische Tabellen.
 
 ---
 
