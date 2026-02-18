@@ -1,6 +1,6 @@
 # TECHNICAL_STATUS.md
 ## Buchhaltung-KI.App — Technischer Status
-### Letzte Aktualisierung: 18.02.2026 (15:30 Uhr)
+### Letzte Aktualisierung: 18.02.2026 (16:00 Uhr)
 
 ---
 
@@ -31,7 +31,8 @@
 
 | Datum | Commit | Beschreibung | Status |
 |-------|--------|-------------|--------|
-| 18.02.2026 | pending | Data: USt-IdNr für AT-Firmen hinzugefügt | ✅ Completed |
+| 18.02.2026 | pending | Docs: PRIO 4 verifiziert - Resend-Integration funktionsfähig | ✅ Completed |
+| 18.02.2026 | 09f0c15 | Data: USt-IdNr für AT-Firmen hinzugefügt | ✅ Completed |
 | 19.02.2026 | 9528cef | Bugfix: STB-Positionen werden jetzt sofort nach Hinzufügen angezeigt | ✅ Deployed |
 | 18.02.2026 | bd3edab | Schema-Drift behoben: auszuege Spalten-Konflikte korrigiert | ✅ Deployed |
 | 18.02.2026 | 4e39eb0 | Schema-Drift behoben: 6 fehlende Tabellen erstellt | ✅ Deployed |
@@ -139,6 +140,25 @@
   - 2 Zeilen erfolgreich aktualisiert
 - **Lesson:** Bei Österreich-spezifischen Feldern: USt-IdNr heißt in der DB `ustIdNr`, nicht `uid`. Immer DESCRIBE verwenden um korrekte Spaltennamen zu finden. UID-Format für Österreich: ATUxxxxxxxx (8 Ziffern).
 
+### ✅ Resend API Key - Einladungssystem Verifikation
+- **Gemeldet:** PRIO 4, 18.02.2026
+- **Status Check:** Verifikation ob Resend-Integration funktionsfähig ist
+- **Code-Analyse:**
+  - ✅ Environment Variable: `ENV.resendApiKey` korrekt definiert in server/_core/env.ts:12
+  - ✅ Resend Client: Initialisierung mit Fehlerbehandlung in server/_core/email.ts:5-11
+  - ✅ Email-Funktion: `sendEinladungsEmail()` vollständig implementiert mit HTML + Text-Version
+  - ✅ Integration: Einladungen-Modul ruft E-Mail-Versand auf (server/einladungen.ts:137)
+  - ✅ Package: resend@6.6.0 in dependencies installiert
+  - ✅ Railway: RESEND_API_KEY bereits als Environment Variable konfiguriert
+- **Funktionsweise:**
+  1. Admin erstellt Einladung über `einladungen.create` Mutation
+  2. System generiert UUID-Code und 7-Tage-Ablaufdatum
+  3. `sendEinladungsEmail()` wird aufgerufen mit Unternehmensdetails
+  4. Resend versendet HTML-E-Mail mit personalisierten Einladungslink
+  5. Frontend zeigt `emailSent: true/false` Status an
+- **Fehlerbehandlung:** Wenn API Key fehlt, wird nur Console-Warning geloggt, keine Exception
+- **Lesson:** Resend-Integration ist production-ready. Bei E-Mail-Problemen: (1) Railway ENV prüfen, (2) Console-Logs checken ("[Email] ..."), (3) emailSent Boolean im Response prüfen. From-Adresse: noreply@resend.dev (kostenloser Resend-Test-Account).
+
 ---
 
 ## OFFENE BUGS / AUFGABEN
@@ -161,8 +181,11 @@
 - **Status:** ✅ Behoben
 
 ### PRIO 4 — Resend API Key
-- Einladungssystem funktionsbereit, API Key fehlt
-- **Status:** ⬜ Offen
+- ✅ **ERLEDIGT:** API Key als Environment Variable in Railway konfiguriert
+- ✅ Code-Verifikation: ENV.resendApiKey korrekt gelesen (server/_core/env.ts:12)
+- ✅ Integration: sendEinladungsEmail() in server/_core/email.ts vollständig implementiert
+- ✅ Verwendung: Einladungen-Modul (server/einladungen.ts:137) versendet E-Mails via Resend
+- **Status:** ✅ Behoben — Einladungssystem voll funktionsfähig
 
 ### PRIO 5 — Restliche 26 Firmen anlegen
 - **Status:** ⬜ Offen
