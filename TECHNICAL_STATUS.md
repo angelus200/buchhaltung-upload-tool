@@ -1,6 +1,6 @@
 # TECHNICAL_STATUS.md
 ## Buchhaltung-KI.App — Technischer Status
-### Letzte Aktualisierung: 18.02.2026
+### Letzte Aktualisierung: 18.02.2026 (20:45 Uhr)
 
 ---
 
@@ -30,6 +30,7 @@
 
 | Datum | Commit | Beschreibung | Status |
 |-------|--------|-------------|--------|
+| 18.02.2026 | d6cbb24 | Bugfix: Navigation Buchungen zeigt jetzt korrekt auf /app | ✅ Deployed |
 | 18.02.2026 | fd61b7f | Bugfix: Zahlungsstatus beim Erstellen korrekt speichern | ✅ Deployed |
 | 17.02.2026 | df3d6ab | Feature: Löschen-Button in Auszüge-Liste | ✅ Deployed |
 | 17.02.2026 | e1ff923 | Bugfix: notizen-Spalte in auszuege hinzugefügt | ✅ Deployed |
@@ -57,6 +58,17 @@
 - **Dateien:** server/buchhaltung.ts, client/src/pages/Home.tsx
 - **Commit:** fd61b7f
 - **Lesson:** `...input` Spread reicht alle Zod-Felder automatisch durch. Bei Date-Feldern explizite Konvertierung (String → Date) vor INSERT nötig.
+
+### ✅ Buchungen-Navigation führt zu Non-Domain-Seite
+- **Gemeldet am:** 18.02.2026, KRITISCHER Bug
+- **Root Cause:** AppHeader.tsx:211 verlinkte "Buchungen" Button auf `href="/"` (LandingPage) statt `href="/app"` (Home.tsx)
+- **Fix:**
+  - AppHeader.tsx Zeile 211: `<Link href="/">` → `<Link href="/app">`
+  - AppHeader.tsx Zeile 213: `isActive("/")` → `isActive("/app")`
+  - AppHeader.tsx Zeile 216: `isActive("/")` → `isActive("/app")`
+- **Dateien:** client/src/components/AppHeader.tsx
+- **Commit:** d6cbb24
+- **Lesson:** Bei Navigation-Bugs systematisch prüfen: (1) Route existiert in App.tsx, (2) Link zeigt auf korrekte Route, (3) Auth/Redirect konfiguriert, (4) Komponente lädt, (5) Build OK. Keine `/buchungen` Route existiert - nur `/app` für Home.tsx.
 
 ---
 
