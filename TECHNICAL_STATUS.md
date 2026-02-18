@@ -1,6 +1,6 @@
 # TECHNICAL_STATUS.md
 ## Buchhaltung-KI.App — Technischer Status
-### Letzte Aktualisierung: 18.02.2026 (16:00 Uhr)
+### Letzte Aktualisierung: 18.02.2026 (18:30 Uhr)
 
 ---
 
@@ -31,7 +31,8 @@
 
 | Datum | Commit | Beschreibung | Status |
 |-------|--------|-------------|--------|
-| 18.02.2026 | pending | Docs: PRIO 4 verifiziert - Resend-Integration funktionsfähig | ✅ Completed |
+| 18.02.2026 | d2fa0b4 | Feature: MVP Kontoauszüge → Buchungsvorschläge (Sprint 1) | ✅ Deployed |
+| 18.02.2026 | a94be0c | Docs: PRIO 4 verifiziert - Resend-Integration funktionsfähig | ✅ Completed |
 | 18.02.2026 | 09f0c15 | Data: USt-IdNr für AT-Firmen hinzugefügt | ✅ Completed |
 | 19.02.2026 | 9528cef | Bugfix: STB-Positionen werden jetzt sofort nach Hinzufügen angezeigt | ✅ Deployed |
 | 18.02.2026 | bd3edab | Schema-Drift behoben: auszuege Spalten-Konflikte korrigiert | ✅ Deployed |
@@ -157,7 +158,42 @@
   4. Resend versendet HTML-E-Mail mit personalisierten Einladungslink
   5. Frontend zeigt `emailSent: true/false` Status an
 - **Fehlerbehandlung:** Wenn API Key fehlt, wird nur Console-Warning geloggt, keine Exception
-- **Lesson:** Resend-Integration ist production-ready. Bei E-Mail-Problemen: (1) Railway ENV prüfen, (2) Console-Logs checken ("[Email] ..."), (3) emailSent Boolean im Response prüfen. From-Adresse: noreply@resend.dev (kostenloser Resend-Test-Account).
+- **Lesson:** Resend-Integration ist production-ready. Bei E-Mail-Problemen: (1) Railway ENV prüfen, (2) Console-Logs checken ("[Email] ..."), (3) emailSert Boolean im Response prüfen. From-Adresse: noreply@resend.dev (kostenloser Resend-Test-Account).
+
+---
+
+## NEUE FEATURES (Session 18.02.2026)
+
+### 🚀 Kontoauszüge → Buchungsvorschläge (MVP Sprint 1)
+- **Angefragt von:** Franziska Schmid, 18.02.2026
+- **Dringlichkeit:** Hoch — 01/2026 muss in 2 Wochen buchbar sein
+- **Status:** ✅ MVP deployed (Commit d2fa0b4)
+- **Implementierung:**
+  - **Backend (server/buchungsvorschlaege.ts):**
+    - Neue Funktion: `analyzeBankTransactionAndCreateVorschlag()` (+114 Zeilen)
+    - AI-Prompt speziell für Bank-Transaktionen (nicht Belege!)
+    - Extrahiert: Geschäftspartner + SKR04-Konto aus Buchungstext
+    - Confidence-Bewertung: 0.50-1.00 (realistisch kalibriert)
+    - Kreditor-Matching automatisch via `findKreditorByName()`
+    - HabenKonto: Fest auf "1200" (Bank)
+    - Neue tRPC Procedure: `buchungsvorschlaege.createFromPosition` (+85 Zeilen)
+  - **Frontend (client/src/pages/Auszuege.tsx):**
+    - Sparkles-Button (✨) bei jeder offenen Auszug-Position
+    - Mutation: `createVorschlagMutation` mit Toast + Confidence-Anzeige
+    - Loading-State: Spinner während AI-Analyse
+    - Icon: Lila Sparkles für "AI-powered"
+- **Workflow:**
+  1. User lädt Kontoauszug-CSV hoch → auszug_positionen (funktioniert bereits)
+  2. **NEU:** User klickt ✨ bei Position (z.B. "LASTSCHRIFT Telekom -49.95 EUR")
+  3. Backend: AI analysiert Buchungstext → Konto 6805 (Telefon, Internet), Confidence 0.92
+  4. Frontend: Toast "Buchungsvorschlag erstellt (Confidence: 92%)"
+  5. User geht zu /buchungsvorschlaege → Kann bearbeiten/akzeptieren/ablehnen
+- **AI-Beispiele:**
+  - "LASTSCHRIFT Telekom Deutschland GmbH" → Konto: 6805, Partner: "Telekom Deutschland GmbH"
+  - "Kartenzahlung Shell Tankstelle" → Konto: 6530, Partner: "Shell"
+  - "SEPA PayPal Europe" → Konto: 6300, Partner: "PayPal"
+- **Limitation:** Aktuell nur einzelne Positionen, kein Bulk-Processing (kommt Sprint 2)
+- **Lesson:** AI-Prompt für Transaktionen braucht niedrigere Confidence-Erwartung als bei Belegen (Transaktionen haben weniger Kontext). Typisch 0.60-0.85 statt 0.90-1.00. Duplikat-Check via Position-ID in aiNotizen funktioniert gut.
 
 ---
 
@@ -236,6 +272,8 @@
 8. **Schema-Drift kann Features still crashen lassen.** 6 komplett fehlende Tabellen führten dazu dass Finanzierungen, Buchungsvorschläge und Dropbox-Integration unbenutzbar waren ohne Fehlermeldung im Frontend. Empfehlung: (1) `drizzle-kit push` in CI/CD-Pipeline, (2) Wöchentlicher automatisierter Schema-Check, (3) Backend-Startup-Check für kritische Tabellen.
 
 9. **tRPC/React-Query Cache Race Conditions vermeiden.** Bei Mutations `onSuccess`: `invalidate()` reicht, kein manueller `refetch()` nötig. React-Query macht automatisch Refetch für aktive Queries. `invalidate()` + `refetch()` können Race Conditions haben wo `refetch()` stale cached data zurückgibt bevor `invalidate()` wirksam ist. Immer nur `await utils.query.invalidate()` verwenden, nie zusätzlich `refetch()`.
+
+10. **AI-Prompts für Transaktionen vs. Belege unterscheiden sich.** Bank-Transaktionen haben viel weniger Kontext als Rechnungs-Belege (kein Logo, keine Rechnungsnummer, nur Buchungstext). Daher: (1) Niedrigere Confidence-Erwartung (0.60-0.85 statt 0.90-1.00), (2) Fokus auf Geschäftspartner-Extraktion aus Buchungstext, (3) Mehr Beispiele im Prompt für typische Bank-Patterns (LASTSCHRIFT, SEPA, Kartenzahlung), (4) Duplikat-Check über Position-ID in aiNotizen statt über Beleg-URL.
 
 ---
 
