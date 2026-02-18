@@ -31,6 +31,7 @@
 
 | Datum | Commit | Beschreibung | Status |
 |-------|--------|-------------|--------|
+| 18.02.2026 | bd3edab | Schema-Drift behoben: auszuege Spalten-Konflikte korrigiert | ✅ Deployed |
 | 18.02.2026 | 4e39eb0 | Schema-Drift behoben: 6 fehlende Tabellen erstellt | ✅ Deployed |
 | 18.02.2026 | d6cbb24 | Bugfix: Navigation Buchungen zeigt jetzt korrekt auf /app | ✅ Deployed |
 | 18.02.2026 | fd61b7f | Bugfix: Zahlungsstatus beim Erstellen korrekt speichern | ✅ Deployed |
@@ -102,7 +103,7 @@
   - DESCRIBE auszuege: Alle Spalten korrekt
   - SELECT + JOIN mit users: Foreign Key funktioniert, Daten intakt
   - User-IDs 228 (Cornelia Mayer) und 239 (Franzi Schmid) erfolgreich konvertiert
-- **Commit:** [wird gepusht]
+- **Commit:** bd3edab
 - **Lesson:** Vor Typ-Änderungen (varchar→int) immer: (1) Daten prüfen, (2) Werte validieren (Foreign Key!), (3) Nach Migration JOIN testen um Constraint zu verifizieren.
 
 ---
