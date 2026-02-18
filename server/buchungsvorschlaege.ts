@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { buchungsvorschlaege, kreditoren, buchungen, auszugPositionen, auszuege, InsertBuchungsvorschlag, InsertBuchung } from "../drizzle/schema";
+import { buchungsvorschlaege, kreditoren, buchungen, auszugPositionen, auszuege, unternehmen, InsertBuchungsvorschlag, InsertBuchung } from "../drizzle/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { invokeLLM, type Message } from "./_core/llm";
+import { getAufwandskontenByKontenrahmen, getBankKontoByKontenrahmen, getKontenrahmenName } from "../shared/kontenrahmen";
 
 /**
  * SKR04-Aufwandskonten für AI-Vorschläge
@@ -40,7 +41,22 @@ export async function analyzeBelegAndCreateVorschlag(
   unternehmenId: number,
   belegUrl?: string
 ): Promise<InsertBuchungsvorschlag> {
-  const systemPrompt = `Du bist ein Experte für deutsche Buchhaltung nach SKR04.
+  // Firma laden für Kontenrahmen
+  const db = await getDb();
+  if (!db) throw new Error("Datenbankverbindung nicht verfügbar");
+
+  const [firma] = await db
+    .select()
+    .from(unternehmen)
+    .where(eq(unternehmen.id, unternehmenId))
+    .limit(1);
+
+  const kontenrahmen = firma?.kontenrahmen || "SKR04";
+
+  // Aufwandskonten je nach Kontenrahmen
+  const aufwandskonten = getAufwandskontenByKontenrahmen(kontenrahmen);
+
+  const systemPrompt = `Du bist ein Experte für ${getKontenrahmenName(kontenrahmen)}.
 
 Analysiere diesen Beleg und extrahiere:
 
@@ -54,10 +70,10 @@ Analysiere diesen Beleg und extrahiere:
 8. **Zahlungsziel**: Tage bis Zahlung (falls angegeben)
 9. **IBAN**: Bankverbindung (falls angegeben)
 
-**Buchungsvorschlag (SKR04):**
+**Buchungsvorschlag (${kontenrahmen}):**
 Schlage das passende Aufwandskonto vor:
 
-${Object.entries(SKR04_AUFWANDSKONTEN).map(([konto, bez]) => `- ${konto}: ${bez}`).join("\n")}
+${Object.entries(aufwandskonten).map(([konto, bez]) => `- ${konto}: ${bez}`).join("\n")}
 
 **Begründung**: Erkläre kurz, warum du dieses Konto vorgeschlagen hast.
 
@@ -86,7 +102,7 @@ Antworte NUR mit JSON:
   "ustSatz": number | null,
   "zahlungsziel": number | null,
   "iban": "string" | null,
-  "sollKonto": "string" (SKR04-Konto),
+  "sollKonto": "string" (${kontenrahmen}-Konto),
   "buchungstext": "string" (NUR Lieferantenname, KEINE Kontobeschreibung!),
   "confidence": number (0.00 - 1.00),
   "aiNotizen": "string" (Begründung für Kontowahl)
@@ -211,7 +227,23 @@ export async function analyzeBankTransactionAndCreateVorschlag(
   unternehmenId: number,
   positionId: number
 ): Promise<InsertBuchungsvorschlag> {
-  const systemPrompt = `Du bist ein Experte für deutsche Buchhaltung nach SKR04.
+  // Firma laden für Kontenrahmen
+  const db = await getDb();
+  if (!db) throw new Error("Datenbankverbindung nicht verfügbar");
+
+  const [firma] = await db
+    .select()
+    .from(unternehmen)
+    .where(eq(unternehmen.id, unternehmenId))
+    .limit(1);
+
+  const kontenrahmen = firma?.kontenrahmen || "SKR04";
+
+  // Aufwandskonten und Bankkonto je nach Kontenrahmen
+  const aufwandskonten = getAufwandskontenByKontenrahmen(kontenrahmen);
+  const bankKonto = getBankKontoByKontenrahmen(kontenrahmen);
+
+  const systemPrompt = `Du bist ein Experte für ${getKontenrahmenName(kontenrahmen)}.
 
 Analysiere diese **Bank-Transaktion** (keine Rechnung, nur Buchungstext von der Bank):
 
@@ -221,21 +253,15 @@ Analysiere diese **Bank-Transaktion** (keine Rechnung, nur Buchungstext von der 
 
 Extrahiere:
 1. **Geschäftspartner**: Erkenne den Namen der Firma/Person aus dem Buchungstext
-2. **Buchungsvorschlag (SKR04)**: Welches Aufwandskonto passt?
+2. **Buchungsvorschlag (${kontenrahmen})**: Welches Aufwandskonto passt?
 
-**Verfügbare SKR04-Konten:**
-${Object.entries(SKR04_AUFWANDSKONTEN).map(([konto, bez]) => `- ${konto}: ${bez}`).join("\n")}
-
-**Beispiele:**
-- "LASTSCHRIFT Telekom Deutschland GmbH" → Geschäftspartner: "Telekom Deutschland GmbH", Konto: 6805 (Telefon, Internet)
-- "Kartenzahlung Shell Tankstelle" → Geschäftspartner: "Shell", Konto: 6530 (Kfz-Betriebskosten)
-- "SEPA PayPal Europe" → Geschäftspartner: "PayPal", Konto: 6300 (Sonstige betriebliche Aufwendungen)
-- "Dauerauftrag Vermieter GmbH Miete" → Geschäftspartner: "Vermieter GmbH", Konto: 6310 (Miete)
+**Verfügbare ${kontenrahmen}-Konten:**
+${Object.entries(aufwandskonten).map(([konto, bez]) => `- ${konto}: ${bez}`).join("\n")}
 
 **Confidence-Bewertung:**
-- 0.90-1.00 = Sehr eindeutig (z.B. "Telekom" → 6805)
-- 0.70-0.89 = Wahrscheinlich korrekt (z.B. "Amazon" → 6815 Bürobedarf)
-- 0.50-0.69 = Unsicher (z.B. "Überweisung Schmidt" → ?)
+- 0.90-1.00 = Sehr eindeutig
+- 0.70-0.89 = Wahrscheinlich korrekt
+- 0.50-0.69 = Unsicher
 - 0.00-0.49 = Sehr unsicher
 
 **WICHTIG:**
@@ -247,7 +273,7 @@ ${Object.entries(SKR04_AUFWANDSKONTEN).map(([konto, bez]) => `- ${konto}: ${bez}
 Antworte NUR mit JSON:
 {
   "geschaeftspartner": "string" | null,
-  "sollKonto": "string" (SKR04-Konto, z.B. "6805"),
+  "sollKonto": "string" (${kontenrahmen}-Konto),
   "buchungstext": "string" (NUR Geschäftspartner-Name!),
   "confidence": number (0.00 - 1.00),
   "aiNotizen": "string" (Begründung für Kontowahl und Confidence-Level)"
@@ -297,7 +323,7 @@ Antworte NUR mit JSON:
       zahlungsziel: null,
       iban: null,
       sollKonto: aiData.sollKonto,
-      habenKonto: "1200", // Standard: Bank
+      habenKonto: bankKonto, // Dynamisch je nach Kontenrahmen: SKR04=1200, OeKR=2800, KMU=1020
       buchungstext: aiData.buchungstext || aiData.geschaeftspartner || buchungstext.substring(0, 50),
       geschaeftspartnerKonto: null,
       confidence: aiData.confidence?.toString() || "0.50",

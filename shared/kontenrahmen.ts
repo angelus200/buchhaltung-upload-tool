@@ -310,6 +310,121 @@ export const PERSONENKONTEN = {
   },
 };
 
+// OeKR - Österreichischer Einheitskontenrahmen
+// TODO: Vollständigen Kontenrahmen verifizieren - aktuell nur wichtigste Aufwandskonten
+export const OeKR: Kontenrahmen = {
+  aufwand: [
+    { konto: "4000", bezeichnung: "Handelswarenaufwand" },
+    { konto: "4200", bezeichnung: "Materialaufwand" },
+    { konto: "5000", bezeichnung: "Bezogene Herstellungsleistungen" },
+    { konto: "6000", bezeichnung: "Löhne" },
+    { konto: "6200", bezeichnung: "Gehälter" },
+    { konto: "6300", bezeichnung: "Sozialaufwand" },
+    { konto: "7000", bezeichnung: "Raumkosten" },
+    { konto: "7100", bezeichnung: "Instandhaltung" },
+    { konto: "7200", bezeichnung: "Energie, Entsorgung" },
+    { konto: "7300", bezeichnung: "Telekommunikation" }, // Äquivalent zu SKR04 6805
+    { konto: "7350", bezeichnung: "Porto" },
+    { konto: "7400", bezeichnung: "Bürobedarf" },
+    { konto: "7500", bezeichnung: "Fahrzeugkosten" },
+    { konto: "7600", bezeichnung: "Werbekosten" },
+    { konto: "7650", bezeichnung: "Reisekosten" },
+    { konto: "7700", bezeichnung: "Rechts- und Beratungskosten" },
+    { konto: "7710", bezeichnung: "Buchführungskosten" },
+    { konto: "7750", bezeichnung: "Versicherungen" },
+    { konto: "7800", bezeichnung: "Abschreibungen Sachanlagen" },
+    { konto: "7900", bezeichnung: "Sonstige Aufwendungen" },
+  ],
+  ertrag: [
+    { konto: "8000", bezeichnung: "Umsatzerlöse Inland" },
+    { konto: "8100", bezeichnung: "Umsatzerlöse EU" },
+    { konto: "8200", bezeichnung: "Umsatzerlöse Drittland" },
+    { konto: "8500", bezeichnung: "Erlösschmälerungen" },
+    { konto: "8800", bezeichnung: "Sonstige betriebliche Erträge" },
+  ],
+  anlage: [
+    { konto: "0100", bezeichnung: "Konzessionen" },
+    { konto: "0200", bezeichnung: "Grundstücke" },
+    { konto: "0210", bezeichnung: "Gebäude" },
+    { konto: "0300", bezeichnung: "Maschinen" },
+    { konto: "0400", bezeichnung: "Fahrzeuge" },
+    { konto: "0500", bezeichnung: "Betriebs- und Geschäftsausstattung" },
+    { konto: "0600", bezeichnung: "Beteiligungen" },
+  ],
+  finanz: [
+    { konto: "2000", bezeichnung: "Kasse" },
+    { konto: "2800", bezeichnung: "Bank" }, // Österreich nutzt 2800 für Bank
+    { konto: "2900", bezeichnung: "Schecks" },
+  ],
+  eigenkapital: [
+    { konto: "9000", bezeichnung: "Eigenkapital" },
+    { konto: "9100", bezeichnung: "Kapitalrücklage" },
+    { konto: "9200", bezeichnung: "Gewinnrücklagen" },
+    { konto: "9800", bezeichnung: "Jahresüberschuss/-fehlbetrag" },
+  ],
+  verbindlichkeiten: [
+    { konto: "3000", bezeichnung: "Verbindlichkeiten aus L+L" },
+    { konto: "3500", bezeichnung: "Verbindlichkeiten Finanzamt" },
+    { konto: "3520", bezeichnung: "Umsatzsteuer" },
+    { konto: "3600", bezeichnung: "Sonstige Verbindlichkeiten" },
+  ],
+};
+
+// KMU - Schweizer KMU-Kontenrahmen nach OR
+// TODO: Vollständigen Kontenrahmen verifizieren - aktuell nur wichtigste Aufwandskonten
+export const KMU: Kontenrahmen = {
+  aufwand: [
+    { konto: "4000", bezeichnung: "Materialaufwand" },
+    { konto: "4200", bezeichnung: "Handelswarenaufwand" },
+    { konto: "5000", bezeichnung: "Lohnaufwand" },
+    { konto: "5700", bezeichnung: "Sozialversicherungsaufwand" },
+    { konto: "5800", bezeichnung: "Übriger Personalaufwand" },
+    { konto: "6000", bezeichnung: "Raumaufwand" },
+    { konto: "6100", bezeichnung: "Unterhalt, Reparaturen" },
+    { konto: "6200", bezeichnung: "Fahrzeugaufwand" },
+    { konto: "6300", bezeichnung: "Versicherungen" },
+    { konto: "6400", bezeichnung: "Energie- und Entsorgungsaufwand" },
+    { konto: "6500", bezeichnung: "Verwaltungsaufwand" },
+    { konto: "6510", bezeichnung: "Telefon, Internet" }, // Äquivalent zu SKR04 6805
+    { konto: "6520", bezeichnung: "Porto" },
+    { konto: "6570", bezeichnung: "IT-Kosten" },
+    { konto: "6600", bezeichnung: "Werbeaufwand" },
+    { konto: "6700", bezeichnung: "Sonstiger Betriebsaufwand" },
+    { konto: "6800", bezeichnung: "Abschreibungen Sachanlagen" },
+    { konto: "6900", bezeichnung: "Finanzaufwand" },
+  ],
+  ertrag: [
+    { konto: "3000", bezeichnung: "Produktionserlös" },
+    { konto: "3200", bezeichnung: "Handelserlös" },
+    { konto: "3400", bezeichnung: "Dienstleistungserlös" },
+    { konto: "3600", bezeichnung: "Erlösminderungen" },
+    { konto: "3800", bezeichnung: "Bestandesänderungen" },
+  ],
+  anlage: [
+    { konto: "1100", bezeichnung: "Forderungen aus L+L" },
+    { konto: "1140", bezeichnung: "Vorsteuer" },
+    { konto: "1500", bezeichnung: "Mobile Sachanlagen" },
+    { konto: "1510", bezeichnung: "Fahrzeuge" },
+    { konto: "1520", bezeichnung: "Maschinen" },
+    { konto: "1530", bezeichnung: "Mobilien" },
+    { konto: "1600", bezeichnung: "Immobile Sachanlagen" },
+  ],
+  finanz: [
+    { konto: "1000", bezeichnung: "Kasse" },
+    { konto: "1020", bezeichnung: "Bank" }, // Schweiz nutzt 1020 für Bank
+    { konto: "1030", bezeichnung: "Post" },
+  ],
+  eigenkapital: [
+    { konto: "2800", bezeichnung: "Eigenkapital" },
+    { konto: "2900", bezeichnung: "Jahresgewinn/-verlust" },
+  ],
+  verbindlichkeiten: [
+    { konto: "2000", bezeichnung: "Verbindlichkeiten aus L+L" },
+    { konto: "2200", bezeichnung: "Umsatzsteuer" },
+    { konto: "2300", bezeichnung: "Sonstige kurzfristige Verbindlichkeiten" },
+  ],
+};
+
 // Hilfsfunktion zum Abrufen des Kontenrahmens
 export function getKontenrahmen(typ: "SKR03" | "SKR04"): Kontenrahmen {
   return typ === "SKR04" ? SKR04 : SKR03;
@@ -319,4 +434,42 @@ export function getKontenrahmen(typ: "SKR03" | "SKR04"): Kontenrahmen {
 export function getKontenByTyp(kontenrahmen: "SKR03" | "SKR04", typ: keyof Kontenrahmen): Konto[] {
   const kr = getKontenrahmen(kontenrahmen);
   return kr[typ] || [];
+}
+
+// Hilfsfunktion: Konten-Array zu Map konvertieren
+function kontenToMap(konten: Konto[]): Record<string, string> {
+  return Object.fromEntries(konten.map(k => [k.konto, k.bezeichnung]));
+}
+
+// Aufwandskonten je nach Kontenrahmen (für AI-Prompts)
+export function getAufwandskontenByKontenrahmen(typ: string): Record<string, string> {
+  switch(typ) {
+    case "SKR03": return kontenToMap(SKR03.aufwand);
+    case "SKR04": return kontenToMap(SKR04.aufwand);
+    case "OeKR": return kontenToMap(OeKR.aufwand);
+    case "KMU": return kontenToMap(KMU.aufwand);
+    default: return kontenToMap(SKR04.aufwand); // Fallback auf SKR04
+  }
+}
+
+// Bankkonto je nach Kontenrahmen
+export function getBankKontoByKontenrahmen(typ: string): string {
+  switch(typ) {
+    case "SKR03": return "1200";
+    case "SKR04": return "1200";
+    case "OeKR": return "2800"; // Österreich: Klasse 2 Finanzumlaufvermögen
+    case "KMU": return "1020";  // Schweiz: Bankguthaben
+    default: return "1200";      // Fallback auf SKR04
+  }
+}
+
+// Kontenrahmen-Name für AI-Prompt (mit Sprach-Kontext)
+export function getKontenrahmenName(typ: string): string {
+  switch(typ) {
+    case "SKR03": return "deutsche Buchhaltung nach SKR03";
+    case "SKR04": return "deutsche Buchhaltung nach SKR04";
+    case "OeKR": return "österreichische Buchhaltung nach dem Einheitskontenrahmen (OeKR)";
+    case "KMU": return "Schweizer Buchhaltung nach dem KMU-Kontenrahmen";
+    default: return "deutsche Buchhaltung nach SKR04"; // Fallback
+  }
 }
