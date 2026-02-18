@@ -1,6 +1,6 @@
 # TECHNICAL_STATUS.md
 ## Buchhaltung-KI.App — Technischer Status
-### Letzte Aktualisierung: 18.02.2026 (23:00 Uhr)
+### Letzte Aktualisierung: 18.02.2026 (15:30 Uhr)
 
 ---
 
@@ -31,6 +31,8 @@
 
 | Datum | Commit | Beschreibung | Status |
 |-------|--------|-------------|--------|
+| 18.02.2026 | pending | Data: USt-IdNr für AT-Firmen hinzugefügt | ✅ Completed |
+| 19.02.2026 | 9528cef | Bugfix: STB-Positionen werden jetzt sofort nach Hinzufügen angezeigt | ✅ Deployed |
 | 18.02.2026 | bd3edab | Schema-Drift behoben: auszuege Spalten-Konflikte korrigiert | ✅ Deployed |
 | 18.02.2026 | 4e39eb0 | Schema-Drift behoben: 6 fehlende Tabellen erstellt | ✅ Deployed |
 | 18.02.2026 | d6cbb24 | Bugfix: Navigation Buchungen zeigt jetzt korrekt auf /app | ✅ Deployed |
@@ -106,6 +108,37 @@
 - **Commit:** bd3edab
 - **Lesson:** Vor Typ-Änderungen (varchar→int) immer: (1) Daten prüfen, (2) Werte validieren (Foreign Key!), (3) Nach Migration JOIN testen um Constraint zu verifizieren.
 
+### ✅ STB-Positionen nicht sichtbar nach Speichern
+- **Gemeldet von:** 3x Testerinnen, 18.02.2026
+- **Root Cause:** Race Condition zwischen `invalidate()` und `refetch()` in onSuccess Handler. `refetch()` gab stale cached data zurück bevor `invalidate()` wirksam wurde.
+- **Analyse:**
+  - ✅ Backend: 63 Positionen in DB (`stb_rech_pos`), Query gibt korrekt `{ rechnung, positionen }` zurück
+  - ✅ Frontend: Query und Rendering korrekt, Problem war Cache-Management
+  - 🔴 Bug: `addPositionMutation.onSuccess` rief `refetch()` sofort nach `invalidate()` auf → stale data
+- **Fix:**
+  - `refetchRechnungDetail()` entfernt aus `addPositionMutation` und `deletePositionMutation`
+  - Success-Toast hinzugefügt ("Position hinzugefügt!" / "Position gelöscht!")
+  - React-Query macht automatisch Refetch nach `invalidate()` für aktive Queries
+- **Dateien:** client/src/pages/Steuerberater.tsx (Zeilen 221-234)
+- **Commit:** 9528cef
+- **Lesson:** `invalidate()` + `refetch()` können Race Conditions haben. Besser: Nur `invalidate()` verwenden und automatischen Refetch von React-Query nutzen. Bei tRPC/React-Query Mutations: `invalidate()` reicht, kein manueller `refetch()` nötig.
+
+### ✅ AT-Firmen UID-Nummern fehlten
+- **Gemeldet:** PRIO 3, 18.02.2026
+- **Root Cause:** USt-IdNr (UID) Spalte war bei österreichischen Firmen leer (NULL)
+- **Betroffene Firmen:**
+  - ID 2: commercehelden GmbH (landCode: AT)
+  - ID 3: Emo Retail OG (landCode: AT)
+- **Fix:**
+  - Spaltenname korrekt identifiziert: `ustIdNr` (nicht `uid`)
+  - commercehelden GmbH: ATU80941313 hinzugefügt
+  - Emo Retail OG: ATU65546867 hinzugefügt
+- **Verifizierung:**
+  - Query vor Update: beide Firmen mit ustIdNr = null
+  - Query nach Update: beide Firmen mit korrekten UID-Nummern
+  - 2 Zeilen erfolgreich aktualisiert
+- **Lesson:** Bei Österreich-spezifischen Feldern: USt-IdNr heißt in der DB `ustIdNr`, nicht `uid`. Immer DESCRIBE verwenden um korrekte Spaltennamen zu finden. UID-Format für Österreich: ATUxxxxxxxx (8 Ziffern).
+
 ---
 
 ## OFFENE BUGS / AUFGABEN
@@ -118,13 +151,14 @@
 - **Status:** 🟢 Weitgehend behoben — alle kritischen Schema-Drifts behoben, nur Legacy-Cleanup offen
 
 ### PRIO 2 — STB-Positionen nicht sichtbar nach Speichern
-- 3x gemeldet
-- Prüfen: Landen Positionen überhaupt in DB? Falls ja: Frontend-Rendering. Falls nein: Backend-INSERT
-- **Status:** ⬜ Offen
+- ✅ **ERLEDIGT:** Bug war Race Condition in Frontend Cache Management
+- Root Cause identifiziert: `invalidate()` + `refetch()` Race Condition
+- Fix: `refetch()` entfernt, Success-Toast hinzugefügt
+- **Status:** ✅ Behoben (Commit 9528cef)
 
 ### PRIO 3 — AT-Firmen UID-Nummern
-- commercehelden e.U. und Emo Retail e.U. brauchen UID
-- **Status:** ⬜ Offen
+- ✅ **ERLEDIGT:** commercehelden GmbH (ATU80941313) und Emo Retail OG (ATU65546867)
+- **Status:** ✅ Behoben
 
 ### PRIO 4 — Resend API Key
 - Einladungssystem funktionsbereit, API Key fehlt
@@ -177,6 +211,8 @@
 7. **Kein Refactoring beim Bug-Fixen.** Redundante aber funktionierende Zeilen stehen lassen. Nur den Bug fixen, nicht nebenbei aufräumen.
 
 8. **Schema-Drift kann Features still crashen lassen.** 6 komplett fehlende Tabellen führten dazu dass Finanzierungen, Buchungsvorschläge und Dropbox-Integration unbenutzbar waren ohne Fehlermeldung im Frontend. Empfehlung: (1) `drizzle-kit push` in CI/CD-Pipeline, (2) Wöchentlicher automatisierter Schema-Check, (3) Backend-Startup-Check für kritische Tabellen.
+
+9. **tRPC/React-Query Cache Race Conditions vermeiden.** Bei Mutations `onSuccess`: `invalidate()` reicht, kein manueller `refetch()` nötig. React-Query macht automatisch Refetch für aktive Queries. `invalidate()` + `refetch()` können Race Conditions haben wo `refetch()` stale cached data zurückgibt bevor `invalidate()` wirksam ist. Immer nur `await utils.query.invalidate()` verwenden, nie zusätzlich `refetch()`.
 
 ---
 
