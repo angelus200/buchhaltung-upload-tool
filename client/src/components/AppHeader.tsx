@@ -208,12 +208,12 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
 
           {/* Mitte: Haupt-Navigation (wichtige Items) */}
           <nav className="flex items-center gap-0.5">
-            <Link href="/">
+            <Link href="/app">
               <Button
-                variant={isActive("/") ? "default" : "ghost"}
+                variant={isActive("/app") ? "default" : "ghost"}
                 size="sm"
                 className="gap-1.5 h-7 text-xs px-2"
-                style={isActive("/") ? { backgroundColor: firmenFarbe } : {}}
+                style={isActive("/app") ? { backgroundColor: firmenFarbe } : {}}
               >
                 <Upload className="w-3.5 h-3.5" />
                 <span className="hidden lg:inline">Buchungen</span>
