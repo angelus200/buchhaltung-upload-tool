@@ -31,6 +31,7 @@
 
 | Datum | Commit | Beschreibung | Status |
 |-------|--------|-------------|--------|
+| 18.02.2026 | 4e39eb0 | Schema-Drift behoben: 6 fehlende Tabellen erstellt | ✅ Deployed |
 | 18.02.2026 | d6cbb24 | Bugfix: Navigation Buchungen zeigt jetzt korrekt auf /app | ✅ Deployed |
 | 18.02.2026 | fd61b7f | Bugfix: Zahlungsstatus beim Erstellen korrekt speichern | ✅ Deployed |
 | 17.02.2026 | df3d6ab | Feature: Löschen-Button in Auszüge-Liste | ✅ Deployed |
@@ -84,7 +85,7 @@
 - **Fix:** 6 × CREATE TABLE mit korrekten Foreign Keys ausgeführt
 - **Verifizierung:** `SHOW TABLES` + `DESCRIBE` für alle Tabellen erfolgreich
 - **Impact:** Finanzierungs-Modul, KI-Buchungsvorschläge und Dropbox-Integration jetzt funktionsfähig
-- **Commit:** [wird gepusht]
+- **Commit:** 4e39eb0
 - **Lesson:** Schema-Drift ist kritisch. Empfehlung: `drizzle-kit push` in CI/CD-Pipeline integrieren + wöchentlicher Schema-Check via Cron-Job. Vollständiger Report: `SCHEMA-DRIFT-REPORT.md`
 
 ---
