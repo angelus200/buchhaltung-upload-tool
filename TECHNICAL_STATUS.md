@@ -1,6 +1,6 @@
 # TECHNICAL_STATUS.md
 ## Buchhaltung-KI.App — Technischer Status
-### Letzte Aktualisierung: 18.02.2026 (22:15 Uhr)
+### Letzte Aktualisierung: 18.02.2026 (23:00 Uhr)
 
 ---
 
@@ -88,6 +88,23 @@
 - **Commit:** 4e39eb0
 - **Lesson:** Schema-Drift ist kritisch. Empfehlung: `drizzle-kit push` in CI/CD-Pipeline integrieren + wöchentlicher Schema-Check via Cron-Job. Vollständiger Report: `SCHEMA-DRIFT-REPORT.md`
 
+### ✅ auszuege Spalten-Konflikte behoben
+- **Entdeckt am:** 18.02.2026, Schema-Drift-Analyse
+- **Root Cause:** Drizzle-Schema und MySQL waren nicht synchron — 5 Spalten hatten falsche Typen/Nullable-Status
+- **Konflikte behoben:**
+  1. `erstelltVon`: varchar(255) → int + Foreign Key zu users(id)
+  2. `status`: NULLABLE → NOT NULL DEFAULT 'neu'
+  3. `createdAt`: NULLABLE → NOT NULL DEFAULT CURRENT_TIMESTAMP
+  4. `updatedAt`: NULLABLE → NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE
+  5. `dateiUrl`: text → varchar(512)
+- **Daten-Impact:** 2 Auszüge betroffen, Migration erfolgreich ohne Datenverlust
+- **Verifizierung:**
+  - DESCRIBE auszuege: Alle Spalten korrekt
+  - SELECT + JOIN mit users: Foreign Key funktioniert, Daten intakt
+  - User-IDs 228 (Cornelia Mayer) und 239 (Franzi Schmid) erfolgreich konvertiert
+- **Commit:** [wird gepusht]
+- **Lesson:** Vor Typ-Änderungen (varchar→int) immer: (1) Daten prüfen, (2) Werte validieren (Foreign Key!), (3) Nach Migration JOIN testen um Constraint zu verifizieren.
+
 ---
 
 ## OFFENE BUGS / AUFGABEN
@@ -95,9 +112,9 @@
 ### PRIO 1 — Schema-Drift vollständig beheben
 - ✅ **ERLEDIGT:** Vollständige Analyse durchgeführt (42 Tabellen, 52 in MySQL)
 - ✅ **ERLEDIGT:** 6 fehlende Tabellen erstellt (finanzierungen, buchungsvorschlaege, dropbox_*)
-- ⬜ **OFFEN:** `auszuege` Tabelle hat 4 Spalten-Konflikte (erstelltVon varchar statt int, Nullable-Unterschiede)
+- ✅ **ERLEDIGT:** `auszuege` Tabelle — 5 Spalten-Konflikte behoben (erstelltVon, status, timestamps, dateiUrl)
 - ⬜ **OFFEN:** 4 Legacy-Tabellen in MySQL prüfen (broker_accounts, checked_duplicates, credit_cards, payment_providers)
-- **Status:** 🟡 Teilweise behoben — kritische Tabellen erstellt, Spalten-Drift offen
+- **Status:** 🟢 Weitgehend behoben — alle kritischen Schema-Drifts behoben, nur Legacy-Cleanup offen
 
 ### PRIO 2 — STB-Positionen nicht sichtbar nach Speichern
 - 3x gemeldet
@@ -137,7 +154,7 @@
 | 18.02.2026 | buchungsvorschlaege | Tabelle fehlte komplett in MySQL | CREATE TABLE (24 Spalten) | ✅ Behoben |
 | 18.02.2026 | dropbox_connections | Tabelle fehlte komplett in MySQL | CREATE TABLE (20 Spalten) | ✅ Behoben |
 | 18.02.2026 | dropbox_sync_log | Tabelle fehlte komplett in MySQL | CREATE TABLE (11 Spalten) | ✅ Behoben |
-| 18.02.2026 | auszuege | Spalte `erstelltVon` ist varchar statt int, 3 Spalten nullable statt NOT NULL | — | ⬜ Offen |
+| 18.02.2026 | auszuege | 5 Spalten-Konflikte: erstelltVon (varchar→int+FK), status/createdAt/updatedAt (NULL→NOT NULL), dateiUrl (text→varchar) | 6 × ALTER TABLE MODIFY + ADD CONSTRAINT | ✅ Behoben |
 | 17.02.2026 | auszuege | Spalte `notizen` fehlte in MySQL | ALTER TABLE ADD COLUMN | ✅ Behoben |
 
 ---
