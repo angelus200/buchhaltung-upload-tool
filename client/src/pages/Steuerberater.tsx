@@ -220,16 +220,18 @@ export default function Steuerberater() {
   });
   const addPositionMutation = trpc.steuerberater.rechnungAddPosition.useMutation({
     onSuccess: async () => {
+      const { toast } = await import("sonner");
+      toast.success("Position hinzugefügt!");
       await trpcUtils.steuerberater.rechnungGetById.invalidate({ id: selectedRechnung! });
-      await refetchRechnungDetail();
       setPositionDialogOpen(false);
       resetPositionForm();
     },
   });
   const deletePositionMutation = trpc.steuerberater.rechnungDeletePosition.useMutation({
     onSuccess: async () => {
+      const { toast } = await import("sonner");
+      toast.success("Position gelöscht!");
       await trpcUtils.steuerberater.rechnungGetById.invalidate({ id: selectedRechnung! });
-      await refetchRechnungDetail();
     },
   });
   const inBuchungenUebernahme = trpc.steuerberater.rechnungInBuchungenUebernehmen.useMutation({
