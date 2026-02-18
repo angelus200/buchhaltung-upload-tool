@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { buchungsvorschlaege, kreditoren, buchungen, InsertBuchungsvorschlag, InsertBuchung } from "../drizzle/schema";
+import { buchungsvorschlaege, kreditoren, buchungen, auszugPositionen, auszuege, InsertBuchungsvorschlag, InsertBuchung } from "../drizzle/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { invokeLLM, type Message } from "./_core/llm";
@@ -199,6 +199,120 @@ export async function findKreditorByName(
   if (match) return match.id;
 
   return null;
+}
+
+/**
+ * Analysiert eine Bank-Transaktion mit AI und erstellt Buchungsvorschlag
+ */
+export async function analyzeBankTransactionAndCreateVorschlag(
+  buchungstext: string,
+  betrag: number,
+  datum: Date,
+  unternehmenId: number,
+  positionId: number
+): Promise<InsertBuchungsvorschlag> {
+  const systemPrompt = `Du bist ein Experte für deutsche Buchhaltung nach SKR04.
+
+Analysiere diese **Bank-Transaktion** (keine Rechnung, nur Buchungstext von der Bank):
+
+**Buchungstext:** "${buchungstext}"
+**Betrag:** ${betrag.toFixed(2)} EUR
+**Datum:** ${datum.toISOString().split('T')[0]}
+
+Extrahiere:
+1. **Geschäftspartner**: Erkenne den Namen der Firma/Person aus dem Buchungstext
+2. **Buchungsvorschlag (SKR04)**: Welches Aufwandskonto passt?
+
+**Verfügbare SKR04-Konten:**
+${Object.entries(SKR04_AUFWANDSKONTEN).map(([konto, bez]) => `- ${konto}: ${bez}`).join("\n")}
+
+**Beispiele:**
+- "LASTSCHRIFT Telekom Deutschland GmbH" → Geschäftspartner: "Telekom Deutschland GmbH", Konto: 6805 (Telefon, Internet)
+- "Kartenzahlung Shell Tankstelle" → Geschäftspartner: "Shell", Konto: 6530 (Kfz-Betriebskosten)
+- "SEPA PayPal Europe" → Geschäftspartner: "PayPal", Konto: 6300 (Sonstige betriebliche Aufwendungen)
+- "Dauerauftrag Vermieter GmbH Miete" → Geschäftspartner: "Vermieter GmbH", Konto: 6310 (Miete)
+
+**Confidence-Bewertung:**
+- 0.90-1.00 = Sehr eindeutig (z.B. "Telekom" → 6805)
+- 0.70-0.89 = Wahrscheinlich korrekt (z.B. "Amazon" → 6815 Bürobedarf)
+- 0.50-0.69 = Unsicher (z.B. "Überweisung Schmidt" → ?)
+- 0.00-0.49 = Sehr unsicher
+
+**WICHTIG:**
+- Buchungstext = NUR Geschäftspartner-Name (z.B. "Telekom Deutschland GmbH")
+- NICHT die Kontobeschreibung verwenden!
+- Bei Lastschrift/SEPA: Firma extrahieren, nicht "LASTSCHRIFT"
+- Bei unklarem Text: Confidence niedrig setzen (0.50-0.60)
+
+Antworte NUR mit JSON:
+{
+  "geschaeftspartner": "string" | null,
+  "sollKonto": "string" (SKR04-Konto, z.B. "6805"),
+  "buchungstext": "string" (NUR Geschäftspartner-Name!),
+  "confidence": number (0.00 - 1.00),
+  "aiNotizen": "string" (Begründung für Kontowahl und Confidence-Level)"
+}`;
+
+  try {
+    const messages: Message[] = [
+      { role: "user", content: systemPrompt },
+    ];
+
+    const response = await invokeLLM(messages, { temperature: 0.1 });
+
+    // Parse JSON response
+    let aiData: any;
+    try {
+      // Entferne potentielle Markdown-Code-Blöcke
+      const cleanedResponse = response.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      aiData = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error("JSON Parse Error:", parseError, "Response:", response);
+      throw new Error("AI-Antwort konnte nicht als JSON geparst werden");
+    }
+
+    // Validierung
+    if (!aiData.sollKonto) {
+      throw new Error("AI hat kein Sollkonto vorgeschlagen");
+    }
+
+    // Kreditor-Matching
+    let kreditorId: number | null = null;
+    if (aiData.geschaeftspartner) {
+      kreditorId = await findKreditorByName(aiData.geschaeftspartner, unternehmenId);
+    }
+
+    // Erstelle Buchungsvorschlag
+    const vorschlag: InsertBuchungsvorschlag = {
+      unternehmenId,
+      belegUrl: null, // Bank-Transaktion hat keinen Beleg
+      lieferant: aiData.geschaeftspartner || null,
+      kreditorId: kreditorId,
+      rechnungsnummer: null, // Bank-Transaktionen haben keine Rechnungsnummer
+      belegdatum: datum,
+      betragBrutto: betrag.toFixed(2),
+      betragNetto: betrag.toFixed(2), // Bei Transaktionen meist identisch
+      ustBetrag: "0.00", // Wird später manuell angepasst
+      ustSatz: null,
+      zahlungsziel: null,
+      iban: null,
+      sollKonto: aiData.sollKonto,
+      habenKonto: "1200", // Standard: Bank
+      buchungstext: aiData.buchungstext || aiData.geschaeftspartner || buchungstext.substring(0, 50),
+      geschaeftspartnerKonto: null,
+      confidence: aiData.confidence?.toString() || "0.50",
+      aiNotizen: `Bank-Transaktion analysiert.\n${aiData.aiNotizen || ""}\n\nOriginal-Buchungstext: "${buchungstext}"`,
+      status: "vorschlag",
+      buchungId: null,
+      bearbeitetVon: null,
+      bearbeitetAm: null,
+    };
+
+    return vorschlag;
+  } catch (error) {
+    console.error("Bank-Transaktions-Analyse Fehler:", error);
+    throw new Error(`Transaktions-Analyse fehlgeschlagen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`);
+  }
 }
 
 /**
@@ -436,6 +550,91 @@ export const buchungsvorschlaegeRouter = router({
         .where(eq(buchungsvorschlaege.id, input.id));
 
       return { success: true };
+    }),
+
+  /**
+   * Erstellt Buchungsvorschlag aus einer Auszug-Position
+   */
+  createFromPosition: protectedProcedure
+    .input(z.object({ positionId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Datenbankverbindung nicht verfügbar",
+        });
+      }
+
+      // 1. Position laden
+      const [position] = await db
+        .select()
+        .from(auszugPositionen)
+        .where(eq(auszugPositionen.id, input.positionId))
+        .limit(1);
+
+      if (!position) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Position nicht gefunden",
+        });
+      }
+
+      // 2. Auszug laden (für unternehmenId und Security-Check)
+      const [auszug] = await db
+        .select()
+        .from(auszuege)
+        .where(eq(auszuege.id, position.auszugId))
+        .limit(1);
+
+      if (!auszug) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Auszug nicht gefunden",
+        });
+      }
+
+      // 3. Prüfen ob bereits ein Vorschlag existiert
+      const existingVorschlaege = await db
+        .select()
+        .from(buchungsvorschlaege)
+        .where(
+          and(
+            eq(buchungsvorschlaege.unternehmenId, auszug.unternehmenId),
+            sql`${buchungsvorschlaege.aiNotizen} LIKE ${`%Position-ID: ${position.id}%`}`
+          )
+        );
+
+      if (existingVorschlaege.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Für diese Position existiert bereits ein Buchungsvorschlag",
+        });
+      }
+
+      // 4. AI-Analyse durchführen
+      const vorschlagData = await analyzeBankTransactionAndCreateVorschlag(
+        position.buchungstext,
+        parseFloat(position.betrag.toString()),
+        position.datum,
+        auszug.unternehmenId,
+        position.id
+      );
+
+      // 5. Vorschlag speichern
+      const [insertResult] = await db.insert(buchungsvorschlaege).values({
+        ...vorschlagData,
+        aiNotizen: `${vorschlagData.aiNotizen}\n\nPosition-ID: ${position.id}`, // Für Duplikat-Check
+      });
+
+      // 6. Position-Status aktualisieren (für spätere UI-Anzeige)
+      // Hinweis: status "offen" bleibt, wird erst bei Buchung auf "zugeordnet" gesetzt
+
+      return {
+        success: true,
+        vorschlagId: insertResult.insertId,
+        confidence: parseFloat(vorschlagData.confidence?.toString() || "0"),
+      };
     }),
 
   /**

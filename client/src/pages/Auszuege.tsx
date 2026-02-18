@@ -40,6 +40,7 @@ import {
   CreditCard,
   Landmark,
   Zap,
+  Sparkles,
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 
@@ -213,6 +214,16 @@ export default function Auszuege() {
       toast.success("Auszug gelöscht");
       refetchAuszuege();
       setDetailDialogOpen(false);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const createVorschlagMutation = trpc.buchungsvorschlaege.createFromPosition.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Buchungsvorschlag erstellt (Confidence: ${(data.confidence * 100).toFixed(0)}%)`);
+      refetchDetail();
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -843,6 +854,21 @@ export default function Auszuege() {
                                         title="Zu existierender Buchung zuordnen"
                                       >
                                         <LinkIcon className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          createVorschlagMutation.mutate({ positionId: position.id });
+                                        }}
+                                        disabled={createVorschlagMutation.isPending}
+                                        title="Buchungsvorschlag mit AI erstellen"
+                                      >
+                                        {createVorschlagMutation.isPending ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          <Sparkles className="w-4 h-4 text-purple-600" />
+                                        )}
                                       </Button>
                                       <Button
                                         variant="ghost"
