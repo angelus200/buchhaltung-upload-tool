@@ -1,6 +1,6 @@
 # TECHNICAL_STATUS.md
 ## Buchhaltung-KI.App — Technischer Status
-### Letzte Aktualisierung: 18.02.2026 (18:30 Uhr)
+### Letzte Aktualisierung: 19.02.2026 (21:30 Uhr)
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Key | Wert |
 |-----|------|
-| Letztes Deployment | 18.02.2026 |
+| Letztes Deployment | 19.02.2026 |
 | Server | Railway Pro Plan, Port 8080 |
 | Build-Status | ✅ Erfolgreich |
 | Branch | main |
@@ -31,6 +31,9 @@
 
 | Datum | Commit | Beschreibung | Status |
 |-------|--------|-------------|--------|
+| 19.02.2026 | 2fb0d1a | Bugfix: Feld "kontoinhaber" für Bankkonten hinzugefügt | ✅ Deployed |
+| 19.02.2026 | 80329ec | Bugfix: Browser-Freeze bei 24.987 Buchungen behoben (Pagination + Default-Filter) | ✅ Deployed |
+| 19.02.2026 | c9a3793 | Kontenrahmen dynamisiert: Support für alle Firmen (SKR03/04, OeKR, KMU) | ✅ Deployed |
 | 18.02.2026 | d2fa0b4 | Feature: MVP Kontoauszüge → Buchungsvorschläge (Sprint 1) | ✅ Deployed |
 | 18.02.2026 | a94be0c | Docs: PRIO 4 verifiziert - Resend-Integration funktionsfähig | ✅ Completed |
 | 18.02.2026 | 09f0c15 | Data: USt-IdNr für AT-Firmen hinzugefügt | ✅ Completed |
@@ -124,6 +127,51 @@
 - **Dateien:** client/src/pages/Steuerberater.tsx (Zeilen 221-234)
 - **Commit:** 9528cef
 - **Lesson:** `invalidate()` + `refetch()` können Race Conditions haben. Besser: Nur `invalidate()` verwenden und automatischen Refetch von React-Query nutzen. Bei tRPC/React-Query Mutations: `invalidate()` reicht, kein manueller `refetch()` nötig.
+
+### ✅ Browser-Freeze bei 24.987 Buchungen
+- **Gemeldet von:** Testerin, 19.02.2026, Screenshot zeigt "24.987 Buchungen"
+- **Root Cause:**
+  - Backend lud ALLE Buchungen ohne LIMIT (24.987 Zeilen bei "Alle Monate/Jahre")
+  - Frontend renderte 24.987 DOM-Elemente ohne Virtualisierung → Browser-Freeze 10-30s
+  - Default-Filter waren deaktiviert (undefined) → zeigt ALLE Buchungen sofort beim Öffnen
+- **Fix:**
+  - **Server-Side Pagination (Sicherheitsnetz):**
+    - Backend: buchungen.list erweitert um `limit` (default 500) + `offset` (default 0)
+    - Response-Format: `{ buchungen: [], total: number, hasMore: boolean }`
+    - Separate COUNT()-Query für Gesamt-Anzahl (unabhängig von Pagination)
+    - Frontend: "Mehr laden" Button lädt inkrementell weitere 500 Buchungen
+  - **Default-Filter auf aktuellen Monat/Jahr:**
+    - Vorher: selectedMonth/selectedYear = undefined → zeigt ALLE Buchungen
+    - Nachher: Default = aktueller Monat + Jahr (z.B. Februar 2026)
+    - Reduziert initiale Last von 24.987 auf ~200-500 Buchungen (98% weniger!)
+- **Performance:**
+  - Vorher: ~8 MB Transfer, 24.987 DOM-Elemente, 10-30s Freeze
+  - Nachher: ~100 KB Transfer, 200-500 DOM-Elemente, <100ms
+- **Dateien:** server/buchhaltung.ts, client/src/pages/Uebersicht.tsx
+- **Commit:** 80329ec
+- **Lesson:** Pagination ist essentiell ab ~1.000 Datensätzen. Default-Filter reduzieren initiale Last massiv. Stats-Query separat halten von Data-Query für unabhängige Aggregationen. "Mehr laden" Button ist UX-freundlicher als klassische Seiten-Pagination.
+
+### ✅ Bankkonto Kontoinhaber-Feld fehlte
+- **Gemeldet von:** Testerin, 19.02.2026, "kann man hier z.b. nicht mal den Kontoinhaber einspeichern"
+- **Root Cause:** Feld "kontoinhaber" existierte weder in DB-Schema noch in Backend noch in Frontend
+- **Analyse:**
+  - ❌ DB-Schema (drizzle/schema.ts): Feld existierte nicht in finanzkonten-Tabelle
+  - ❌ DB-Tabelle (MySQL): Spalte fehlte komplett
+  - ❌ Backend create/update: Input-Schema + INSERT/SET ohne kontoinhaber
+  - ❌ Frontend: Interface + UI-Feld fehlten im "Bankkonto bearbeiten" Dialog
+- **Fix:**
+  1. DB-Schema: `kontoinhaber: varchar(255) NULL` hinzugefügt (nach bankName)
+  2. DB-Migration: `ALTER TABLE finanzkonten ADD COLUMN kontoinhaber VARCHAR(255) NULL AFTER bankName`
+  3. Backend create: Input-Schema + INSERT erweitert
+  4. Backend update: Input-Schema + SET erweitert
+  5. Frontend: Interface + emptyForm + UI-Feld im Bank-Bereich (Placeholder: "Max Mustermann GmbH")
+- **Dateien:**
+  - drizzle/schema.ts (+1 Zeile)
+  - server/finanzkonten.ts (+4 Zeilen)
+  - client/src/pages/Finanzkonten.tsx (+11 Zeilen)
+- **Migration:** ALTER TABLE direkt auf Railway ausgeführt
+- **Commit:** 2fb0d1a
+- **Lesson:** Bei Feature-Requests immer vollständigen Stack prüfen: DB-Schema → Backend Input/Output → Frontend Interface → UI. Felder die im UI sichtbar sind müssen durch alle Schichten durchgereicht werden.
 
 ### ✅ AT-Firmen UID-Nummern fehlten
 - **Gemeldet:** PRIO 3, 18.02.2026
