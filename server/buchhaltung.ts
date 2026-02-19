@@ -261,11 +261,14 @@ export const buchungenRouter = router({
         sachkonto: z.string().optional(),
         importReferenz: z.string().optional(),
         geschaeftspartnerKonto: z.string().optional(),
+        // Pagination
+        limit: z.number().min(1).max(10000).default(500),
+        offset: z.number().min(0).default(0),
       })
     )
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) return [];
+      if (!db) return { buchungen: [], total: 0, hasMore: false };
 
       const conditions = [eq(buchungen.unternehmenId, input.unternehmenId)];
 
@@ -288,13 +291,26 @@ export const buchungenRouter = router({
         conditions.push(eq(buchungen.geschaeftspartnerKonto, input.geschaeftspartnerKonto));
       }
 
-      const query = db
+      // Total count für Pagination
+      const [{ total }] = await db
+        .select({ total: count() })
+        .from(buchungen)
+        .where(and(...conditions));
+
+      // Buchungen mit Limit + Offset
+      const result = await db
         .select()
         .from(buchungen)
         .where(and(...conditions))
-        .orderBy(desc(buchungen.belegdatum));
+        .orderBy(desc(buchungen.belegdatum))
+        .limit(input.limit)
+        .offset(input.offset);
 
-      return await query;
+      return {
+        buchungen: result,
+        total: total || 0,
+        hasMore: (input.offset + input.limit) < (total || 0),
+      };
     }),
 
   // Einzelne Buchung abrufen

@@ -365,13 +365,16 @@ export default function Uebersicht() {
   const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(
     null
   );
-  // 🔧 FIX BUG 4: Default-Filter deaktiviert → zeigt ALLE Buchungen (auch mit NULL wirtschaftsjahr/periode)
-  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
-  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
+  // 🔧 FIX BUG 1: Default auf aktuellen Monat/Jahr → reduziert von 24.987 auf ~200-500 Buchungen
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(currentDate.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(currentDate.getFullYear());
   const [filterSachkonto, setFilterSachkonto] = useState("");
   const [filterImportRef, setFilterImportRef] = useState("");
   const [filterGeschaeftspartner, setFilterGeschaeftspartner] = useState("");
   const [showOnlyGuV, setShowOnlyGuV] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [alleBuchungen, setAlleBuchungen] = useState<any[]>([]);
 
   // Erweiterte Suche
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
@@ -415,6 +418,8 @@ export default function Uebersicht() {
       sachkonto: filterSachkonto || undefined,
       importReferenz: filterImportRef || undefined,
       geschaeftspartnerKonto: filterGeschaeftspartner || undefined,
+      limit: 500,
+      offset: offset,
     },
     { enabled: !!selectedUnternehmen }
   );
@@ -521,10 +526,29 @@ export default function Uebersicht() {
     }
   }, [unternehmenQuery.data, selectedUnternehmen]);
 
+  // Akkumuliere Buchungen bei "Mehr laden"
+  useEffect(() => {
+    if (buchungenQuery.data?.buchungen) {
+      if (offset === 0) {
+        // Erste Ladung oder Filter geändert → ersetze
+        setAlleBuchungen(buchungenQuery.data.buchungen);
+      } else {
+        // "Mehr laden" → anhängen
+        setAlleBuchungen(prev => [...prev, ...buchungenQuery.data.buchungen]);
+      }
+    }
+  }, [buchungenQuery.data, offset]);
+
+  // Reset offset bei Filter-Änderungen
+  useEffect(() => {
+    setOffset(0);
+    setAlleBuchungen([]);
+  }, [selectedUnternehmen, selectedMonth, selectedYear, filterSachkonto, filterImportRef, filterGeschaeftspartner]);
+
   // Verwende Suchergebnisse wenn Suche aktiv, sonst normale List
   const buchungen = useMemo(() => {
-    return searchActive ? (searchQuery.data || []) : (buchungenQuery.data || []);
-  }, [searchActive, searchQuery.data, buchungenQuery.data]);
+    return searchActive ? (searchQuery.data || []) : alleBuchungen;
+  }, [searchActive, searchQuery.data, alleBuchungen]);
 
   const stats = useMemo(() => {
     return statsQuery.data || {
@@ -1003,6 +1027,26 @@ export default function Uebersicht() {
                       ))}
                     </TableBody>
                   </Table>
+
+                  {/* Mehr laden Button */}
+                  {!searchActive && buchungenQuery.data?.hasMore && (
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => setOffset(prev => prev + 500)}
+                        disabled={buchungenQuery.isFetching}
+                      >
+                        {buchungenQuery.isFetching ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Lädt...
+                          </>
+                        ) : (
+                          `Mehr laden (${buchungenQuery.data.total - alleBuchungen.length} verbleibend)`
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 )}
               </CardContent>
             </Card>
