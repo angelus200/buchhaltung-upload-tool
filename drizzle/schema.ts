@@ -1363,6 +1363,7 @@ export const finanzkonten = mysqlTable("finanzkonten", {
   iban: varchar("iban", { length: 34 }),
   bic: varchar("bic", { length: 11 }),
   bankName: varchar("bankName", { length: 255 }),
+  kontoinhaber: varchar("kontoinhaber", { length: 255 }),
 
   // Kreditkarte-spezifisch
   kreditkartenNummer: varchar("kreditkartenNummer", { length: 20 }), // Nur letzte 4 Ziffern

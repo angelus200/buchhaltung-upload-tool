@@ -72,6 +72,7 @@ interface FinanzkontoForm {
   iban: string;
   bic: string;
   bankName: string;
+  kontoinhaber: string;
   kreditkartenNummer: string;
   kreditlimit: string;
   abrechnungstag: number | null;
@@ -90,6 +91,7 @@ const emptyForm: FinanzkontoForm = {
   iban: "",
   bic: "",
   bankName: "",
+  kontoinhaber: "",
   kreditkartenNummer: "",
   kreditlimit: "",
   abrechnungstag: null,
@@ -486,6 +488,14 @@ export default function Finanzkonten() {
                         placeholder="1234567890"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <Label>Kontoinhaber</Label>
+                    <Input
+                      value={formData.kontoinhaber}
+                      onChange={(e) => setFormData({ ...formData, kontoinhaber: e.target.value })}
+                      placeholder="Max Mustermann GmbH"
+                    />
                   </div>
                 </>
               )}
