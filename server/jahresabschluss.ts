@@ -745,6 +745,7 @@ export const jahresabschlussRouter = router({
           anfangsbestand: z.string().optional(),
           kontotyp: z.enum(["girokonto", "sparkonto", "festgeld", "kreditkarte", "sonstig"]).optional(),
           waehrung: z.string().optional(),
+          kontoinhaber: z.string().optional(),
           notizen: z.string().optional(),
         })
       )
@@ -770,6 +771,7 @@ export const jahresabschlussRouter = router({
           anfangsbestand: z.string().optional(),
           kontotyp: z.enum(["girokonto", "sparkonto", "festgeld", "kreditkarte", "sonstig"]).optional(),
           waehrung: z.string().optional(),
+          kontoinhaber: z.string().optional(),
           notizen: z.string().optional(),
           aktiv: z.boolean().optional(),
         })

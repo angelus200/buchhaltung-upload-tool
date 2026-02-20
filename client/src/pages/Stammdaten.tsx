@@ -842,6 +842,7 @@ export default function Stammdaten() {
         anfangsbestand: formData.anfangsbestand || undefined,
         kontotyp: (formData.kontotyp as any) || undefined,
         waehrung: formData.waehrung || undefined,
+        kontoinhaber: formData.kontoinhaber || undefined,
         notizen: formNotizen || undefined,
       };
 
