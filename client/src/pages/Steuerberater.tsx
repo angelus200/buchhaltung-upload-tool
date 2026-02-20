@@ -199,11 +199,21 @@ export default function Steuerberater() {
       setRechnungDialogOpen(false);
       resetRechnungForm();
     },
+    onError: async (error) => {
+      const { toast } = await import("sonner");
+      toast.error(`Fehler beim Erstellen: ${error.message}`);
+      console.error("🔴 STB Rechnung Create Error:", error);
+    },
   });
   const deleteRechnungMutation = trpc.steuerberater.rechnungDelete.useMutation({
     onSuccess: () => {
       refetchRechnungen();
       setRechnungDetailDialogOpen(false);
+    },
+    onError: async (error) => {
+      const { toast } = await import("sonner");
+      toast.error(`Fehler beim Löschen: ${error.message}`);
+      console.error("🔴 STB Rechnung Delete Error:", error);
     },
   });
   const updateRechnungMutation = trpc.steuerberater.rechnungUpdate.useMutation({
@@ -226,12 +236,22 @@ export default function Steuerberater() {
       setPositionDialogOpen(false);
       resetPositionForm();
     },
+    onError: async (error) => {
+      const { toast } = await import("sonner");
+      toast.error(`Fehler beim Hinzufügen: ${error.message}`);
+      console.error("🔴 STB Position Add Error:", error);
+    },
   });
   const deletePositionMutation = trpc.steuerberater.rechnungDeletePosition.useMutation({
     onSuccess: async () => {
       const { toast } = await import("sonner");
       toast.success("Position gelöscht!");
       await trpcUtils.steuerberater.rechnungGetById.invalidate({ id: selectedRechnung! });
+    },
+    onError: async (error) => {
+      const { toast } = await import("sonner");
+      toast.error(`Fehler beim Löschen: ${error.message}`);
+      console.error("🔴 STB Position Delete Error:", error);
     },
   });
   const inBuchungenUebernahme = trpc.steuerberater.rechnungInBuchungenUebernehmen.useMutation({
