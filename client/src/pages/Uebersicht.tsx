@@ -970,6 +970,7 @@ export default function Uebersicht() {
                       : "Keine Buchungen gefunden"}
                   </div>
                 ) : (
+                  <>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1047,6 +1048,7 @@ export default function Uebersicht() {
                       </Button>
                     </div>
                   )}
+                  </>
                 )}
               </CardContent>
             </Card>
