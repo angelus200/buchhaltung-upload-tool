@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 // Übergabearten
 const UEBERGABEARTEN = [
@@ -199,8 +200,7 @@ export default function Steuerberater() {
       setRechnungDialogOpen(false);
       resetRechnungForm();
     },
-    onError: async (error) => {
-      const { toast } = await import("sonner");
+    onError: (error) => {
       toast.error(`Fehler beim Erstellen: ${error.message}`);
       console.error("🔴 STB Rechnung Create Error:", error);
     },
@@ -210,8 +210,7 @@ export default function Steuerberater() {
       refetchRechnungen();
       setRechnungDetailDialogOpen(false);
     },
-    onError: async (error) => {
-      const { toast } = await import("sonner");
+    onError: (error) => {
       toast.error(`Fehler beim Löschen: ${error.message}`);
       console.error("🔴 STB Rechnung Delete Error:", error);
     },
@@ -220,44 +219,37 @@ export default function Steuerberater() {
     onSuccess: async () => {
       await refetchRechnungDetail();
       setIsEditingRechnung(false);
-      const toast = await import("sonner");
-      toast.toast.success("Rechnung aktualisiert");
+      toast.success("Rechnung aktualisiert");
     },
-    onError: async (error) => {
-      const toast = await import("sonner");
-      toast.toast.error(`Fehler: ${error.message}`);
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
     },
   });
   const addPositionMutation = trpc.steuerberater.rechnungAddPosition.useMutation({
     onSuccess: async () => {
-      const { toast } = await import("sonner");
       toast.success("Position hinzugefügt!");
       await trpcUtils.steuerberater.rechnungGetById.invalidate({ id: selectedRechnung! });
       setPositionDialogOpen(false);
       resetPositionForm();
     },
-    onError: async (error) => {
-      const { toast } = await import("sonner");
+    onError: (error) => {
       toast.error(`Fehler beim Hinzufügen: ${error.message}`);
       console.error("🔴 STB Position Add Error:", error);
     },
   });
   const deletePositionMutation = trpc.steuerberater.rechnungDeletePosition.useMutation({
     onSuccess: async () => {
-      const { toast } = await import("sonner");
       toast.success("Position gelöscht!");
       await trpcUtils.steuerberater.rechnungGetById.invalidate({ id: selectedRechnung! });
     },
-    onError: async (error) => {
-      const { toast } = await import("sonner");
+    onError: (error) => {
       toast.error(`Fehler beim Löschen: ${error.message}`);
       console.error("🔴 STB Position Delete Error:", error);
     },
   });
   const inBuchungenUebernahme = trpc.steuerberater.rechnungInBuchungenUebernehmen.useMutation({
     onSuccess: async (data) => {
-      const toast = await import("sonner");
-      toast.toast.success(data.message, {
+      toast.success(data.message, {
         description: "Die Buchung wurde erfolgreich erstellt. Sie können sie jetzt bearbeiten.",
         duration: 5000,
       });
@@ -265,9 +257,8 @@ export default function Steuerberater() {
       await trpcUtils.buchungen.list.invalidate();
       setRechnungDetailDialogOpen(false);
     },
-    onError: async (error) => {
-      const toast = await import("sonner");
-      toast.toast.error("Fehler beim Übernehmen", {
+    onError: (error) => {
+      toast.error("Fehler beim Übernehmen", {
         description: error.message,
         duration: 5000,
       });
@@ -420,8 +411,7 @@ export default function Steuerberater() {
         console.log("✅ Felder aktualisiert:", updates);
 
         // Erfolgs-Toast
-        const toast = await import("sonner");
-        toast.toast.success(
+        toast.success(
           `AI-Analyse erfolgreich: ${updateCount} Feld(er) erkannt`,
           {
             description: `Konfidenz: ${result.konfidenz}%`,
@@ -430,8 +420,7 @@ export default function Steuerberater() {
         );
       } else {
         console.warn("⚠️ Keine Felder erkannt");
-        const toast = await import("sonner");
-        toast.toast.warning(
+        toast.warning(
           "Keine Daten automatisch erkannt",
           {
             description: "Bitte füllen Sie die Felder manuell aus",
@@ -441,8 +430,7 @@ export default function Steuerberater() {
       }
     } catch (error) {
       console.error("❌ AI-Analyse fehlgeschlagen:", error);
-      const toast = await import("sonner");
-      toast.toast.error(
+      toast.error(
         "Fehler bei der AI-Analyse",
         {
           description: error instanceof Error ? error.message : "Unbekannter Fehler",
