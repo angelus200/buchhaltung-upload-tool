@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import AppHeader from "@/components/AppHeader";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useDropzone } from "react-dropzone";
 import {
   CheckCircle2,
   XCircle,
@@ -27,6 +28,7 @@ import {
   AlertCircle,
   Download,
   Sparkles,
+  Upload,
 } from "lucide-react";
 
 function formatCurrency(value: number | string): string {
@@ -72,6 +74,10 @@ export default function Buchungsvorschlaege() {
     betragNetto: "",
     betragBrutto: "",
   });
+
+  // Upload State
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   // Queries
   const { data: unternehmen } = trpc.unternehmen.list.useQuery();
@@ -136,6 +142,67 @@ export default function Buchungsvorschlaege() {
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
     },
+  });
+
+  const createFromBelegMutation = trpc.buchungsvorschlaege.createFromBeleg.useMutation({
+    onSuccess: (data) => {
+      const confidencePercent = (data.confidence * 100).toFixed(0);
+      toast.success(`Buchungsvorschlag erstellt (Confidence: ${confidencePercent}%)`);
+      refetchVorschlaege();
+      setUploading(false);
+      setUploadedFileName(null);
+    },
+    onError: (error) => {
+      toast.error(`Fehler beim Analysieren: ${error.message}`);
+      setUploading(false);
+      setUploadedFileName(null);
+    },
+  });
+
+  // Upload Handler
+  const onDrop = async (acceptedFiles: File[]) => {
+    if (!selectedUnternehmen) {
+      toast.error("Bitte zuerst ein Unternehmen auswählen");
+      return;
+    }
+
+    if (acceptedFiles.length === 0) return;
+
+    const file = acceptedFiles[0];
+    setUploadedFileName(file.name);
+    setUploading(true);
+
+    try {
+      // Konvertiere zu Base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Rufe createFromBeleg API auf
+      createFromBelegMutation.mutate({
+        unternehmenId: selectedUnternehmen,
+        imageBase64: base64,
+        mimeType: file.type,
+      });
+    } catch (error) {
+      toast.error("Fehler beim Lesen der Datei");
+      setUploading(false);
+      setUploadedFileName(null);
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "application/pdf": [".pdf"],
+    },
+    maxFiles: 1,
+    disabled: uploading || !selectedUnternehmen,
   });
 
   const handleEdit = (vorschlag: any) => {
@@ -221,6 +288,60 @@ export default function Buchungsvorschlaege() {
                 </CardHeader>
               </Card>
             </div>
+
+            {/* Beleg Upload */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="w-5 h-5" />
+                  Beleg hochladen
+                </CardTitle>
+                <CardDescription>
+                  Laden Sie Rechnungen oder Belege hoch, um automatische Buchungsvorschläge zu erhalten
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer
+                    ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
+                    ${uploading || !selectedUnternehmen ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <input {...getInputProps()} />
+                  {uploading ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                      <div>
+                        <p className="text-sm font-medium">Analysiere Beleg mit AI...</p>
+                        {uploadedFileName && (
+                          <p className="text-xs text-muted-foreground mt-1">{uploadedFileName}</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : !selectedUnternehmen ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <AlertCircle className="w-10 h-10 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        Bitte wählen Sie zuerst ein Unternehmen aus
+                      </p>
+                    </div>
+                  ) : isDragActive ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <Upload className="w-10 h-10 text-primary" />
+                      <p className="text-sm font-medium text-primary">Beleg hier ablegen</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-3">
+                      <Upload className="w-10 h-10 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        Beleg hierher ziehen oder <span className="text-primary font-medium">klicken zum Auswählen</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">PDF, JPG, PNG (max. 10MB)</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Filter */}
             <Card className="mb-6">
