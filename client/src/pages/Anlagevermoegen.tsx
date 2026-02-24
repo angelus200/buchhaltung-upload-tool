@@ -564,7 +564,7 @@ export default function Anlagevermoegen() {
 
         {/* AfA Dialog */}
         <Dialog open={showAfa} onOpenChange={setShowAfa}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 <Calculator className="w-5 h-5 inline mr-2" />
@@ -666,7 +666,7 @@ export default function Anlagevermoegen() {
             }
           }}
         >
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editAnlage ? 'Anlagegut bearbeiten' : 'Neues Anlagegut'}</DialogTitle>
             </DialogHeader>

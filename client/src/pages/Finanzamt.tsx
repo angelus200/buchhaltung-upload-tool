@@ -613,7 +613,7 @@ export default function Finanzamt() {
                 Neues Dokument
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingDokumentId ? "Dokument bearbeiten" : "Neues Finanzamt-Dokument"}</DialogTitle>
                 <DialogDescription>
@@ -1267,7 +1267,7 @@ export default function Finanzamt() {
 
         {/* Versionierung Dialog */}
         <Dialog open={versionDialogOpen} onOpenChange={setVersionDialogOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Neue Version hinzufügen</DialogTitle>
               <DialogDescription>

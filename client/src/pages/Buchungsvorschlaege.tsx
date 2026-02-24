@@ -418,7 +418,7 @@ export default function Buchungsvorschlaege() {
 
       {/* Bearbeiten-Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Buchungsvorschlag bearbeiten</DialogTitle>
             <DialogDescription>Passen Sie die Buchungsparameter an</DialogDescription>

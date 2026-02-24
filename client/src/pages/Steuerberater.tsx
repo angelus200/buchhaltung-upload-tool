@@ -675,7 +675,7 @@ export default function Steuerberater() {
                   Neue Übergabe
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-lg">
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Neue Übergabe erfassen</DialogTitle>
                 </DialogHeader>
@@ -1013,7 +1013,7 @@ export default function Steuerberater() {
                         Neue Rechnung
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-lg">
+                    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>Steuerberater-Rechnung erfassen</DialogTitle>
                       </DialogHeader>
@@ -1783,7 +1783,7 @@ export default function Steuerberater() {
 
       {/* Detail-Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Übergabe-Details</DialogTitle>
           </DialogHeader>
