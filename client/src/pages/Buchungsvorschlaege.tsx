@@ -55,7 +55,10 @@ function getConfidenceLevel(confidence: number) {
 }
 
 export default function Buchungsvorschlaege() {
-  const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(null);
+  const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(() => {
+    const saved = localStorage.getItem("selectedUnternehmenId");
+    return saved ? parseInt(saved) : null;
+  });
   const [filterStatus, setFilterStatus] = useState<string>("vorschlag");
   const [filterMinConfidence, setFilterMinConfidence] = useState<number>(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);

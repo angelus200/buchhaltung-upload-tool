@@ -847,7 +847,7 @@ export default function Stammdaten() {
       };
 
       if (editItem) {
-        updateBankkontoMutation.mutate({ id: parseInt(editItem.id), ...bankkontoData });
+        updateBankkontoMutation.mutate({ id: parseInt(editItem.id), unternehmenId: selectedUnternehmenId, ...bankkontoData });
       } else {
         createBankkontoMutation.mutate({ unternehmenId: selectedUnternehmenId, ...bankkontoData });
       }

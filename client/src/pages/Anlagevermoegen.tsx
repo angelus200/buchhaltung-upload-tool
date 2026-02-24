@@ -179,6 +179,7 @@ export default function Anlagevermoegen() {
     editAnlage &&
     updateMutation.mutate({
       id: editAnlage.id,
+      unternehmenId: selectedUnternehmen,
       ...form,
     });
 
