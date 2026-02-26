@@ -192,7 +192,40 @@ function parseGermanAmount(amountStr: string): number | null {
   return isNaN(amount) ? null : amount;
 }
 
-function extractDataFromText(text: string, kontenrahmen: string = "SKR03"): OcrResult {
+/**
+ * Extrahiert Belegnummer aus Dateinamen als Fallback
+ * Beispiele:
+ * - "Rechnung_Amazon_RE-12345.pdf" → "RE-12345"
+ * - "Invoice_INV-98765_2025.pdf" → "INV-98765"
+ * - "Beleg_2025-001.pdf" → "2025-001"
+ */
+function extractBelegnummerFromFilename(filename: string): string | null {
+  if (!filename) return null;
+
+  // Entferne Dateiendung
+  const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
+
+  // Pattern: Suche nach gängigen Rechnungsnummer-Formaten
+  // RE-12345, INV-98765, R-2025-001, 2025/001, etc.
+  const patterns = [
+    /([A-Z]{2,4}[-_]?\d+[-_/]?\d*)/i,  // RE-12345, INV-001, R-2025-001
+    /(\d{4}[-_/]\d+)/,                  // 2025-001, 2025/13266
+    /([A-Z]\d{6})/,                     // T218680
+    /(RG\d+)/i,                         // RG12345
+  ];
+
+  for (const pattern of patterns) {
+    const match = nameWithoutExt.match(pattern);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  // Fallback: Verwende den kompletten Dateinamen (ohne Extension)
+  return nameWithoutExt;
+}
+
+function extractDataFromText(text: string, kontenrahmen: string = "SKR03", filename?: string): OcrResult {
   const result: OcrResult = {
     belegdatum: null,
     belegnummer: null,
@@ -349,7 +382,16 @@ function extractDataFromText(text: string, kontenrahmen: string = "SKR03"): OcrR
   if (!result.geschaeftspartnerTyp) {
     result.geschaeftspartnerTyp = "kreditor";
   }
-  
+
+  // Fallback: Wenn keine Belegnummer gefunden, versuche aus Dateiname zu extrahieren
+  if (!result.belegnummer && filename) {
+    const extractedFromFilename = extractBelegnummerFromFilename(filename);
+    if (extractedFromFilename) {
+      result.belegnummer = extractedFromFilename;
+      result.erkannteFelder.push("belegnummer (aus Dateiname)");
+    }
+  }
+
   return result;
 }
 
@@ -358,7 +400,8 @@ async function analyzeImageWithVision(
   imageBase64: string,
   mimeType: string,
   kontenrahmen: string = "SKR03",
-  unternehmenId?: number
+  unternehmenId?: number,
+  filename?: string
 ): Promise<OcrResult> {
   console.log("[OCR] 🚀 Starte Claude Vision Analyse...");
   console.log("[OCR] 🖼️ Image MIME Type:", mimeType);
@@ -822,11 +865,20 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
       result.steuersatz = 19;
     }
 
+    // Fallback: Wenn keine Belegnummer gefunden, versuche aus Dateiname zu extrahieren
+    if (!result.belegnummer && filename) {
+      const extractedFromFilename = extractBelegnummerFromFilename(filename);
+      if (extractedFromFilename) {
+        result.belegnummer = extractedFromFilename;
+        result.erkannteFelder.push("belegnummer (aus Dateiname)");
+      }
+    }
+
     return result;
   } catch (error) {
     console.error("[OCR] Vision-AI Fehler:", error);
     // Fallback auf Text-basierte Extraktion
-    return extractDataFromText("", kontenrahmen);
+    return extractDataFromText("", kontenrahmen, filename);
   }
 }
 
@@ -916,14 +968,15 @@ export const ocrRouter = router({
       z.object({
         text: z.string(),
         kontenrahmen: z.enum(["SKR03", "SKR04", "OeKR", "RLG", "KMU", "OR", "UK_GAAP", "IFRS", "CY_GAAP"]).default("SKR03"),
+        filename: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
       // Konvertiere internationale Kontenrahmen zu SKR03/SKR04 für die Kontenzuordnung
-      const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen) 
-        ? input.kontenrahmen 
+      const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen)
+        ? input.kontenrahmen
         : "SKR03";
-      return extractDataFromText(input.text, effectiveKontenrahmen);
+      return extractDataFromText(input.text, effectiveKontenrahmen, input.filename);
     }),
 
   // Vision-AI basierte OCR für Bilder
@@ -934,13 +987,14 @@ export const ocrRouter = router({
         mimeType: z.string(),
         kontenrahmen: z.enum(["SKR03", "SKR04", "OeKR", "RLG", "KMU", "OR", "UK_GAAP", "IFRS", "CY_GAAP"]).default("SKR03"),
         unternehmenId: z.number().optional(), // Optional: für Sachkonto-Lookup aus vorherigen Buchungen
+        filename: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
       const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen)
         ? input.kontenrahmen
         : "SKR03";
-      return analyzeImageWithVision(input.imageBase64, input.mimeType, effectiveKontenrahmen, input.unternehmenId);
+      return analyzeImageWithVision(input.imageBase64, input.mimeType, effectiveKontenrahmen, input.unternehmenId, input.filename);
     }),
 
   // Simulierte OCR für Demo-Zwecke (Fallback)
@@ -990,10 +1044,10 @@ export const ocrRouter = router({
         `;
       }
       
-      const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen) 
-        ? input.kontenrahmen 
+      const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen)
+        ? input.kontenrahmen
         : "SKR03";
-      return extractDataFromText(simulatedText, effectiveKontenrahmen);
+      return extractDataFromText(simulatedText, effectiveKontenrahmen, input.filename);
     }),
 
   // PDF-OCR: Konvertiert PDF zu Bild und analysiert mit Vision-AI
@@ -1003,6 +1057,7 @@ export const ocrRouter = router({
         pdfBase64: z.string(),
         kontenrahmen: z.enum(["SKR03", "SKR04", "OeKR", "RLG", "KMU", "OR", "UK_GAAP", "IFRS", "CY_GAAP"]).default("SKR03"),
         unternehmenId: z.number().optional(), // Optional: für Sachkonto-Lookup aus vorherigen Buchungen
+        filename: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -1027,7 +1082,7 @@ export const ocrRouter = router({
           : "SKR03";
 
         console.log("[OCR] 🤖 Rufe analyzeImageWithVision auf...");
-        const result = await analyzeImageWithVision(imageBase64, mimeType, effectiveKontenrahmen, input.unternehmenId);
+        const result = await analyzeImageWithVision(imageBase64, mimeType, effectiveKontenrahmen, input.unternehmenId, input.filename);
 
         console.log("[OCR] ✅ PDF-Analyse abgeschlossen!");
         console.log("[OCR] 📊 Ergebnis:", JSON.stringify({
