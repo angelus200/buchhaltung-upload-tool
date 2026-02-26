@@ -188,8 +188,12 @@ export default function Steuerberater() {
   });
   const deleteMutation = trpc.steuerberater.delete.useMutation({
     onSuccess: () => {
+      toast.success("Übergabe gelöscht");
       refetchUebergaben();
       setDetailDialogOpen(false);
+    },
+    onError: (error) => {
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
   
@@ -936,6 +940,18 @@ export default function Steuerberater() {
                                 }}
                               >
                                 <Eye className="w-4 h-4" />
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm(`Übergabe "${uebergabe.bezeichnung}" wirklich löschen?`)) {
+                                    deleteMutation.mutate({ id: uebergabe.id });
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
                               </Button>
                             </div>
                           </div>
