@@ -790,6 +790,7 @@ export default function Home() {
       case 'AT': // Österreich
         return [
           { satz: "20", bezeichnung: "20% USt" },
+          { satz: "19", bezeichnung: "19% USt (DE-Ausland)" },
           { satz: "13", bezeichnung: "13% USt (Reduziert)" },
           { satz: "10", bezeichnung: "10% USt (Ermäßigt)" },
           { satz: "0", bezeichnung: "0% (Steuerfrei)" },
