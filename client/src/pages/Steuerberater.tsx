@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Send,
   FileText,
@@ -62,7 +63,9 @@ export default function Steuerberater() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedUebergabe, setSelectedUebergabe] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("");
-  
+  const [addBuchungenDialogOpen, setAddBuchungenDialogOpen] = useState(false);
+  const [selectedBuchungIds, setSelectedBuchungIds] = useState<number[]>([]);
+
   // Tab-State: "übergaben" oder "rechnungen" oder "analyse"
   const [activeTab, setActiveTab] = useState<"uebergaben" | "rechnungen" | "analyse">("uebergaben");
   
@@ -150,7 +153,13 @@ export default function Steuerberater() {
     { id: selectedUebergabe! },
     { enabled: !!selectedUebergabe }
   );
-  
+
+  // Buchungen für "Hinzufügen"-Dialog laden (nur wenn Dialog offen)
+  const { data: verfuegbareBuchungenData } = trpc.buchungen.list.useQuery(
+    { unternehmenId: selectedUnternehmenId!, limit: 500 },
+    { enabled: !!selectedUnternehmenId && addBuchungenDialogOpen }
+  );
+
   // Rechnungen-Queries
   const { data: rechnungen, refetch: refetchRechnungen } = trpc.steuerberater.rechnungenList.useQuery(
     { unternehmenId: selectedUnternehmenId! },
@@ -266,6 +275,21 @@ export default function Steuerberater() {
         description: error.message,
         duration: 5000,
       });
+    },
+  });
+
+  // Buchungen zur Übergabe hinzufügen
+  const addBuchungenMutation = trpc.steuerberater.addBuchungen.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${data.count} Buchung(en) hinzugefügt`);
+      refetchUebergaben();
+      // Refresh Detail-View wenn geöffnet
+      if (uebergabeDetail) {
+        trpcUtils.steuerberater.getById.invalidate({ id: uebergabeDetail.id });
+      }
+    },
+    onError: (error) => {
+      toast.error(`Fehler beim Hinzufügen: ${error.message}`);
     },
   });
 
@@ -1845,9 +1869,22 @@ export default function Steuerberater() {
               
               {/* Positionen */}
               <div>
-                <Label className="text-muted-foreground mb-2 block">
-                  Enthaltene Buchungen ({uebergabeDetail.positionen?.length || 0})
-                </Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-muted-foreground">
+                    Enthaltene Buchungen ({uebergabeDetail.positionen?.length || 0})
+                  </Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedBuchungIds([]);
+                      setAddBuchungenDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Buchungen hinzufügen
+                  </Button>
+                </div>
                 {uebergabeDetail.positionen && uebergabeDetail.positionen.length > 0 ? (
                   <div className="max-h-80 overflow-y-auto border rounded-lg">
                     <table className="w-full text-sm">
@@ -2023,6 +2060,113 @@ export default function Steuerberater() {
             </Button>
             <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
               Schließen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Buchungen zur Übergabe hinzufügen */}
+      <Dialog open={addBuchungenDialogOpen} onOpenChange={setAddBuchungenDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Buchungen zur Übergabe hinzufügen</DialogTitle>
+            <DialogDescription>
+              Wählen Sie Buchungen aus, die Sie der Übergabe hinzufügen möchten.
+              {uebergabeDetail?.zeitraumVon && uebergabeDetail?.zeitraumBis && (
+                <span className="block mt-1 text-sm">
+                  Zeitraum der Übergabe: {formatDate(uebergabeDetail.zeitraumVon)} - {formatDate(uebergabeDetail.zeitraumBis)}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Buchungen-Liste */}
+            <div className="border rounded-lg max-h-[500px] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted sticky top-0">
+                  <tr>
+                    <th className="text-left p-2 w-12"></th>
+                    <th className="text-left p-2">Datum</th>
+                    <th className="text-left p-2">Beleg-Nr.</th>
+                    <th className="text-left p-2">Partner</th>
+                    <th className="text-right p-2">Brutto</th>
+                    <th className="text-left p-2">Konto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {verfuegbareBuchungenData?.buchungen
+                    ?.filter((b) => {
+                      // Filtere Buchungen, die bereits in der Übergabe sind
+                      const istBereitsInUebergabe = uebergabeDetail?.positionen?.some(
+                        (pos: any) => pos.buchungId === b.id
+                      );
+                      return !istBereitsInUebergabe;
+                    })
+                    .map((buchung) => (
+                      <tr
+                        key={buchung.id}
+                        className={`border-t cursor-pointer hover:bg-muted/50 ${
+                          selectedBuchungIds.includes(buchung.id) ? "bg-primary/10" : ""
+                        }`}
+                        onClick={() => {
+                          setSelectedBuchungIds((prev) =>
+                            prev.includes(buchung.id)
+                              ? prev.filter((id) => id !== buchung.id)
+                              : [...prev, buchung.id]
+                          );
+                        }}
+                      >
+                        <td className="p-2">
+                          <Checkbox
+                            checked={selectedBuchungIds.includes(buchung.id)}
+                            onCheckedChange={(checked) => {
+                              setSelectedBuchungIds((prev) =>
+                                checked
+                                  ? [...prev, buchung.id]
+                                  : prev.filter((id) => id !== buchung.id)
+                              );
+                            }}
+                          />
+                        </td>
+                        <td className="p-2">{formatDate(buchung.belegdatum)}</td>
+                        <td className="p-2">{buchung.belegnummer || "-"}</td>
+                        <td className="p-2">{buchung.geschaeftspartner || "-"}</td>
+                        <td className="p-2 text-right font-mono">{formatCurrency(buchung.bruttobetrag)}</td>
+                        <td className="p-2 text-xs text-muted-foreground">{buchung.sachkonto}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+              {(!verfuegbareBuchungenData?.buchungen || verfuegbareBuchungenData.buchungen.length === 0) && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Keine Buchungen verfügbar
+                </div>
+              )}
+            </div>
+
+            <div className="text-sm text-muted-foreground">
+              {selectedBuchungIds.length} Buchung(en) ausgewählt
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddBuchungenDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedUebergabe && selectedBuchungIds.length > 0) {
+                  addBuchungenMutation.mutate({
+                    uebergabeId: selectedUebergabe,
+                    buchungIds: selectedBuchungIds,
+                  });
+                  setAddBuchungenDialogOpen(false);
+                }
+              }}
+              disabled={selectedBuchungIds.length === 0 || addBuchungenMutation.isPending}
+            >
+              {addBuchungenMutation.isPending ? "Wird hinzugefügt..." : `${selectedBuchungIds.length} Buchung(en) hinzufügen`}
             </Button>
           </DialogFooter>
         </DialogContent>
