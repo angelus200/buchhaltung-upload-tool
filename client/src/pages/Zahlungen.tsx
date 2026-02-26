@@ -93,9 +93,9 @@ export default function Zahlungen() {
 
   // Gefilterte Buchungen
   const gefilterteBuchungen = useMemo(() => {
-    if (!alleBuchungen) return [];
-    if (filterStatus === "alle") return alleBuchungen;
-    return alleBuchungen.filter((b) => b.zahlungsstatus === filterStatus);
+    if (!alleBuchungen?.buchungen) return [];
+    if (filterStatus === "alle") return alleBuchungen.buchungen;
+    return alleBuchungen.buchungen.filter((b) => b.zahlungsstatus === filterStatus);
   }, [alleBuchungen, filterStatus]);
 
   // Zahlungsstatus-Badge
