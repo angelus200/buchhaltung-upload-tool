@@ -118,9 +118,19 @@ export default function Auszuege() {
     { unternehmenId: selectedUnternehmen! },
     { enabled: !!selectedUnternehmen }
   );
-  const { data: auszugDetail, refetch: refetchDetail } = trpc.auszuege.getById.useQuery(
+  const {
+    data: auszugDetail,
+    refetch: refetchDetail,
+    isLoading: detailLoading,
+    error: detailError
+  } = trpc.auszuege.getById.useQuery(
     { id: selectedAuszug! },
-    { enabled: !!selectedAuszug }
+    {
+      enabled: !!selectedAuszug,
+      onError: (error) => {
+        toast.error(`Fehler beim Laden des Auszugs: ${error.message}`);
+      }
+    }
   );
   const { data: passendeBuchungen } = trpc.auszuege.findePassendeBuchungen.useQuery(
     { positionId: selectedPosition?.id },
@@ -675,6 +685,7 @@ export default function Auszuege() {
                     Auszug: {auszugDetail.auszug.kontoBezeichnung || "Ohne Bezeichnung"}
                   </>
                 )}
+                {!auszugDetail && !detailLoading && "Auszug"}
               </DialogTitle>
               <DialogDescription>
                 {auszugDetail && (
@@ -686,7 +697,26 @@ export default function Auszuege() {
               </DialogDescription>
             </DialogHeader>
 
-            {auszugDetail && (
+            {detailLoading && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">Lade Auszug-Details...</p>
+              </div>
+            )}
+
+            {detailError && !detailLoading && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+                <p className="font-medium mb-2">Fehler beim Laden</p>
+                <p className="text-sm text-muted-foreground mb-4">{detailError.message}</p>
+                <Button onClick={() => refetchDetail()} variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Erneut versuchen
+                </Button>
+              </div>
+            )}
+
+            {auszugDetail && !detailLoading && (
               <div className="space-y-4">
                 {/* Auszug-Info */}
                 <Card>
