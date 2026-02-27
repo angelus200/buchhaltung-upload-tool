@@ -91,7 +91,14 @@ function getFilenameFromLink(link: string): string {
 function isValidDropboxLink(link: string): boolean {
   try {
     const url = new URL(link);
-    return url.hostname.includes('dropbox.com') || url.hostname.includes('dropboxusercontent.com');
+    const isDropbox = url.hostname.includes('dropbox.com') || url.hostname.includes('dropboxusercontent.com');
+
+    // Prüfe ob es ein Ordner-Link ist (/scl/fo/ = folder)
+    if (url.pathname.includes('/scl/fo/')) {
+      return false; // Ordner-Links werden nicht unterstützt
+    }
+
+    return isDropbox;
   } catch {
     return false;
   }
@@ -132,9 +139,17 @@ export const dropboxRouter = router({
 
       // Validiere Dropbox-Link
       if (!isValidDropboxLink(input.dropboxLink)) {
+        // Spezifische Fehlermeldung für Ordner-Links
+        if (input.dropboxLink.includes('/scl/fo/')) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Ordner-Links werden nicht unterstützt. Bitte einen direkten Datei-Link verwenden (Link zu einer einzelnen Datei).",
+          });
+        }
+
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Kein gültiger Dropbox-Link",
+          message: "Kein gültiger Dropbox-Link. Bitte einen direkten Link zu einer Datei verwenden.",
         });
       }
 
