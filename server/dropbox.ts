@@ -21,16 +21,24 @@ import { analyzeBelegAndCreateVorschlag, findKreditorByName } from "./buchungsvo
 async function downloadFromDropboxLink(sharedLink: string): Promise<Buffer> {
   try {
     // Dropbox Shared Link zu Direct Download umwandeln
-    // Methode 1: ?dl=0 → ?dl=1
-    let downloadUrl = sharedLink.replace('?dl=0', '?dl=1');
+    let downloadUrl = sharedLink;
 
-    // Methode 2: www.dropbox.com → dl.dropboxusercontent.com
-    if (!downloadUrl.includes('?dl=1')) {
+    // Schritt 1: ?dl=0 → ?dl=1 (funktioniert für alle Link-Typen)
+    downloadUrl = downloadUrl.replace('?dl=0', '?dl=1').replace('&dl=0', '&dl=1');
+
+    // Schritt 2: Hostname-Ersetzung NUR für Legacy /s/ Links, NICHT für /scl/ Links
+    const isLegacyLink = downloadUrl.includes('/s/') && !downloadUrl.includes('/scl/');
+
+    if (isLegacyLink && !downloadUrl.includes('dl.dropboxusercontent.com')) {
+      // Legacy Link: www.dropbox.com/s/... → dl.dropboxusercontent.com/s/...
       downloadUrl = downloadUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
-      // Füge ?dl=1 hinzu wenn noch keine Query Parameter
+    }
+
+    // Schritt 3: ?dl=1 hinzufügen falls noch nicht vorhanden
+    if (!downloadUrl.includes('dl=1') && !downloadUrl.includes('dl=0')) {
       if (!downloadUrl.includes('?')) {
         downloadUrl += '?dl=1';
-      } else if (!downloadUrl.includes('dl=')) {
+      } else {
         downloadUrl += '&dl=1';
       }
     }

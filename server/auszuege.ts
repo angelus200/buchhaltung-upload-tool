@@ -110,7 +110,7 @@ export const auszuegeRouter = router({
         .select()
         .from(auszugPositionen)
         .where(eq(auszugPositionen.auszugId, input.id))
-        .orderBy(auszugPositionen.datum, desc(auszugPositionen.datum));
+        .orderBy(desc(auszugPositionen.datum));
 
       return { auszug, positionen };
     }),
