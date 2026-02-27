@@ -108,6 +108,11 @@ export default function Auszuege() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
 
+  // PDF-OCR State
+  const [pdfOcrDialogOpen, setPdfOcrDialogOpen] = useState(false);
+  const [pdfOcrFile, setPdfOcrFile] = useState<File | null>(null);
+  const [pdfExtracting, setPdfExtracting] = useState(false);
+
   // Queries
   const { data: unternehmen } = trpc.unternehmen.list.useQuery();
   const { data: auszuege, refetch: refetchAuszuege } = trpc.auszuege.list.useQuery(
@@ -261,6 +266,34 @@ export default function Auszuege() {
     },
     onError: (error) => {
       toast.error(`Import fehlgeschlagen: ${error.message}`);
+    },
+  });
+
+  const extractPDFMutation = trpc.auszuege.extractPositionenFromPDF.useMutation({
+    onSuccess: (data) => {
+      setPdfExtracting(false);
+      toast.success(
+        `KI-Analyse abgeschlossen: ${data.imported} Position(en) extrahiert${
+          data.skipped > 0 ? `, ${data.skipped} Duplikate übersprungen` : ''
+        }`
+      );
+      refetchDetail();
+      setPdfOcrDialogOpen(false);
+      setPdfOcrFile(null);
+
+      // Auto-Zuordnung vorschlagen
+      if (data.imported > 0) {
+        const shouldAutoMatch = confirm(
+          `${data.imported} Positionen erfolgreich extrahiert.\n\nJetzt automatisch zuordnen?`
+        );
+        if (shouldAutoMatch && selectedAuszug) {
+          autoZuordnenMutation.mutate({ auszugId: selectedAuszug });
+        }
+      }
+    },
+    onError: (error) => {
+      setPdfExtracting(false);
+      toast.error(`PDF-Analyse fehlgeschlagen: ${error.message}`);
     },
   });
 
@@ -787,6 +820,14 @@ export default function Auszuege() {
                     CSV importieren
                   </Button>
                   <Button
+                    variant="outline"
+                    onClick={() => setPdfOcrDialogOpen(true)}
+                    disabled={!auszugDetail}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    PDF mit KI analysieren
+                  </Button>
+                  <Button
                     variant="destructive"
                     onClick={() => {
                       if (confirm("Auszug wirklich löschen?")) {
@@ -1055,6 +1096,120 @@ export default function Auszuege() {
                   <>
                     <FileSpreadsheet className="w-4 h-4 mr-2" />
                     Importieren
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* PDF-OCR Dialog */}
+        <Dialog open={pdfOcrDialogOpen} onOpenChange={setPdfOcrDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                PDF mit KI analysieren
+              </DialogTitle>
+              <DialogDescription>
+                Claude Vision AI extrahiert automatisch alle Buchungspositionen aus dem PDF
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="pdf-file">PDF-Datei auswählen</Label>
+                <Input
+                  id="pdf-file"
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 10 * 1024 * 1024) {
+                        toast.error("PDF zu groß (max. 10MB)");
+                        return;
+                      }
+                      if (file.type !== "application/pdf") {
+                        toast.error("Nur PDF-Dateien erlaubt");
+                        return;
+                      }
+                      setPdfOcrFile(file);
+                    }
+                  }}
+                />
+                {pdfOcrFile && (
+                  <p className="text-sm text-muted-foreground">
+                    📄 {pdfOcrFile.name} ({(pdfOcrFile.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 text-sm text-purple-900">
+                <p className="font-medium mb-2 flex items-center gap-1">
+                  <Sparkles className="w-4 h-4" />
+                  KI-gestützte Extraktion
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Erkennt automatisch Datum, Betrag, Buchungstext</li>
+                  <li>Funktioniert mit allen deutschen Banken</li>
+                  <li>Duplikate werden automatisch übersprungen</li>
+                  <li>Dauer: ca. 10-20 Sekunden</li>
+                </ul>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPdfOcrDialogOpen(false);
+                  setPdfOcrFile(null);
+                }}
+                disabled={pdfExtracting}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!pdfOcrFile || !selectedAuszug || !selectedUnternehmen) return;
+
+                  setPdfExtracting(true);
+                  try {
+                    // PDF als ArrayBuffer lesen
+                    const arrayBuffer = await pdfOcrFile.arrayBuffer();
+                    const uint8Array = new Uint8Array(arrayBuffer);
+
+                    // Zu Base64 konvertieren
+                    let binaryString = '';
+                    for (let i = 0; i < uint8Array.length; i++) {
+                      binaryString += String.fromCharCode(uint8Array[i]);
+                    }
+                    const base64 = btoa(binaryString);
+
+                    // OCR-Extraktion starten
+                    extractPDFMutation.mutate({
+                      auszugId: selectedAuszug,
+                      pdfBase64: base64,
+                      unternehmenId: selectedUnternehmen,
+                    });
+                  } catch (error) {
+                    setPdfExtracting(false);
+                    toast.error("Fehler beim Lesen der PDF-Datei");
+                    console.error(error);
+                  }
+                }}
+                disabled={!pdfOcrFile || pdfExtracting}
+              >
+                {pdfExtracting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    KI analysiert Kontoauszug...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Analysieren
                   </>
                 )}
               </Button>

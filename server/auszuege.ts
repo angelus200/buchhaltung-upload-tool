@@ -6,6 +6,8 @@ import { eq, and, gte, lte, sql, or, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { uploadAuszug } from "./storage";
 import iconv from 'iconv-lite';
+import Anthropic from "@anthropic-ai/sdk";
+import { ENV } from "./_core/env";
 import { isValidSparkasseFile, parseSparkasseCSV, type SparkassePosition } from './lib/sparkasse-parser';
 import { isValidPayPalFile, parsePayPalCSV, type PayPalPosition } from './lib/paypal-parser';
 import { isValidSumupFile, parseSumupCSV, type SumupPosition } from './lib/sumup-parser';
@@ -752,6 +754,256 @@ export const auszuegeRouter = router({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error ? error.message : "Import fehlgeschlagen",
+        });
+      }
+    }),
+
+  /**
+   * Extrahiert Positionen aus PDF via OCR (Claude Vision API)
+   */
+  extractPositionenFromPDF: protectedProcedure
+    .input(
+      z.object({
+        auszugId: z.number(),
+        pdfBase64: z.string(),
+        unternehmenId: z.number(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      try {
+        console.log("[PDF-OCR] 🔍 Starte Position-Extraktion für Auszug", input.auszugId);
+
+        // 1. Anthropic Client initialisieren
+        const anthropic = new Anthropic({
+          apiKey: ENV.anthropicApiKey,
+        });
+
+        if (!ENV.anthropicApiKey) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "ANTHROPIC_API_KEY ist nicht konfiguriert",
+          });
+        }
+
+        // 2. System Prompt für Kontoauszug-Analyse
+        const systemPrompt = `Du bist ein Experte für die Analyse von Kontoauszügen deutscher Banken und Zahlungsdienstleister.
+
+Deine Aufgabe: Extrahiere ALLE Buchungspositionen aus diesem Kontoauszug als strukturiertes JSON-Array.
+
+**KRITISCHE REGELN:**
+
+1. **Datum-Format:** IMMER als YYYY-MM-DD
+   - "31.01.2026" → "2026-01-31"
+   - "6.2.2026" → "2026-02-06" (führende Nullen!)
+   - "15/01/2026" → "2026-01-15"
+
+2. **Betrag-Format:** Number (Dezimalpunkt!)
+   - Ausgaben/Lastschriften = NEGATIV: -123.45
+   - Eingänge/Gutschriften = POSITIV: 456.78
+   - "1.234,56" → 1234.56
+   - "- 50,00 EUR" → -50.00
+
+3. **Buchungstext:** Originaltext von der Bank
+   - Empfänger/Auftraggeber + Verwendungszweck
+   - Keine Kürzungen oder Änderungen
+
+4. **Saldo:** Kontostand NACH dieser Buchung
+   - Falls nicht vorhanden: null
+
+5. **Referenz:** Transaktions-ID, falls vorhanden
+   - z.B. "TAN-Nr: 123456" oder Mandatsreferenz
+   - Falls nicht vorhanden: null
+
+**JSON-Schema:**
+{
+  "positionen": [
+    {
+      "datum": "YYYY-MM-DD",
+      "buchungstext": "Vollständiger Text",
+      "betrag": -123.45,
+      "saldo": 5678.90,
+      "referenz": "TAN-123456"
+    }
+  ]
+}
+
+**WICHTIG:**
+- Antworte NUR mit dem JSON-Objekt
+- KEIN Text davor oder danach
+- Überspringe Überschriften, Logos, Fußzeilen
+- Nur echte Transaktionen/Buchungen extrahieren`;
+
+        // 3. Claude Vision API Call
+        console.log("[PDF-OCR] 📤 Sende Anfrage an Claude Vision API...");
+
+        const message = await anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: "application/pdf",
+                    data: input.pdfBase64,
+                  },
+                },
+                {
+                  type: "text",
+                  text: "Analysiere diesen Kontoauszug und extrahiere alle Buchungspositionen als JSON:",
+                },
+              ],
+            },
+          ],
+        });
+
+        console.log("[PDF-OCR] ✅ Claude Response erhalten");
+
+        // 4. Response parsen
+        const textContent = message.content.find((block) => block.type === "text");
+        if (!textContent || textContent.type !== "text") {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Keine Text-Antwort von Claude erhalten",
+          });
+        }
+
+        let content = textContent.text.trim();
+
+        // JSON extrahieren (manchmal in ```json ... ``` eingepackt)
+        const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+        if (jsonMatch) {
+          content = jsonMatch[1];
+        }
+
+        console.log("[PDF-OCR] 📝 Raw Content:", content.substring(0, 500));
+
+        const parsed = JSON.parse(content);
+
+        if (!parsed.positionen || !Array.isArray(parsed.positionen)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Ungültiges JSON-Format: 'positionen' Array fehlt",
+          });
+        }
+
+        console.log("[PDF-OCR] 📊 ${parsed.positionen.length} Positionen extrahiert");
+
+        // 5. Validierung & Normalisierung
+        const positionen = parsed.positionen.map((pos: any, index: number) => {
+          // Datum validieren
+          if (!pos.datum || !/^\d{4}-\d{2}-\d{2}$/.test(pos.datum)) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Position ${index + 1}: Ungültiges Datum-Format (erwartet: YYYY-MM-DD)`,
+            });
+          }
+
+          // Betrag validieren
+          const betrag = parseFloat(pos.betrag);
+          if (isNaN(betrag)) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Position ${index + 1}: Ungültiger Betrag`,
+            });
+          }
+
+          // Buchungstext validieren
+          if (!pos.buchungstext || pos.buchungstext.trim().length === 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Position ${index + 1}: Buchungstext fehlt`,
+            });
+          }
+
+          return {
+            datum: new Date(pos.datum),
+            buchungstext: pos.buchungstext.trim(),
+            betrag: betrag.toFixed(2),
+            saldo: pos.saldo ? parseFloat(pos.saldo).toFixed(2) : null,
+            referenz: pos.referenz?.trim() || null,
+          };
+        });
+
+        if (positionen.length === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Keine Positionen gefunden im PDF",
+          });
+        }
+
+        // 6. Duplikat-Check
+        const existingPositions = await db
+          .select()
+          .from(auszugPositionen)
+          .where(eq(auszugPositionen.auszugId, input.auszugId));
+
+        const imported = [];
+        const skipped = [];
+
+        for (const position of positionen) {
+          const isDuplicate = existingPositions.some(existing => {
+            const sameDate = new Date(existing.datum).toDateString() === position.datum.toDateString();
+            const sameBetrag = Math.abs(parseFloat(existing.betrag.toString()) - parseFloat(position.betrag)) < 0.01;
+            const sameText = existing.buchungstext.trim().toLowerCase() === position.buchungstext.trim().toLowerCase();
+            return sameDate && sameBetrag && sameText;
+          });
+
+          if (isDuplicate) {
+            skipped.push(position);
+          } else {
+            imported.push(position);
+          }
+        }
+
+        // 7. Bulk-Insert
+        if (imported.length > 0) {
+          const insertValues = imported.map(pos => ({
+            auszugId: input.auszugId,
+            datum: pos.datum,
+            buchungstext: pos.buchungstext,
+            betrag: pos.betrag,
+            saldo: pos.saldo,
+            referenz: pos.referenz,
+            kategorie: null,
+            status: "offen" as const,
+          }));
+
+          await db.insert(auszugPositionen).values(insertValues);
+
+          // Auszug-Status aktualisieren
+          await db
+            .update(auszuege)
+            .set({ status: "in_bearbeitung" })
+            .where(eq(auszuege.id, input.auszugId));
+        }
+
+        console.log("[PDF-OCR] ✅ Import abgeschlossen:", {
+          imported: imported.length,
+          skipped: skipped.length,
+        });
+
+        return {
+          success: true,
+          imported: imported.length,
+          skipped: skipped.length,
+        };
+
+      } catch (error) {
+        console.error("[PDF-OCR] ❌ Fehler:", error);
+
+        if (error instanceof TRPCError) throw error;
+
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "PDF-Extraktion fehlgeschlagen",
         });
       }
     }),
