@@ -1451,9 +1451,6 @@ export const auszugPositionen = mysqlTable("auszug_positionen", {
   zugeordneteBuchungId: int("zugeordneteBuchungId").references(() => buchungen.id),
   status: mysqlEnum("status", ["offen", "zugeordnet", "ignoriert"]).default("offen").notNull(),
 
-  // Notizen
-  notizen: text("notizen"),
-
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
