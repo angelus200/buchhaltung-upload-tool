@@ -789,35 +789,12 @@ export const auszuegeRouter = router({
         }
 
         // 2. System Prompt für Kontoauszug-Analyse
-        const systemPrompt = `Du bist ein Experte für die Analyse von Kontoauszügen deutscher Banken und Zahlungsdienstleister.
+        const systemPrompt = `Du bist ein Datenextraktions-Tool für Kontoauszüge.
 
-Deine Aufgabe: Extrahiere ALLE Buchungspositionen aus diesem Kontoauszug als strukturiertes JSON-Array.
+AUFGABE: Extrahiere ALLE Buchungspositionen aus diesem PDF.
 
-**KRITISCHE REGELN:**
-
-1. **Datum-Format:** IMMER als YYYY-MM-DD
-   - "31.01.2026" → "2026-01-31"
-   - "6.2.2026" → "2026-02-06" (führende Nullen!)
-   - "15/01/2026" → "2026-01-15"
-
-2. **Betrag-Format:** Number (Dezimalpunkt!)
-   - Ausgaben/Lastschriften = NEGATIV: -123.45
-   - Eingänge/Gutschriften = POSITIV: 456.78
-   - "1.234,56" → 1234.56
-   - "- 50,00 EUR" → -50.00
-
-3. **Buchungstext:** Originaltext von der Bank
-   - Empfänger/Auftraggeber + Verwendungszweck
-   - Keine Kürzungen oder Änderungen
-
-4. **Saldo:** Kontostand NACH dieser Buchung
-   - Falls nicht vorhanden: null
-
-5. **Referenz:** Transaktions-ID, falls vorhanden
-   - z.B. "TAN-Nr: 123456" oder Mandatsreferenz
-   - Falls nicht vorhanden: null
-
-**JSON-Schema:**
+ANTWORT-FORMAT:
+Antworte AUSSCHLIESSLICH mit einem JSON-Objekt in diesem exakten Format:
 {
   "positionen": [
     {
@@ -830,11 +807,20 @@ Deine Aufgabe: Extrahiere ALLE Buchungspositionen aus diesem Kontoauszug als str
   ]
 }
 
-**WICHTIG:**
+KRITISCHE REGELN:
+1. Datum: IMMER als YYYY-MM-DD ("31.01.2026" → "2026-01-31")
+2. Betrag: Number mit Dezimalpunkt (Ausgaben negativ: -123.45, Eingänge positiv: 456.78)
+3. Buchungstext: Originaltext von der Bank, vollständig
+4. Saldo: Kontostand NACH dieser Buchung (oder null)
+5. Referenz: Transaktions-ID (oder null)
+
+AUSGABE-ANFORDERUNGEN:
 - Antworte NUR mit dem JSON-Objekt
 - KEIN Text davor oder danach
-- Überspringe Überschriften, Logos, Fußzeilen
-- Nur echte Transaktionen/Buchungen extrahieren`;
+- KEIN Markdown (keine \`\`\`json Code-Blöcke)
+- KEINE Erklärungen
+- Beginne direkt mit { und ende mit }
+- Nur echte Transaktionen extrahieren (keine Überschriften, Logos, Fußzeilen)`;
 
         // 3. Claude Vision API Call
         console.log("[PDF-OCR] 📤 Sende Anfrage an Claude Vision API...");
@@ -877,20 +863,40 @@ Deine Aufgabe: Extrahiere ALLE Buchungspositionen aus diesem Kontoauszug als str
 
         let content = textContent.text.trim();
 
-        // JSON extrahieren (manchmal in ```json ... ``` eingepackt)
-        const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+        // Logging: Rohe Claude-Antwort (erste 1000 Zeichen)
+        console.log("[PDF-OCR] 🟦 Claude Rohantwort (1000 chars):", content.substring(0, 1000));
+        console.log("[PDF-OCR] 🟦 Content Length:", content.length);
+
+        // JSON extrahieren - verschiedene Formate abdecken
+
+        // 1. Markdown Codeblock entfernen: ```json ... ``` oder ``` ... ```
+        let jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
         if (jsonMatch) {
-          content = jsonMatch[1];
+          content = jsonMatch[1].trim();
+          console.log("[PDF-OCR] 🔧 Markdown Codeblock entfernt");
         }
 
-        console.log("[PDF-OCR] 📝 Raw Content:", content.substring(0, 500));
+        // 2. Falls immer noch Text davor/danach: Nur JSON-Objekt extrahieren
+        if (!content.startsWith('{')) {
+          const objMatch = content.match(/\{[\s\S]*\}/);
+          if (objMatch) {
+            content = objMatch[0].trim();
+            console.log("[PDF-OCR] 🔧 JSON-Objekt aus Text extrahiert");
+          }
+        }
 
+        // 3. Finales Cleanup
+        content = content.trim();
+
+        console.log("[PDF-OCR] 📝 Bereinigte JSON (erste 500 chars):", content.substring(0, 500));
+
+        // 4. JSON parsen
         let parsed;
         try {
           parsed = JSON.parse(content);
         } catch (e) {
           console.error("[PDF-OCR] 🔴 JSON Parse Fehler:", e);
-          console.error("[PDF-OCR] 🔴 Content Length:", content.length);
+          console.error("[PDF-OCR] 🔴 Content nach Bereinigung:", content.substring(0, 2000));
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: "KI-Antwort konnte nicht verarbeitet werden (JSON ungültig)",
