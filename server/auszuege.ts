@@ -841,7 +841,7 @@ Deine Aufgabe: Extrahiere ALLE Buchungspositionen aus diesem Kontoauszug als str
 
         const message = await anthropic.messages.create({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 4096,
+          max_tokens: 8192,
           system: systemPrompt,
           messages: [
             {
@@ -885,7 +885,17 @@ Deine Aufgabe: Extrahiere ALLE Buchungspositionen aus diesem Kontoauszug als str
 
         console.log("[PDF-OCR] 📝 Raw Content:", content.substring(0, 500));
 
-        const parsed = JSON.parse(content);
+        let parsed;
+        try {
+          parsed = JSON.parse(content);
+        } catch (e) {
+          console.error("[PDF-OCR] 🔴 JSON Parse Fehler:", e);
+          console.error("[PDF-OCR] 🔴 Content Length:", content.length);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "KI-Antwort konnte nicht verarbeitet werden (JSON ungültig)",
+          });
+        }
 
         if (!parsed.positionen || !Array.isArray(parsed.positionen)) {
           throw new TRPCError({
