@@ -848,7 +848,7 @@ Deine Aufgabe: Extrahiere ALLE Buchungspositionen aus diesem Kontoauszug als str
               role: "user",
               content: [
                 {
-                  type: "image",
+                  type: "document",
                   source: {
                     type: "base64",
                     media_type: "application/pdf",
