@@ -54,6 +54,36 @@ function calculateWirtschaftsjahrPeriode(
 }
 
 /**
+ * Hilfsfunktion: Extrahiert Positionen aus abgeschnittenem JSON
+ * Falls JSON bei max_tokens abgeschnitten wird, rettet diese Funktion vollständige Objekte
+ */
+function extractPartialPositionen(jsonStr: string): any[] {
+  // Zuerst normales Parsing versuchen
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return parsed.positionen ?? parsed;
+  } catch {}
+
+  console.log("[PDF-OCR] ⚠️ JSON abgeschnitten - Fallback zu Partial-Extraktion");
+
+  // Fallback: Alle vollständigen Position-Objekte via Regex extrahieren
+  const matches = [...jsonStr.matchAll(
+    /\{\s*"datum"\s*:\s*"([^"]+)"\s*,\s*"buchungstext"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"betrag"\s*:\s*([-\d.]+)\s*,\s*"saldo"\s*:\s*(null|[-\d.]+)\s*,\s*"referenz"\s*:\s*("(?:[^"\\]|\\.)*"|null)\s*\}/g
+  )];
+
+  const positionen = matches.map(m => ({
+    datum: m[1],
+    buchungstext: m[2].replace(/\\"/g, '"'), // Escaped quotes zurück
+    betrag: parseFloat(m[3]),
+    saldo: m[4] === 'null' ? null : parseFloat(m[4]),
+    referenz: m[5] === 'null' ? null : m[5].slice(1, -1).replace(/\\"/g, '"')
+  }));
+
+  console.log(`[PDF-OCR] ✅ ${positionen.length} vollständige Positionen aus Partial-JSON extrahiert`);
+  return positionen;
+}
+
+/**
  * Auszüge Router - Verwaltung von Kontoauszügen, Kreditkartenauszügen, Zahlungsdienstleister-Auszügen
  */
 export const auszuegeRouter = router({
@@ -827,7 +857,7 @@ AUSGABE-ANFORDERUNGEN:
 
         const message = await anthropic.messages.create({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 8192,
+          max_tokens: 16000,
           system: systemPrompt,
           messages: [
             {
@@ -890,30 +920,43 @@ AUSGABE-ANFORDERUNGEN:
 
         console.log("[PDF-OCR] 📝 Bereinigte JSON (erste 500 chars):", content.substring(0, 500));
 
-        // 4. JSON parsen
+        // 4. JSON parsen mit Fallback für abgeschnittenes JSON
         let parsed;
+        let positionen;
+
         try {
           parsed = JSON.parse(content);
+
+          if (!parsed.positionen || !Array.isArray(parsed.positionen)) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Ungültiges JSON-Format: 'positionen' Array fehlt",
+            });
+          }
+
+          positionen = parsed.positionen;
+          console.log(`[PDF-OCR] 📊 ${positionen.length} Positionen extrahiert`);
+
         } catch (e) {
           console.error("[PDF-OCR] 🔴 JSON Parse Fehler:", e);
-          console.error("[PDF-OCR] 🔴 Content nach Bereinigung:", content.substring(0, 2000));
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "KI-Antwort konnte nicht verarbeitet werden (JSON ungültig)",
-          });
-        }
+          console.error("[PDF-OCR] 🔴 Content nach Bereinigung (erste 2000 chars):", content.substring(0, 2000));
 
-        if (!parsed.positionen || !Array.isArray(parsed.positionen)) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Ungültiges JSON-Format: 'positionen' Array fehlt",
-          });
-        }
+          // Fallback: Versuche Partial-Extraktion
+          const partialPositionen = extractPartialPositionen(content);
 
-        console.log("[PDF-OCR] 📊 ${parsed.positionen.length} Positionen extrahiert");
+          if (partialPositionen.length === 0) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "KI-Antwort konnte nicht verarbeitet werden (JSON ungültig, auch Partial-Extraktion fehlgeschlagen)",
+            });
+          }
+
+          console.log(`[PDF-OCR] 💾 ${partialPositionen.length} Positionen via Fallback gerettet`);
+          positionen = partialPositionen;
+        }
 
         // 5. Validierung & Normalisierung
-        const positionen = parsed.positionen.map((pos: any, index: number) => {
+        const validatedPositionen = positionen.map((pos: any, index: number) => {
           // Datum validieren
           if (!pos.datum || !/^\d{4}-\d{2}-\d{2}$/.test(pos.datum)) {
             throw new TRPCError({
@@ -948,7 +991,7 @@ AUSGABE-ANFORDERUNGEN:
           };
         });
 
-        if (positionen.length === 0) {
+        if (validatedPositionen.length === 0) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Keine Positionen gefunden im PDF",
@@ -964,7 +1007,7 @@ AUSGABE-ANFORDERUNGEN:
         const imported = [];
         const skipped = [];
 
-        for (const position of positionen) {
+        for (const position of validatedPositionen) {
           const isDuplicate = existingPositions.some(existing => {
             const sameDate = new Date(existing.datum).toDateString() === position.datum.toDateString();
             const sameBetrag = Math.abs(parseFloat(existing.betrag.toString()) - parseFloat(position.betrag)) < 0.01;
