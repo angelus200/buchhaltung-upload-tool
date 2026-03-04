@@ -853,11 +853,11 @@ AUSGABE-ANFORDERUNGEN:
 - Nur echte Transaktionen extrahieren (keine Überschriften, Logos, Fußzeilen)`;
 
         // 3. Claude Vision API Call
-        console.log("[PDF-OCR] 📤 Sende Anfrage an Claude Vision API...");
+        console.log("[PDF-OCR] 📤 Sende Anfrage an Claude Opus 4 (32K tokens für große PDFs)...");
 
         const message = await anthropic.messages.create({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 16000,
+          model: "claude-opus-4-20250514",
+          max_tokens: 32000,
           system: systemPrompt,
           messages: [
             {
