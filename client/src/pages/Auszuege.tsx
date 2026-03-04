@@ -859,11 +859,11 @@ export default function Auszuege() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Datum</TableHead>
+                            <TableHead className="w-[100px]">Datum</TableHead>
                             <TableHead>Buchungstext</TableHead>
-                            <TableHead className="text-right">Betrag</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="w-[200px]">Aktionen</TableHead>
+                            <TableHead className="w-[120px] text-right">Betrag</TableHead>
+                            <TableHead className="w-[100px]">Status</TableHead>
+                            <TableHead className="w-[160px]">Aktionen</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -878,9 +878,14 @@ export default function Auszuege() {
                                   : ""
                               }
                             >
-                              <TableCell>{formatDate(position.datum)}</TableCell>
-                              <TableCell className="max-w-xs truncate">{position.buchungstext}</TableCell>
-                              <TableCell className="text-right font-mono">
+                              <TableCell className="font-mono text-sm">{formatDate(position.datum)}</TableCell>
+                              <TableCell
+                                className="max-w-md truncate"
+                                title={position.buchungstext}
+                              >
+                                {position.buchungstext}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm">
                                 <span
                                   className={
                                     parseFloat(position.betrag.toString()) >= 0
@@ -893,21 +898,18 @@ export default function Auszuege() {
                               </TableCell>
                               <TableCell>
                                 {position.status === "zugeordnet" && (
-                                  <Badge variant="outline" className="bg-green-100 text-green-800">
-                                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                                    Zugeordnet
+                                  <Badge variant="outline" className="bg-green-100 text-green-800" title="Zugeordnet">
+                                    <CheckCircle2 className="w-3 h-3" />
                                   </Badge>
                                 )}
                                 {position.status === "offen" && (
-                                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
-                                    <AlertCircle className="w-3 h-3 mr-1" />
-                                    Offen
+                                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800" title="Offen">
+                                    <AlertCircle className="w-3 h-3" />
                                   </Badge>
                                 )}
                                 {position.status === "ignoriert" && (
-                                  <Badge variant="outline" className="bg-gray-100 text-gray-800">
-                                    <XCircle className="w-3 h-3 mr-1" />
-                                    Ignoriert
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-800" title="Ignoriert">
+                                    <XCircle className="w-3 h-3" />
                                   </Badge>
                                 )}
                               </TableCell>
