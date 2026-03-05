@@ -859,11 +859,11 @@ export default function Auszuege() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="w-[100px]">Datum</TableHead>
-                            <TableHead>Buchungstext</TableHead>
-                            <TableHead className="w-[120px] text-right">Betrag</TableHead>
-                            <TableHead className="w-[100px]">Status</TableHead>
-                            <TableHead className="w-[160px]">Aktionen</TableHead>
+                            <TableHead className="w-24">Datum</TableHead>
+                            <TableHead className="min-w-0">Buchungstext</TableHead>
+                            <TableHead className="w-28 text-right">Betrag</TableHead>
+                            <TableHead className="w-16">Status</TableHead>
+                            <TableHead className="w-32">Aktionen</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -878,14 +878,14 @@ export default function Auszuege() {
                                   : ""
                               }
                             >
-                              <TableCell className="font-mono text-sm">{formatDate(position.datum)}</TableCell>
+                              <TableCell className="w-24 font-mono text-sm">{formatDate(position.datum)}</TableCell>
                               <TableCell
-                                className="max-w-md truncate"
+                                className="min-w-0 truncate max-w-sm"
                                 title={position.buchungstext}
                               >
                                 {position.buchungstext}
                               </TableCell>
-                              <TableCell className="text-right font-mono text-sm">
+                              <TableCell className="w-28 text-right font-mono text-sm">
                                 <span
                                   className={
                                     parseFloat(position.betrag.toString()) >= 0
@@ -896,7 +896,7 @@ export default function Auszuege() {
                                   {formatCurrency(position.betrag)} €
                                 </span>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="w-16">
                                 {position.status === "zugeordnet" && (
                                   <Badge variant="outline" className="bg-green-100 text-green-800" title="Zugeordnet">
                                     <CheckCircle2 className="w-3 h-3" />
@@ -913,7 +913,7 @@ export default function Auszuege() {
                                   </Badge>
                                 )}
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="w-32">
                                 <div className="flex items-center gap-1">
                                   {position.status === "offen" && (
                                     <>
