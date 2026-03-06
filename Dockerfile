@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 # Cache Bust: Force clean build on Railway
-ARG CACHE_BUST=20260216-1830
+ARG CACHE_BUST=20260306-1750
 
 # Install poppler-utils for PDF OCR
 RUN apk add --no-cache poppler-utils
