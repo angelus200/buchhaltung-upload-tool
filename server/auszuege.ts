@@ -482,7 +482,7 @@ export const auszuegeRouter = router({
 
       if (!position) throw new TRPCError({ code: "NOT_FOUND", message: "Position nicht gefunden" });
 
-      // Auszug laden
+      // Auszug laden und Multi-Tenant Sicherheit prüfen
       const [auszug] = await db
         .select()
         .from(auszuege)
@@ -490,6 +490,11 @@ export const auszuegeRouter = router({
         .limit(1);
 
       if (!auszug) throw new TRPCError({ code: "NOT_FOUND", message: "Auszug nicht gefunden" });
+
+      // SECURITY: Prüfen dass Position wirklich zu diesem Auszug gehört
+      if (position.auszugId !== auszug.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Position gehört nicht zu diesem Auszug" });
+      }
 
       // Unternehmen laden für Wirtschaftsjahr-Berechnung
       const [company] = await db
@@ -513,18 +518,27 @@ export const auszuegeRouter = router({
       const steuerbetrag = (bruttobetrag * steuersatz) / (100 + steuersatz);
       const nettobetrag = bruttobetrag - steuerbetrag;
 
+      // Buchungsart und Geschäftspartnertyp aus Betrag ableiten
+      const istAusgabe = bruttobetrag < 0;
+      const buchungsart = istAusgabe ? "aufwand" : "ertrag";
+      const geschaeftspartnerTyp = istAusgabe ? "kreditor" : "debitor";
+
       // Buchung erstellen
       const [result] = await db.insert(buchungen).values({
         unternehmenId: auszug.unternehmenId,
+        buchungsart, // NEU: Aus Betrag abgeleitet
         wirtschaftsjahr,
         periode,
         belegdatum,
         belegnummer: `AZ-${position.id}`,
         belegart: "Bank",
         geschaeftspartner: input.geschaeftspartner || position.buchungstext.substring(0, 100),
+        geschaeftspartnerTyp, // NEU: Aus Betrag abgeleitet
+        geschaeftspartnerKonto: istAusgabe ? "70000" : "10000", // Standard-Sammelkonto
         buchungstext: position.buchungstext,
         sachkonto: input.sachkonto,
-        gegenkonto: input.gegenkonto,
+        sollKonto: input.sachkonto, // Soll-Konto für doppelte Buchführung
+        habenKonto: input.gegenkonto, // Haben-Konto für doppelte Buchführung
         bruttobetrag: bruttobetrag.toString(),
         nettobetrag: nettobetrag.toFixed(2),
         steuerbetrag: steuerbetrag.toFixed(2),
