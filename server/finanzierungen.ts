@@ -5,7 +5,8 @@ import { finanzierungen, finanzierungZahlungen, finanzierungDokumente, InsertFin
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { uploadFinanzierungDokument, isStorageAvailable } from "./storage";
-import { invokeLLM, type Message } from "./_core/llm";
+import Anthropic from "@anthropic-ai/sdk";
+import { ENV } from "./_core/env";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
@@ -102,38 +103,50 @@ Wichtig:
 - Datum immer YYYY-MM-DD
 - Wenn ein Wert nicht erkennbar ist: null`;
 
-  try {
-    const messages: Message[] = [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Analysiere diesen Finanzierungsvertrag und extrahiere die Vertragsdaten:",
-          },
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: imageMimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-              data: imageBase64,
-            },
-          },
-        ],
-      },
-    ];
+  // Initialize Anthropic client
+  if (!ENV.anthropicApiKey) {
+    throw new Error("ANTHROPIC_API_KEY ist nicht konfiguriert");
+  }
 
-    const response = await invokeLLM(messages, {
-      temperature: 0,
+  const anthropic = new Anthropic({
+    apiKey: ENV.anthropicApiKey,
+  });
+
+  try {
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       max_tokens: 2000,
+      temperature: 0,
+      system: systemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: imageMimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+                data: imageBase64,
+              },
+            },
+            {
+              type: "text",
+              text: "Analysiere diesen Finanzierungsvertrag und extrahiere die Vertragsdaten:",
+            },
+          ],
+        },
+      ],
     });
 
+    // Extract text content from Claude response
+    const textContent = message.content
+      .filter((block) => block.type === "text")
+      .map((block) => ("text" in block ? block.text : ""))
+      .join("\n");
+
     // Parse JSON response
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error("Keine JSON-Antwort erhalten");
     }
@@ -273,7 +286,7 @@ export const finanzierungenRouter = router({
         zinssatz: z.string().optional(),
         vertragsBeginn: z.string(),
         vertragsEnde: z.string(),
-        ratenBetrag: z.string(),
+        ratenBetrag: z.string().optional(), // Optional für variables Tilgungsdarlehen
         ratenTyp: z.enum(["monatlich", "quartal", "halbjaehrlich", "jaehrlich"]).default("monatlich"),
         ratenTag: z.number().default(1),
         anzahlung: z.string().optional(),
@@ -303,7 +316,7 @@ export const finanzierungenRouter = router({
         zinssatz: input.zinssatz,
         vertragsBeginn: new Date(input.vertragsBeginn),
         vertragsEnde: new Date(input.vertragsEnde),
-        ratenBetrag: input.ratenBetrag,
+        ratenBetrag: input.ratenBetrag || "0.00", // Default für variables Tilgungsdarlehen
         ratenTyp: input.ratenTyp,
         ratenTag: input.ratenTag,
         anzahlung: input.anzahlung || "0",

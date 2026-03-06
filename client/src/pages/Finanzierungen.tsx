@@ -139,8 +139,8 @@ export default function Finanzierungen() {
   );
 
   const { data: detail } = trpc.finanzierungen.getById.useQuery(
-    { id: selectedFinanzierung! },
-    { enabled: !!selectedFinanzierung }
+    { id: selectedFinanzierung!, unternehmenId: selectedUnternehmen! },
+    { enabled: !!selectedFinanzierung && !!selectedUnternehmen }
   );
 
   const { data: dokumente = [], refetch: refetchDokumente } = trpc.finanzierungen.listDokumente.useQuery(
@@ -328,7 +328,8 @@ export default function Finanzierungen() {
       return;
     }
 
-    if (!formData.bezeichnung || !formData.kreditgeber || !formData.gesamtbetrag || !formData.ratenBetrag) {
+    // ratenBetrag ist optional (z.B. bei variablem Tilgungsdarlehen)
+    if (!formData.bezeichnung || !formData.kreditgeber || !formData.gesamtbetrag) {
       toast.error("Bitte füllen Sie alle Pflichtfelder aus");
       return;
     }
