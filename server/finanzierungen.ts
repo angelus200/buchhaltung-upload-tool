@@ -284,8 +284,8 @@ export const finanzierungenRouter = router({
         gesamtbetrag: z.string(),
         restschuld: z.string().optional(),
         zinssatz: z.string().optional(),
-        vertragsBeginn: z.string(),
-        vertragsEnde: z.string(),
+        vertragsBeginn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Datumsformat (erwartet: YYYY-MM-DD)"),
+        vertragsEnde: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Datumsformat (erwartet: YYYY-MM-DD)"),
         ratenBetrag: z.string().optional(), // Optional für variables Tilgungsdarlehen
         ratenTyp: z.enum(["monatlich", "quartal", "halbjaehrlich", "jaehrlich"]).default("monatlich"),
         ratenTag: z.number().default(1),
@@ -301,6 +301,31 @@ export const finanzierungenRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
 
+      // 🟦 Validiere Datums-Konvertierung
+      const vertragsBeginn = new Date(input.vertragsBeginn);
+      const vertragsEnde = new Date(input.vertragsEnde);
+
+      if (isNaN(vertragsBeginn.getTime())) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Ungültiges Vertragsbeginn-Datum"
+        });
+      }
+
+      if (isNaN(vertragsEnde.getTime())) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Ungültiges Vertragsende-Datum"
+        });
+      }
+
+      if (vertragsEnde <= vertragsBeginn) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Vertragsende muss nach Vertragsbeginn liegen"
+        });
+      }
+
       const [result] = await db.insert(finanzierungen).values({
         unternehmenId: input.unternehmenId,
         typ: input.typ,
@@ -314,8 +339,8 @@ export const finanzierungenRouter = router({
         gesamtbetrag: input.gesamtbetrag,
         restschuld: input.restschuld || input.gesamtbetrag,
         zinssatz: input.zinssatz,
-        vertragsBeginn: new Date(input.vertragsBeginn),
-        vertragsEnde: new Date(input.vertragsEnde),
+        vertragsBeginn,
+        vertragsEnde,
         ratenBetrag: input.ratenBetrag || "0.00", // Default für variables Tilgungsdarlehen
         ratenTyp: input.ratenTyp,
         ratenTag: input.ratenTag,

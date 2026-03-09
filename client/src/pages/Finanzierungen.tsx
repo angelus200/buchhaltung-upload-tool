@@ -334,6 +334,30 @@ export default function Finanzierungen() {
       return;
     }
 
+    // 🟦 Datums-Validierung
+    if (!formData.vertragsBeginn || !formData.vertragsEnde) {
+      toast.error("Bitte geben Sie Vertragsbeginn und Vertragsende an");
+      return;
+    }
+
+    const beginnDate = new Date(formData.vertragsBeginn);
+    const endeDate = new Date(formData.vertragsEnde);
+
+    if (isNaN(beginnDate.getTime())) {
+      toast.error("Ungültiges Vertragsbeginn-Datum");
+      return;
+    }
+
+    if (isNaN(endeDate.getTime())) {
+      toast.error("Ungültiges Vertragsende-Datum");
+      return;
+    }
+
+    if (endeDate <= beginnDate) {
+      toast.error("Vertragsende muss nach Vertragsbeginn liegen");
+      return;
+    }
+
     createMutation.mutate({
       unternehmenId: selectedUnternehmen,
       ...formData,
@@ -680,6 +704,7 @@ export default function Finanzierungen() {
                   type="date"
                   value={formData.vertragsBeginn}
                   onChange={(e) => setFormData({ ...formData, vertragsBeginn: e.target.value })}
+                  required
                 />
               </div>
               <div>
@@ -688,6 +713,7 @@ export default function Finanzierungen() {
                   type="date"
                   value={formData.vertragsEnde}
                   onChange={(e) => setFormData({ ...formData, vertragsEnde: e.target.value })}
+                  required
                 />
               </div>
             </div>
@@ -810,6 +836,34 @@ export default function Finanzierungen() {
                   </div>
                 </div>
 
+                {/* 🟦 Vertragsdokument (falls vorhanden) */}
+                {detail.finanzierung.vertragsDokumentUrl && (
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-blue-600" />
+                          <div>
+                            <p className="font-medium text-blue-900">Vertragsdokument</p>
+                            <p className="text-sm text-blue-700">Hauptvertrag</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          asChild
+                          className="border-blue-300 hover:bg-blue-100"
+                        >
+                          <a href={detail.finanzierung.vertragsDokumentUrl} target="_blank" rel="noopener noreferrer">
+                            <FileText className="w-4 h-4 mr-2" />
+                            Ansehen
+                          </a>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Zahlungsplan */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -919,9 +973,9 @@ export default function Finanzierungen() {
                         <Card key={dok.id}>
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-3 flex-1">
                                 <FileText className="w-5 h-5 text-muted-foreground" />
-                                <div>
+                                <div className="flex-1">
                                   <p className="font-medium">{dok.dateiName}</p>
                                   {dok.beschreibung && (
                                     <p className="text-sm text-muted-foreground">{dok.beschreibung}</p>
@@ -930,23 +984,25 @@ export default function Finanzierungen() {
                                     {formatDate(dok.createdAt)}
                                   </p>
                                 </div>
-                              </div>
-                              <div className="flex gap-2">
                                 <Button
-                                  size="icon"
-                                  variant="ghost"
+                                  size="sm"
+                                  variant="outline"
                                   asChild
+                                  className="shrink-0"
                                 >
                                   <a href={dok.dateiUrl} target="_blank" rel="noopener noreferrer">
-                                    <Download className="w-4 h-4" />
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Ansehen
                                   </a>
                                 </Button>
+                              </div>
+                              <div className="flex gap-2 ml-2">
                                 <Button
                                   size="icon"
                                   variant="ghost"
                                   onClick={() => {
                                     if (confirm("Dokument wirklich löschen?")) {
-                                      deleteDokumentMutation.mutate({ dokumentId: dok.id });
+                                      deleteDokumentMutation.mutate({ dokumentId: dok.id, unternehmenId: selectedUnternehmen! });
                                     }
                                   }}
                                   disabled={deleteDokumentMutation.isPending}
