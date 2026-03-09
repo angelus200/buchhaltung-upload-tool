@@ -97,10 +97,15 @@ Antworte NUR mit einem JSON-Objekt:
   "vertragsnummer": "string" | null
 }
 
-Wichtig:
+KRITISCH - Datumsformat:
+- Datum MUSS ISO-Format YYYY-MM-DD sein (z.B. "2023-03-13")
+- Wenn im Dokument deutsches Format steht (z.B. "13.03.2023"), konvertiere zu "2023-03-13"
+- Wenn im Dokument "13 .03.2023" steht (mit Leerzeichen), konvertiere zu "2023-03-13"
+- NIEMALS deutsches Format DD.MM.YYYY zurückgeben!
+
+Weitere Regeln:
 - Beträge als Dezimalzahlen mit Punkt (z.B. 50000.00)
 - Zinssatz als Zahl (z.B. 3.5 für 3,5%)
-- Datum immer YYYY-MM-DD
 - Wenn ein Wert nicht erkennbar ist: null`;
 
   // Initialize Anthropic client

@@ -57,6 +57,38 @@ function formatDate(dateStr: string | Date): string {
   return date.toLocaleDateString("de-DE");
 }
 
+/**
+ * 🟦 Konvertiert verschiedene Datumsformate in ISO YYYY-MM-DD für <input type="date">
+ * Unterstützt: "13.03.2023", "13 .03.2023", "2023-03-13", "13/03/2023"
+ * OCR liefert oft deutsches Format trotz Prompt → hier wird es normalisiert
+ */
+function toInputDateFormat(raw: string | null | undefined): string {
+  if (!raw) return "";
+
+  const cleaned = raw.replace(/\s+/g, "").trim(); // Leerzeichen entfernen ("13 .03.2023" → "13.03.2023")
+
+  // Bereits ISO-Format: YYYY-MM-DD → direkt zurückgeben
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned;
+
+  // Deutsches Format: DD.MM.YYYY
+  const deDotMatch = cleaned.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (deDotMatch) {
+    const [, d, m, y] = deDotMatch;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  // Slash-Format: DD/MM/YYYY
+  const slashMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, d, m, y] = slashMatch;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  // Unbekanntes Format → leer lassen (lieber leer als falsch)
+  console.warn("🟠 toInputDateFormat: Unbekanntes Datumsformat:", raw);
+  return "";
+}
+
 const TYP_CONFIG = {
   kredit: {
     label: "Kredit",
@@ -223,15 +255,15 @@ export default function Finanzierungen() {
     onSuccess: (data) => {
       toast.success("Vertrag erfolgreich analysiert!");
 
-      // Formular mit analysierten Daten befüllen
+      // 🟦 Formular mit analysierten Daten befüllen (Datumsfelder werden konvertiert!)
       setFormData((prev) => ({
         ...prev,
         typ: data.typ || prev.typ,
         kreditgeber: data.kreditgeber || prev.kreditgeber,
         gesamtbetrag: data.gesamtbetrag ? data.gesamtbetrag.toString() : prev.gesamtbetrag,
         zinssatz: data.zinssatz ? data.zinssatz.toString() : prev.zinssatz,
-        vertragsBeginn: data.vertragsBeginn || prev.vertragsBeginn,
-        vertragsEnde: data.vertragsEnde || prev.vertragsEnde,
+        vertragsBeginn: toInputDateFormat(data.vertragsBeginn) || prev.vertragsBeginn,
+        vertragsEnde: toInputDateFormat(data.vertragsEnde) || prev.vertragsEnde,
         ratenBetrag: data.ratenBetrag ? data.ratenBetrag.toString() : prev.ratenBetrag,
         ratenTyp: data.ratenTyp || prev.ratenTyp,
         objektBezeichnung: data.objektBezeichnung || prev.objektBezeichnung,
