@@ -255,6 +255,12 @@ export default function Finanzierungen() {
     onSuccess: (data) => {
       toast.success("Vertrag erfolgreich analysiert!");
 
+      // 🟦 Debug: OCR-Rohdaten loggen (temporär für Diagnose)
+      console.log("🟦 RAW OCR vertragsBeginn:", JSON.stringify(data.vertragsBeginn));
+      console.log("🟦 RAW OCR vertragsEnde:", JSON.stringify(data.vertragsEnde));
+      console.log("🟦 CONVERTED vertragsBeginn:", toInputDateFormat(data.vertragsBeginn));
+      console.log("🟦 CONVERTED vertragsEnde:", toInputDateFormat(data.vertragsEnde));
+
       // 🟦 Formular mit analysierten Daten befüllen (Datumsfelder werden konvertiert!)
       setFormData((prev) => ({
         ...prev,
