@@ -46,6 +46,7 @@ import {
   Building2,
   Pencil,
   Trash2,
+  Eye,
   Plus,
   Loader2,
   Search,
@@ -1022,6 +1023,20 @@ export default function Uebersicht() {
                               >
                                 <Trash2 className="w-4 h-4 text-red-500" />
                               </Button>
+                              {b.belegUrl && (
+                                <a
+                                  href={b.belegUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Beleg einsehen"
+                                >
+                                  <Button variant="ghost" size="sm" asChild>
+                                    <span>
+                                      <Eye className="w-4 h-4 text-blue-500" />
+                                    </span>
+                                  </Button>
+                                </a>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
