@@ -39,6 +39,7 @@ interface UnternehmenFormData {
   name: string;
   rechtsform: string;
   steuernummer: string;
+  finanzamtNummer: string;
   ustIdNr: string;
   handelsregister: string;
   strasse: string;
@@ -106,6 +107,7 @@ function createEmptyFormData(): UnternehmenFormData {
     name: "",
     rechtsform: "",
     steuernummer: "",
+    finanzamtNummer: "",
     ustIdNr: "",
     handelsregister: "",
     strasse: "",
@@ -254,6 +256,7 @@ export default function Unternehmen() {
       name: u.name || "",
       rechtsform: u.rechtsform || "",
       steuernummer: u.steuernummer || "",
+      finanzamtNummer: u.finanzamtNummer || "",
       ustIdNr: u.ustIdNr || "",
       handelsregister: u.handelsregister || "",
       strasse: u.strasse || "",
@@ -288,6 +291,7 @@ export default function Unternehmen() {
       name: formData.name,
       rechtsform: formData.rechtsform || undefined,
       steuernummer: formData.steuernummer || undefined,
+      finanzamtNummer: formData.finanzamtNummer || undefined,
       ustIdNr: formData.ustIdNr || undefined,
       handelsregister: formData.handelsregister || undefined,
       strasse: formData.strasse || undefined,
@@ -563,6 +567,19 @@ export default function Unternehmen() {
                         placeholder="DE123456789"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="finanzamtNummer">Finanzamtsnummer (ELSTER)</Label>
+                    <Input
+                      id="finanzamtNummer"
+                      value={formData.finanzamtNummer}
+                      onChange={(e) => setFormData({ ...formData, finanzamtNummer: e.target.value })}
+                      placeholder="z.B. 2741"
+                      maxLength={10}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      4-stellige Nummer des zuständigen Finanzamts (auf Steuerbescheid oder elster.de)
+                    </p>
                   </div>
                 </div>
 

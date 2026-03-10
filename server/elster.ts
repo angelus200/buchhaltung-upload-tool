@@ -155,7 +155,7 @@ function generiereElsterXML(
     <Nutzdatenblock>
       <NutzdatenHeader version="11">
         <NutzdatenTicket>ND-${now.getTime()}</NutzdatenTicket>
-        <Empfaenger id="F">Finanzamt ${firma.ort || 'Berlin'}</Empfaenger>
+        <Empfaenger id="F">${firma.finanzamtNummer ?? ''}</Empfaenger>
         <Hersteller>
           <ProduktName>Buchhaltung Upload Tool</ProduktName>
           <ProduktVersion>1.0</ProduktVersion>
