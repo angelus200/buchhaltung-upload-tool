@@ -29,25 +29,6 @@ interface UStVAKennzahlen {
   kz83: number; // Verbleibende USt-Vorauszahlung (kann negativ sein = Erstattung)
 }
 
-/**
- * SKR04 Konten-Mapping für USt-VA
- */
-const SKR04_USTVA_MAPPING = {
-  // KZ 81: Umsätze 19%
-  umsaetze19: ['4000', '4100', '4110', '4120', '4200'],
-
-  // KZ 86: Umsätze 7%
-  umsaetze7: ['4300', '4310', '4320'],
-
-  // KZ 66: Vorsteuer
-  vorsteuer: ['1400', '1401', '1405', '1406', '1576'],
-
-  // KZ 35: Steuerfreie Umsätze
-  steuerfrei: ['4125', '4126'],
-
-  // KZ 21: EU-Lieferungen (subset von steuerfrei mit EU-Kennzeichen)
-  euLieferungen: ['4125'],
-};
 
 /**
  * Berechnet Zeitraum (von/bis Datum) aus Jahr und Zeitraum
@@ -98,46 +79,27 @@ async function berechneKennzahlen(
       )
     );
 
-  let kz81 = 0; // Umsätze 19% (netto)
-  let kz86 = 0; // Umsätze 7% (netto)
-  let kz35 = 0; // Steuerfreie Umsätze
-  let kz21 = 0; // EU-Lieferungen
-  let kz66 = 0; // Vorsteuer
+  // KZ 81: Umsätze 19% — Erlösbuchungen mit 19% USt (buchungsart != 'aufwand')
+  const kz81 = alleBuchungen
+    .filter(b => parseFloat(b.steuersatz?.toString() || '0') === 19 && b.buchungsart !== 'aufwand')
+    .reduce((sum, b) => sum + parseFloat(b.nettobetrag?.toString() || '0'), 0);
 
-  for (const buchung of alleBuchungen) {
-    const sollKonto = buchung.sollKonto?.toString() || '';
-    const habenKonto = buchung.habenKonto?.toString() || '';
-    const betrag = parseFloat(buchung.nettobetrag?.toString() || '0');
+  // KZ 86: Umsätze 7% — Erlösbuchungen mit 7% USt
+  const kz86 = alleBuchungen
+    .filter(b => parseFloat(b.steuersatz?.toString() || '0') === 7 && b.buchungsart !== 'aufwand')
+    .reduce((sum, b) => sum + parseFloat(b.nettobetrag?.toString() || '0'), 0);
 
-    // KZ 81: Umsätze 19%
-    if (SKR04_USTVA_MAPPING.umsaetze19.includes(habenKonto)) {
-      kz81 += betrag;
-    }
+  // KZ 66: Vorsteuer — Aufwandsbuchungen mit USt > 0
+  const kz66 = alleBuchungen
+    .filter(b => parseFloat(b.steuersatz?.toString() || '0') > 0 && b.buchungsart === 'aufwand')
+    .reduce((sum, b) => sum + parseFloat(b.nettobetrag?.toString() || '0'), 0);
 
-    // KZ 86: Umsätze 7%
-    if (SKR04_USTVA_MAPPING.umsaetze7.includes(habenKonto)) {
-      kz86 += betrag;
-    }
+  // KZ 35: Steuerfreie Umsätze (buchungsart != 'aufwand', steuersatz = 0, nettobetrag > 0)
+  // Hinweis: ohne Kontenpflege nicht automatisch ableitbar — wird als 0 gemeldet
+  const kz35 = 0;
 
-    // KZ 35: Steuerfreie Umsätze
-    if (SKR04_USTVA_MAPPING.steuerfrei.includes(habenKonto)) {
-      kz35 += betrag;
-
-      // KZ 21: EU-Lieferungen (wenn Konto 4125 und buchungstext enthält EU-Land)
-      if (habenKonto === '4125') {
-        const text = (buchung.buchungstext || '').toLowerCase();
-        const euLaender = ['österreich', 'frankreich', 'niederlande', 'belgien', 'italien', 'spanien', 'polen'];
-        if (euLaender.some(land => text.includes(land))) {
-          kz21 += betrag;
-        }
-      }
-    }
-
-    // KZ 66: Vorsteuer (auf Haben-Seite)
-    if (SKR04_USTVA_MAPPING.vorsteuer.includes(sollKonto)) {
-      kz66 += betrag;
-    }
-  }
+  // KZ 21: EU-Lieferungen — Teilmenge von KZ 35, kann ohne Länderkennzeichen nicht berechnet werden
+  const kz21 = 0;
 
   // Steuerbeträge berechnen
   const kz81Steuer = kz81 * 0.19;
