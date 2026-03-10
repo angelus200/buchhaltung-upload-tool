@@ -138,7 +138,7 @@ function generiereElsterXML(
   const erstellungsDatum = now.toISOString().split('T')[0];
 
   // ELSTER-XML (vereinfacht, ERiC-kompatibel)
-  const xml = `<?xml version="1.0" encoding="ISO-8859-1"?>
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Elster xmlns="http://www.elster.de/elsterxml/schema/v11">
   <TransferHeader version="11">
     <Verfahren>ElsterAnmeldung</Verfahren>
