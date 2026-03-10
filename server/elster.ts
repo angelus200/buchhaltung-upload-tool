@@ -107,7 +107,7 @@ async function berechneKennzahlen(
   for (const buchung of alleBuchungen) {
     const sollKonto = buchung.sollKonto?.toString() || '';
     const habenKonto = buchung.habenKonto?.toString() || '';
-    const betrag = parseFloat(buchung.betrag?.toString() || '0');
+    const betrag = parseFloat(buchung.nettobetrag?.toString() || '0');
 
     // KZ 81: Umsätze 19%
     if (SKR04_USTVA_MAPPING.umsaetze19.includes(habenKonto)) {
@@ -134,7 +134,7 @@ async function berechneKennzahlen(
     }
 
     // KZ 66: Vorsteuer (auf Haben-Seite)
-    if (SKR04_USTVA_MAPPING.vorsteuer.includes(habenKonto)) {
+    if (SKR04_USTVA_MAPPING.vorsteuer.includes(sollKonto)) {
       kz66 += betrag;
     }
   }
