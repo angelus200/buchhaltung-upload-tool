@@ -1,4 +1,5 @@
 import { eq, desc, and, or, gte, lte, count, sum, sql, like } from "drizzle-orm";
+import { getKmuStandardKonten } from "../shared/kontenrahmen";
 import { z } from "zod";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -1807,6 +1808,42 @@ export const stammdatenRouter = router({
         if (!db) throw new Error("Datenbank nicht verfügbar");
         await db.delete(sachkonten).where(eq(sachkonten.id, input.id));
         return { success: true };
+      }),
+
+    seedStandard: protectedProcedure
+      .input(z.object({ unternehmenId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+        const { unternehmenId } = input;
+
+        const standardKonten = getKmuStandardKonten();
+
+        // Bereits vorhandene Kontonummern ermitteln — keine Duplikate
+        const existing = await db
+          .select({ kontonummer: sachkonten.kontonummer })
+          .from(sachkonten)
+          .where(eq(sachkonten.unternehmenId, unternehmenId));
+
+        const existingNrs = new Set(existing.map(k => k.kontonummer));
+        const toInsert = standardKonten.filter(k => !existingNrs.has(k.kontonummer));
+
+        if (toInsert.length === 0) {
+          return { inserted: 0, message: 'Alle Standard-Konten bereits vorhanden' };
+        }
+
+        await db.insert(sachkonten).values(
+          toInsert.map(k => ({
+            unternehmenId,
+            kontenrahmen: 'KMU' as const,
+            kontonummer: k.kontonummer,
+            bezeichnung: k.bezeichnung,
+            kontotyp: k.kontotyp,
+            kategorie: k.kategorie,
+          }))
+        );
+
+        return { inserted: toInsert.length, message: `${toInsert.length} Konten importiert` };
       }),
   }),
 });

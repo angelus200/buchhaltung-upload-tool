@@ -489,6 +489,16 @@ export default function Stammdaten() {
     }
   });
 
+  const seedSachkontenMutation = trpc.stammdaten.sachkonten.seedStandard.useMutation({
+    onSuccess: (data) => {
+      refetchSachkonten();
+      toast.success(data.message);
+    },
+    onError: (error) => {
+      toast.error(`Fehler beim Import: ${error.message}`);
+    },
+  });
+
   // Mutations für Anlagevermögen
   const createAnlageMutation = trpc.jahresabschluss.anlagevermoegen.create.useMutation({
     onSuccess: () => {
@@ -1279,6 +1289,15 @@ export default function Stammdaten() {
             >
               <Search className="w-4 h-4 mr-2" />
               Vorschläge aus Buchungen
+            </Button>
+          )}
+          {activeTab === "sachkonto" && selectedUnternehmenId && (
+            <Button
+              variant="outline"
+              onClick={() => seedSachkontenMutation.mutate({ unternehmenId: selectedUnternehmenId })}
+              disabled={seedSachkontenMutation.isPending}
+            >
+              {seedSachkontenMutation.isPending ? 'Importiere...' : 'Standard-Konten importieren'}
             </Button>
           )}
           <Button onClick={openNewDialog}>
