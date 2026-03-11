@@ -4,7 +4,8 @@ import { getDb } from "./db";
 import { buchungsvorschlaege, kreditoren, buchungen, auszugPositionen, auszuege, unternehmen, InsertBuchungsvorschlag, InsertBuchung } from "../drizzle/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { invokeLLM, type Message } from "./_core/llm";
+import Anthropic from "@anthropic-ai/sdk";
+import { ENV } from "./_core/env";
 import { getAufwandskontenByKontenrahmen, getBankKontoByKontenrahmen, getKontenrahmenName } from "../shared/kontenrahmen";
 
 /**
@@ -115,37 +116,42 @@ Wichtig:
 - Buchungstext = Lieferantenname, NICHT "Gas, Strom, Wasser" o.ä.`;
 
   try {
-    const messages: Message[] = [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Analysiere diesen Beleg und erstelle einen Buchungsvorschlag:",
-          },
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-              data: imageBase64,
-            },
-          },
-        ],
-      },
-    ];
+    const anthropic = new Anthropic({ apiKey: ENV.anthropicApiKey });
 
-    const response = await invokeLLM(messages, {
-      temperature: 0,
+    // Strip DataURL prefix if present (e.g. "data:image/jpeg;base64,...")
+    const rawBase64 = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64;
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       max_tokens: 2000,
+      temperature: 0,
+      system: systemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Analysiere diesen Beleg und erstelle einen Buchungsvorschlag:",
+            },
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+                data: rawBase64,
+              },
+            },
+          ],
+        },
+      ],
     });
 
+    const textContent = response.content.find(b => b.type === "text");
+    const responseText = textContent && textContent.type === "text" ? textContent.text : "";
+
     // Parse JSON response
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error("Keine JSON-Antwort erhalten");
     }
@@ -280,20 +286,28 @@ Antworte NUR mit JSON:
 }`;
 
   try {
-    const messages: Message[] = [
-      { role: "user", content: systemPrompt },
-    ];
+    const anthropic = new Anthropic({ apiKey: ENV.anthropicApiKey });
 
-    const response = await invokeLLM(messages, { temperature: 0.1 });
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1024,
+      temperature: 0.1,
+      messages: [
+        { role: "user", content: systemPrompt },
+      ],
+    });
+
+    const textContent = response.content.find(b => b.type === "text");
+    const responseText = textContent && textContent.type === "text" ? textContent.text : "";
 
     // Parse JSON response
     let aiData: any;
     try {
       // Entferne potentielle Markdown-Code-Blöcke
-      const cleanedResponse = response.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       aiData = JSON.parse(cleanedResponse);
     } catch (parseError) {
-      console.error("JSON Parse Error:", parseError, "Response:", response);
+      console.error("JSON Parse Error:", parseError, "Response:", responseText);
       throw new Error("AI-Antwort konnte nicht als JSON geparst werden");
     }
 
