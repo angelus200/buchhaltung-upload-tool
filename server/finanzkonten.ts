@@ -197,7 +197,7 @@ export const finanzkontenRouter = router({
         depotNummer: z.string().optional(),
         brokerName: z.string().optional(),
         email: z.string().email().optional().or(z.literal("")),
-        waehrung: z.string().length(3),
+        waehrung: z.string().length(3).optional(),
         aktiv: z.boolean(),
         notizen: z.string().optional(),
       })
@@ -258,7 +258,7 @@ export const finanzkontenRouter = router({
           depotNummer: input.depotNummer || null,
           brokerName: input.brokerName || null,
           email: input.email || null,
-          waehrung: input.waehrung,
+          waehrung: input.waehrung ?? existing[0].waehrung ?? "EUR",
           aktiv: input.aktiv,
           notizen: input.notizen || null,
         })

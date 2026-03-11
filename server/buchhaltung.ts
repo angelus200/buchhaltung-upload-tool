@@ -1,4 +1,4 @@
-import { eq, desc, and, or, gte, lte, count, sum, sql, like } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, count, sum, sql, like, inArray } from "drizzle-orm";
 import { getKmuStandardKonten } from "../shared/kontenrahmen";
 import { z } from "zod";
 import { getDb } from "./db";
@@ -18,6 +18,7 @@ import {
   buchungen,
   notizen,
   sachkonten,
+  auszugPositionen,
   InsertUnternehmen,
   InsertKreditor,
   InsertDebitor,
@@ -309,8 +310,22 @@ export const buchungenRouter = router({
         .limit(input.limit)
         .offset(input.offset);
 
+      // Welche Buchungen haben eine zugeordnete Auszug-Position?
+      const buchungIds = result.map(b => b.id);
+      let zugeordnetIds = new Set<number>();
+      if (buchungIds.length > 0) {
+        const zugeordnet = await db
+          .select({ buchungId: auszugPositionen.zugeordneteBuchungId })
+          .from(auszugPositionen)
+          .where(and(
+            inArray(auszugPositionen.zugeordneteBuchungId, buchungIds),
+            eq(auszugPositionen.status, 'zugeordnet')
+          ));
+        zugeordnetIds = new Set(zugeordnet.map(z => z.buchungId!));
+      }
+
       return {
-        buchungen: result,
+        buchungen: result.map(b => ({ ...b, belegZugeordnet: zugeordnetIds.has(b.id) })),
         total: total || 0,
         hasMore: (input.offset + input.limit) < (total || 0),
       };

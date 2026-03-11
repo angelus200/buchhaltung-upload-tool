@@ -315,6 +315,7 @@ export default function Stammdaten() {
   const [activeTab, setActiveTab] = useState("kreditor");
   const [suchbegriff, setSuchbegriff] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const trpcUtils = trpc.useUtils();
   const [editItem, setEditItem] = useState<Stammdatum | null>(null);
   const [editingSachkontoId, setEditingSachkontoId] = useState<number | null>(null);
   const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
@@ -628,7 +629,7 @@ export default function Stammdaten() {
 
   const deleteFinanzkontoMutation = trpc.finanzkonten.delete.useMutation({
     onSuccess: () => {
-      refetchFinanzkonten();
+      trpcUtils.finanzkonten.list.invalidate();
       toast.info("Finanzkonto gelöscht");
     },
     onError: (error) => {

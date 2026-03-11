@@ -89,6 +89,11 @@ interface EditBuchungFormProps {
 }
 
 function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
+  const sachkontenQuery = trpc.stammdaten.sachkonten.list.useQuery(
+    { unternehmenId: buchung.unternehmenId },
+    { enabled: !!buchung.unternehmenId }
+  );
+
   const [formData, setFormData] = useState({
     belegdatum: new Date(buchung.belegdatum).toISOString().split("T")[0],
     belegnummer: buchung.belegnummer || "",
@@ -134,11 +139,20 @@ function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
         <div>
           <Label>Sachkonto</Label>
           <Input
+            list="edit-sachkonten-list"
             value={formData.sachkonto}
             onChange={(e) =>
               setFormData({ ...formData, sachkonto: e.target.value })
             }
+            placeholder="Kontonummer..."
           />
+          <datalist id="edit-sachkonten-list">
+            {sachkontenQuery.data?.map(k => (
+              <option key={k.kontonummer} value={k.kontonummer}>
+                {k.kontonummer} — {k.bezeichnung}
+              </option>
+            ))}
+          </datalist>
         </div>
         <div>
           <Label>Nettobetrag</Label>
@@ -201,6 +215,11 @@ interface CreateBuchungFormProps {
 }
 
 function CreateBuchungForm({ unternehmenId, onSave, onCancel }: CreateBuchungFormProps) {
+  const sachkontenQuery = trpc.stammdaten.sachkonten.list.useQuery(
+    { unternehmenId },
+    { enabled: !!unternehmenId }
+  );
+
   const [formData, setFormData] = useState({
     unternehmenId,
     buchungsart: "aufwand" as const,
@@ -308,11 +327,20 @@ function CreateBuchungForm({ unternehmenId, onSave, onCancel }: CreateBuchungFor
         <div>
           <Label>Sachkonto</Label>
           <Input
+            list="create-sachkonten-list"
             value={formData.sachkonto}
             onChange={(e) =>
               setFormData({ ...formData, sachkonto: e.target.value })
             }
+            placeholder="Kontonummer..."
           />
+          <datalist id="create-sachkonten-list">
+            {sachkontenQuery.data?.map(k => (
+              <option key={k.kontonummer} value={k.kontonummer}>
+                {k.kontonummer} — {k.bezeichnung}
+              </option>
+            ))}
+          </datalist>
         </div>
         <div>
           <Label>Nettobetrag</Label>
@@ -980,6 +1008,7 @@ export default function Uebersicht() {
                         <TableHead>Geschäftspartner</TableHead>
                         <TableHead>Konto</TableHead>
                         <TableHead className="text-right">Betrag</TableHead>
+                        <TableHead className="text-center w-[80px]">Beleg</TableHead>
                         <TableHead className="w-[100px]">Aktionen</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1000,6 +1029,13 @@ export default function Uebersicht() {
                           </TableCell>
                           <TableCell className="text-right font-mono tabular-nums">
                             {formatCurrency(parseFloat(b.bruttobetrag))} €
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {b.belegZugeordnet ? (
+                              <span className="text-green-600 font-medium" title="Beleg zugeordnet">✓</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
