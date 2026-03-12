@@ -463,6 +463,11 @@ export default function Uebersicht() {
     { enabled: !!selectedUnternehmen }
   );
 
+  const sachkontenQuery = trpc.stammdaten.sachkonten.list.useQuery(
+    { unternehmenId: selectedUnternehmen || 0 },
+    { enabled: !!selectedUnternehmen }
+  );
+
   // Mutations
   const updateMutation = trpc.buchungen.update.useMutation({
     onSuccess: () => {
@@ -716,16 +721,28 @@ export default function Uebersicht() {
       };
 
   // Gruppierungen nach Konto und Kreditor (basiert auf gefilterten Buchungen)
+  const sachkontenMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    sachkontenQuery.data?.forEach((k: any) => {
+      map[k.kontonummer] = k.bezeichnung;
+    });
+    return map;
+  }, [sachkontenQuery.data]);
+
   const nachKonto = useMemo(() => {
     const grouped: Record<string, { bezeichnung: string; summe: number }> = {};
     displayBuchungen.forEach((b: any) => {
       if (!grouped[b.sachkonto]) {
-        grouped[b.sachkonto] = { bezeichnung: b.sachkonto, summe: 0 };
+        const name = sachkontenMap[b.sachkonto];
+        grouped[b.sachkonto] = {
+          bezeichnung: name ? `${b.sachkonto} · ${name}` : b.sachkonto,
+          summe: 0,
+        };
       }
       grouped[b.sachkonto].summe += parseFloat(b.bruttobetrag || "0");
     });
     return Object.entries(grouped).sort((a, b) => b[1].summe - a[1].summe);
-  }, [displayBuchungen]);
+  }, [displayBuchungen, sachkontenMap]);
 
   const nachGeschaeftspartner = useMemo(() => {
     const grouped: Record<string, number> = {};
@@ -1060,18 +1077,11 @@ export default function Uebersicht() {
                                 <Trash2 className="w-4 h-4 text-red-500" />
                               </Button>
                               {b.belegUrl && (
-                                <a
-                                  href={b.belegUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="Beleg einsehen"
-                                >
-                                  <Button variant="ghost" size="sm" asChild>
-                                    <span>
-                                      <Eye className="w-4 h-4 text-blue-500" />
-                                    </span>
-                                  </Button>
-                                </a>
+                                <Button variant="ghost" size="sm" asChild title="Beleg einsehen">
+                                  <a href={b.belegUrl} target="_blank" rel="noopener noreferrer">
+                                    <Eye className="w-4 h-4 text-blue-500" />
+                                  </a>
+                                </Button>
                               )}
                             </div>
                           </TableCell>

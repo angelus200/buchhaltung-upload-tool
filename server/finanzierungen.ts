@@ -469,7 +469,7 @@ export const finanzierungenRouter = router({
       const ratenBetrag = parseFloat(finanzierung.ratenBetrag.toString());
 
       const zahlungen: InsertFinanzierungZahlung[] = [];
-      let currentDate = new Date(start);
+      const ratenTag = finanzierung.ratenTag ?? 1;
 
       // Ratenintervall bestimmen
       let monthsIncrement = 1;
@@ -478,6 +478,13 @@ export const finanzierungenRouter = router({
         case "quartal": monthsIncrement = 3; break;
         case "halbjaehrlich": monthsIncrement = 6; break;
         case "jaehrlich": monthsIncrement = 12; break;
+      }
+
+      // Erste Fälligkeit: selber Monat wie Vertragsbeginn, aber auf ratenTag
+      let currentDate = new Date(start.getFullYear(), start.getMonth(), ratenTag);
+      // Falls ratenTag vor Vertragsbeginn liegt, erste Rate im nächsten Intervall
+      if (currentDate < start) {
+        currentDate.setMonth(currentDate.getMonth() + monthsIncrement);
       }
 
       // Zahlungen generieren
@@ -491,9 +498,8 @@ export const finanzierungenRouter = router({
           status: "offen",
         });
 
-        // Nächster Termin
-        currentDate = new Date(currentDate);
-        currentDate.setMonth(currentDate.getMonth() + monthsIncrement);
+        // Nächster Termin: Monat erhöhen, dann Tag setzen (verhindert Monatsüberlauf)
+        currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + monthsIncrement, ratenTag);
       }
 
       // Zahlungen in Datenbank einfügen

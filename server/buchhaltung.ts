@@ -404,14 +404,13 @@ export const buchungenRouter = router({
 
       // Doppelbuchungsprüfung: Suche nach ähnlichen Buchungen
       // Gleiche Kombination = gleiches Datum + gleicher Betrag + gleicher Geschäftspartner
-      const belegdatumFormatted = input.belegdatum; // YYYY-MM-DD format
       const potentialDuplicates = await db
         .select()
         .from(buchungen)
         .where(
           and(
             eq(buchungen.unternehmenId, input.unternehmenId),
-            eq(buchungen.belegdatum, belegdatum),
+            eq(buchungen.belegdatum, input.belegdatum),
             eq(buchungen.bruttobetrag, input.bruttobetrag),
             eq(buchungen.geschaeftspartner, input.geschaeftspartner)
           )

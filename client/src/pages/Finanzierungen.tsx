@@ -908,7 +908,7 @@ export default function Finanzierungen() {
                     <h3 className="text-lg font-semibold">Zahlungsplan</h3>
                     <Button
                       size="sm"
-                      onClick={() => generateZahlungsplanMutation.mutate({ finanzierungId: detail.finanzierung.id })}
+                      onClick={() => generateZahlungsplanMutation.mutate({ finanzierungId: detail.finanzierung.id, unternehmenId: selectedUnternehmen! })}
                       disabled={generateZahlungsplanMutation.isPending}
                     >
                       {generateZahlungsplanMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
