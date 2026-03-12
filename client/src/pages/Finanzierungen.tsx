@@ -1081,7 +1081,7 @@ export default function Finanzierungen() {
                     variant="destructive"
                     onClick={() => {
                       if (confirm("Finanzierung wirklich löschen?")) {
-                        deleteMutation.mutate({ id: detail.finanzierung.id });
+                        deleteMutation.mutate({ id: detail.finanzierung.id, unternehmenId: selectedUnternehmen! });
                       }
                     }}
                   >
