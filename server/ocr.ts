@@ -395,6 +395,118 @@ function extractDataFromText(text: string, kontenrahmen: string = "SKR03", filen
   return result;
 }
 
+// Gemeinsamer System-Prompt für Image- und PDF-Analyse
+const PDF_SYSTEM_PROMPT = `Du bist ein Experte für die OCR-Analyse von deutschen Geschäftsbelegen, Rechnungen und Quittungen.
+Deine Aufgabe ist es, alle relevanten Buchhaltungsdaten aus dem Beleg zu extrahieren.
+
+## ⚠️ KRITISCH: Rechnungsnummer und Datum sind PFLICHTFELDER!
+
+### 1. RECHNUNGSDATUM (belegdatum) - PRIORITÄT 1!
+**SEHR WICHTIG**: Das Rechnungsdatum ist das wichtigste Feld!
+
+**Wo suchen:**
+- Oberer Bereich der Rechnung, oft rechts oben
+- Neben oder unter der Rechnungsnummer
+- Im Briefkopf des Absenders
+
+**Beschriftungen:**
+- "Rechnungsdatum:", "Datum:", "Date:", "Invoice Date:"
+- "Ausstellungsdatum:", "Belegdatum:", "vom", "ausgestellt am"
+- Bei Behörden: "Bescheid vom", "Steuerbescheid vom"
+- Manchmal OHNE Label, nur das Datum selbst
+
+**Formate erkennen:**
+- DD.MM.YYYY: 15.01.2025, 06.11.2024, 1.3.2025
+- DD/MM/YYYY: 15/01/2025, 06/11/2024
+- DD-MM-YYYY: 15-01-2025
+- YYYY-MM-DD: 2025-01-15
+- Textform: "15. Januar 2025", "6. November 2024"
+
+**WICHTIG - Datum-Konvertierung:**
+- **ALLE** Formate zu YYYY-MM-DD konvertieren!
+- Bei einstelligen Tagen/Monaten: Führende Null hinzufügen
+- Beispiele:
+  * "6.11.2024" → "2024-11-06"
+  * "15.1.2025" → "2025-01-15"
+  * "15/01/2025" → "2025-01-15"
+  * "15. Januar 2025" → "2025-01-15"
+
+**Falls mehrere Datumsangaben:**
+- Nimm das Datum beim Label "Rechnungsdatum" / "Datum"
+- NICHT das Lieferdatum oder Fälligkeitsdatum!
+- NICHT das heutige Datum verwenden wenn unsicher!
+
+### 2. RECHNUNGSNUMMER (belegnummer) - PRIORITÄT 1!
+**SEHR WICHTIG**: Die Rechnungsnummer ist eindeutig und MUSS gefunden werden!
+
+**Wo suchen:**
+- Prominent im oberen Bereich, oft fett gedruckt
+- Meist direkt unter oder neben dem Logo
+- Neben dem Wort "Rechnung" / "Invoice"
+
+**Beschriftungen (alle Varianten):**
+- "Rechnungsnummer:", "Rechnung Nr.", "Rg-Nr.", "RE-Nr."
+- "Invoice No:", "Invoice Number:", "Inv. No."
+- "Belegnummer:", "Beleg-Nr.", "Dok-Nr."
+- Bei Behörden: "Aktenzeichen:", "Kassenzeichen:", "Bescheid-Nr.", "Steuernummer:"
+- Bei Banken: "Referenz:", "Referenznummer:", "Ref-Nr."
+- Manchmal nur "Nr:" oder "#"
+
+**Format erkennen:**
+- Kann ALLES sein: Zahlen, Buchstaben, Sonderzeichen
+- Beispiele: "RE-2025-001", "2025:13266", "T218680", "INV-2024-12-001", "RG123456", "2025/001"
+
+**WICHTIG:**
+- Nimm die KOMPLETTE Nummer inklusive aller Zeichen
+- Auch wenn es mehrere Nummern gibt: Nimm die beim Label "Rechnungsnummer"
+- Bei Behörden: Aktenzeichen ist oft die wichtigste Nummer
+
+### 3. GESCHÄFTSPARTNER (geschaeftspartner)
+- Der **ABSENDER** der Rechnung (Lieferant/Kreditor), NICHT der Empfänger!
+- Suche im **KOPFBEREICH** der Rechnung nach dem Firmennamen
+
+### 4. BETRÄGE
+**A) NETTOBETRAG** - Betrag VOR der Mehrwertsteuer
+**B) BRUTTOBETRAG** - Betrag INKLUSIVE Mehrwertsteuer (der größte Betrag)
+**C) STEUERBETRAG** - Der reine MwSt-Betrag
+**D) STEUERSATZ** - Nur die Zahl (19, 7, 20, 8.1 etc.)
+
+**Deutsche Notation:** 1.234,56 € → 1234.56 (Punkte entfernen, Komma durch Punkt ersetzen)
+
+**AUSGABE:** Immer Dezimalzahl mit Punkt, OHNE Währungssymbol, OHNE Tausendertrennzeichen
+
+### 5. LEISTUNGSZEITRAUM (optional)
+- zeitraumVon / zeitraumBis als YYYY-MM-DD
+- Nur bei laufenden Leistungen (Steuerberater, Buchhaltung etc.)
+
+### 6. ZUSATZINFORMATIONEN
+- IBAN: ohne Leerzeichen
+- USt-IdNr: Ländercode + Nummer
+
+---
+
+## OUTPUT FORMAT
+
+Antworte NUR mit diesem JSON-Objekt (keine zusätzlichen Texte):
+
+{
+  "belegdatum": "YYYY-MM-DD" oder null,
+  "belegnummer": "RE-2025-001" oder null,
+  "nettobetrag": 100.00 oder null,
+  "bruttobetrag": 119.00 oder null,
+  "steuersatz": 19 oder null,
+  "steuerbetrag": 19.00 oder null,
+  "zeitraumVon": "YYYY-MM-DD" oder null,
+  "zeitraumBis": "YYYY-MM-DD" oder null,
+  "geschaeftspartner": "Amazon EU S.à r.l." oder null,
+  "iban": "DE89370400440532013000" oder null,
+  "ustIdNr": "DE123456789" oder null,
+  "erkannterText": "Vollständiger OCR-Text aus dem Beleg..."
+}
+
+Falls ein Wert nicht erkennbar ist, setze **null**.
+Rechnungsnummer und Datum sind PFLICHTFELDER - suche besonders intensiv danach!`;
+
 // Vision-AI basierte OCR-Analyse
 async function analyzeImageWithVision(
   imageBase64: string,
@@ -420,7 +532,9 @@ async function analyzeImageWithVision(
     throw new Error("ANTHROPIC_API_KEY ist nicht konfiguriert");
   }
 
-  const systemPrompt = `Du bist ein Experte für die OCR-Analyse von deutschen Geschäftsbelegen, Rechnungen und Quittungen.
+  const systemPrompt = PDF_SYSTEM_PROMPT;
+
+  const _UNUSED = `Du bist ein Experte für die OCR-Analyse von deutschen Geschäftsbelegen, Rechnungen und Quittungen.
 Deine Aufgabe ist es, alle relevanten Buchhaltungsdaten aus dem Beleg zu extrahieren.
 
 ## ⚠️ KRITISCH: Rechnungsnummer und Datum sind PFLICHTFELDER!
@@ -693,6 +807,7 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
 - Prüfe das Bild SEHR GRÜNDLICH! Oft sind Werte da, aber an unerwarteten Stellen!
 - Rechnungsnummer und Datum sind PFLICHTFELDER - suche besonders intensiv danach!
 - Bei Beträgen: IMMER Punkt als Tausendertrennzeichen entfernen!`;
+  void _UNUSED;
 
   try {
     console.log("[OCR] 📤 Sende Anfrage an Claude Vision API...");
@@ -883,7 +998,165 @@ Wenn du dir bei einem Wert unsicher bist, setze trotzdem deinen besten Guess (be
 }
 
 // ============================================
-// PDF ZU BILD KONVERTIERUNG
+// PDF DIREKTE ANALYSE (ohne Bild-Konvertierung)
+// ============================================
+async function analyzePdfWithClaude(
+  pdfBase64: string,
+  kontenrahmen: string = "SKR03",
+  unternehmenId?: number,
+  filename?: string
+): Promise<OcrResult> {
+  console.log("[OCR] 🚀 Starte Claude PDF Direkt-Analyse...");
+  console.log("[OCR] 📄 PDF Base64 Länge:", pdfBase64.length);
+
+  const anthropic = new Anthropic({ apiKey: ENV.anthropicApiKey });
+
+  if (!ENV.anthropicApiKey) {
+    console.error("[OCR] ❌ ANTHROPIC_API_KEY nicht konfiguriert!");
+    throw new Error("ANTHROPIC_API_KEY ist nicht konfiguriert");
+  }
+
+  // Strip DataURL prefix if present
+  const rawPdfBase64 = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
+
+  try {
+    console.log("[OCR] 📤 Sende PDF direkt an Claude API...");
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2048,
+      system: PDF_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "document",
+              source: {
+                type: "base64",
+                media_type: "application/pdf",
+                data: rawPdfBase64,
+              },
+            } as any,
+            {
+              type: "text",
+              text: "Analysiere diesen Beleg und extrahiere die Rechnungsdaten als JSON:",
+            },
+          ],
+        },
+      ],
+    });
+
+    console.log("[OCR] ✅ Claude PDF Response erhalten");
+
+    const textContent = message.content.find((block) => block.type === "text");
+    if (!textContent || textContent.type !== "text") {
+      throw new Error("Keine Text-Antwort von Claude erhalten");
+    }
+
+    const content = textContent.text;
+    console.log("[OCR] 📝 Raw Content (erste 500 Zeichen):", content.substring(0, 500));
+
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("[OCR] ❌ Kein JSON gefunden in:", content);
+      throw new Error("Keine JSON-Antwort gefunden");
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    console.log("[OCR] ✅ JSON geparsed:", JSON.stringify(parsed, null, 2));
+
+    const result: OcrResult = {
+      belegdatum: parsed.belegdatum || null,
+      belegnummer: parsed.belegnummer || null,
+      nettobetrag: typeof parsed.nettobetrag === "number" ? parsed.nettobetrag : null,
+      bruttobetrag: typeof parsed.bruttobetrag === "number" ? parsed.bruttobetrag : null,
+      steuersatz: typeof parsed.steuersatz === "number" ? parsed.steuersatz : null,
+      steuerbetrag: typeof parsed.steuerbetrag === "number" ? parsed.steuerbetrag : null,
+      zeitraumVon: parsed.zeitraumVon || null,
+      zeitraumBis: parsed.zeitraumBis || null,
+      geschaeftspartner: parsed.geschaeftspartner || null,
+      geschaeftspartnerTyp: "kreditor",
+      sachkonto: null,
+      sachkontoBeschreibung: null,
+      buchungsart: "aufwand",
+      iban: parsed.iban || null,
+      ustIdNr: parsed.ustIdNr || null,
+      konfidenz: 0,
+      erkannteFelder: [],
+      rohtext: parsed.erkannterText || "",
+    };
+
+    // Konfidenz berechnen
+    let konfidenzPunkte = 0;
+    if (result.belegdatum) { konfidenzPunkte += 15; result.erkannteFelder.push("belegdatum"); }
+    if (result.belegnummer) { konfidenzPunkte += 10; result.erkannteFelder.push("belegnummer"); }
+    if (result.bruttobetrag) { konfidenzPunkte += 20; result.erkannteFelder.push("bruttobetrag"); }
+    if (result.nettobetrag) { konfidenzPunkte += 15; result.erkannteFelder.push("nettobetrag"); }
+    if (result.steuersatz) { konfidenzPunkte += 10; result.erkannteFelder.push("steuersatz"); }
+    if (result.geschaeftspartner) { konfidenzPunkte += 15; result.erkannteFelder.push("geschaeftspartner"); }
+    if (result.zeitraumVon) { konfidenzPunkte += 5; result.erkannteFelder.push("zeitraumVon"); }
+    if (result.zeitraumBis) { konfidenzPunkte += 5; result.erkannteFelder.push("zeitraumBis"); }
+    if (result.iban) { konfidenzPunkte += 5; result.erkannteFelder.push("iban"); }
+    if (result.ustIdNr) { konfidenzPunkte += 5; result.erkannteFelder.push("ustIdNr"); }
+    result.konfidenz = Math.min(konfidenzPunkte, 100);
+
+    // Sachkonto-Lookup aus letzter Buchung
+    if (result.geschaeftspartner && unternehmenId) {
+      try {
+        const db = await getDb();
+        if (db) {
+          const lastBooking = await db
+            .select({ sachkonto: buchungen.sachkonto, geschaeftspartner: buchungen.geschaeftspartner, belegdatum: buchungen.belegdatum })
+            .from(buchungen)
+            .where(and(eq(buchungen.unternehmenId, unternehmenId), like(buchungen.geschaeftspartner, `%${result.geschaeftspartner}%`)))
+            .orderBy(desc(buchungen.belegdatum))
+            .limit(1);
+
+          if (lastBooking.length > 0 && lastBooking[0].sachkonto) {
+            result.sachkonto = lastBooking[0].sachkonto;
+            result.sachkontoBeschreibung = `Aus letzter Buchung für ${lastBooking[0].geschaeftspartner}`;
+            result.erkannteFelder.push("sachkonto");
+            console.log("[OCR] ✅ Sachkonto aus letzter Buchung:", result.sachkonto);
+          }
+        }
+      } catch (dbError) {
+        console.error("[OCR] ⚠️ Fehler beim Sachkonto-Lookup:", dbError);
+      }
+    }
+
+    // Keyword-Fallback für Sachkonto
+    if (!result.sachkonto && result.geschaeftspartner) {
+      const partnerLower = result.geschaeftspartner.toLowerCase();
+      for (const [keyword, konto] of Object.entries(SACHKONTO_KEYWORDS)) {
+        if (partnerLower.includes(keyword.toLowerCase())) {
+          result.sachkonto = kontenrahmen === "SKR04" ? konto.skr04 : konto.skr03;
+          result.sachkontoBeschreibung = konto.beschreibung;
+          result.erkannteFelder.push("sachkonto");
+          break;
+        }
+      }
+    }
+
+    if (!result.steuersatz) result.steuersatz = 19;
+
+    if (!result.belegnummer && filename) {
+      const fromFilename = extractBelegnummerFromFilename(filename);
+      if (fromFilename) {
+        result.belegnummer = fromFilename;
+        result.erkannteFelder.push("belegnummer (aus Dateiname)");
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error("[OCR] PDF Direkt-Analyse Fehler:", error);
+    return extractDataFromText("", kontenrahmen, filename);
+  }
+}
+
+// ============================================
+// PDF ZU BILD KONVERTIERUNG (Legacy, nicht mehr verwendet für direkte Claude-Analyse)
 // ============================================
 async function convertPdfToImage(pdfBase64: string): Promise<{ imageBase64: string; mimeType: string }> {
   console.log("[PDF→IMG] 🚀 Starte Konvertierung...");
@@ -1069,20 +1342,13 @@ export const ocrRouter = router({
       }
 
       try {
-        // Konvertiere PDF zu Bild
-        console.log("[OCR] 🔄 Starte PDF→Bild Konvertierung...");
-        const { imageBase64, mimeType } = await convertPdfToImage(input.pdfBase64);
-        console.log("[OCR] ✅ PDF erfolgreich zu Bild konvertiert");
-        console.log("[OCR] 🖼️ Bild MIME Type:", mimeType);
-        console.log("[OCR] 🖼️ Bild Base64 Länge:", imageBase64.length);
-
-        // Analysiere das Bild mit Vision-AI
+        // PDF direkt an Claude senden (kein pdftoppm mehr nötig)
         const effectiveKontenrahmen = ["SKR03", "SKR04"].includes(input.kontenrahmen)
           ? input.kontenrahmen
           : "SKR03";
 
-        console.log("[OCR] 🤖 Rufe analyzeImageWithVision auf...");
-        const result = await analyzeImageWithVision(imageBase64, mimeType, effectiveKontenrahmen, input.unternehmenId, input.filename);
+        console.log("[OCR] 🤖 Sende PDF direkt an Claude (ohne Bild-Konvertierung)...");
+        const result = await analyzePdfWithClaude(input.pdfBase64, effectiveKontenrahmen, input.unternehmenId, input.filename);
 
         console.log("[OCR] ✅ PDF-Analyse abgeschlossen!");
         console.log("[OCR] 📊 Ergebnis:", JSON.stringify({
