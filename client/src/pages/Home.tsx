@@ -789,6 +789,7 @@ export default function Home() {
         ];
       case 'AT': // Österreich
         return [
+          { satz: "22", bezeichnung: "22% USt (Wein/Schaumwein)" },
           { satz: "20", bezeichnung: "20% USt" },
           { satz: "19", bezeichnung: "19% USt (DE-Ausland)" },
           { satz: "13", bezeichnung: "13% USt (Reduziert)" },
