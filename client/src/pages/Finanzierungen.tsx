@@ -132,6 +132,9 @@ export default function Finanzierungen() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadBeschreibung, setUploadBeschreibung] = useState("");
 
+  // Notizen-State für Detail-Dialog
+  const [detailNotizen, setDetailNotizen] = useState("");
+
   // Filter
   const [filterTyp, setFilterTyp] = useState<string>("alle");
   const [filterStatus, setFilterStatus] = useState<string>("aktiv");
@@ -179,6 +182,11 @@ export default function Finanzierungen() {
     { finanzierungId: selectedFinanzierung! },
     { enabled: !!selectedFinanzierung }
   );
+
+  // Notizen aus detail synchronisieren
+  useEffect(() => {
+    setDetailNotizen(detail?.finanzierung.notizen ?? "");
+  }, [detail]);
 
   // Auto-select Unternehmen
   useEffect(() => {
@@ -289,6 +297,15 @@ export default function Finanzierungen() {
   const createBuchungsvorlageMutation = trpc.finanzierungen.createBuchungsvorlage.useMutation({
     onSuccess: (data) => {
       toast.success(`Buchungsvorlage "${data.vorlagenName}" erstellt`);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const updateNotizenMutation = trpc.finanzierungen.update.useMutation({
+    onSuccess: () => {
+      toast.success("Notizen gespeichert");
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -1054,6 +1071,32 @@ export default function Finanzierungen() {
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* Notizen */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Notizen</h3>
+                  <Textarea
+                    value={detailNotizen}
+                    onChange={(e) => setDetailNotizen(e.target.value)}
+                    rows={3}
+                    placeholder="Interne Notizen zur Finanzierung..."
+                  />
+                  <Button
+                    size="sm"
+                    className="mt-2"
+                    onClick={() =>
+                      updateNotizenMutation.mutate({
+                        id: detail.finanzierung.id,
+                        unternehmenId: selectedUnternehmen!,
+                        notizen: detailNotizen,
+                      })
+                    }
+                    disabled={updateNotizenMutation.isPending}
+                  >
+                    {updateNotizenMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Notizen speichern
+                  </Button>
                 </div>
               </div>
 

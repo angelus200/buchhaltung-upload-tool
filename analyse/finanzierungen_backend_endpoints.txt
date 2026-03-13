@@ -1,0 +1,18 @@
+302:        notizen: z.string().optional(),
+358:        notizen: input.notizen,
+368:  update: protectedProcedure
+377:        notizen: z.string().optional(),
+384:      const updateData: any = {};
+385:      if (input.bezeichnung !== undefined) updateData.bezeichnung = input.bezeichnung;
+386:      if (input.beschreibung !== undefined) updateData.beschreibung = input.beschreibung;
+387:      if (input.restschuld !== undefined) updateData.restschuld = input.restschuld;
+388:      if (input.status !== undefined) updateData.status = input.status;
+389:      if (input.notizen !== undefined) updateData.notizen = input.notizen;
+392:        .update(finanzierungen)
+393:        .set(updateData)
+407:  delete: protectedProcedure
+430:      await db.delete(finanzierungZahlungen).where(eq(finanzierungZahlungen.finanzierungId, input.id));
+433:      await db.delete(finanzierungen).where(eq(finanzierungen.id, input.id));
+464:      await db.delete(finanzierungZahlungen).where(eq(finanzierungZahlungen.finanzierungId, input.finanzierungId));
+696:  deleteDokument: protectedProcedure
+722:      await db.delete(finanzierungDokumente).where(eq(finanzierungDokumente.id, input.dokumentId));

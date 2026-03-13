@@ -426,7 +426,10 @@ export const finanzierungenRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Finanzierung nicht gefunden" });
       }
 
-      // Erst Zahlungen löschen
+      // Erst Dokumente löschen (FK constraint)
+      await db.delete(finanzierungDokumente).where(eq(finanzierungDokumente.finanzierungId, input.id));
+
+      // Dann Zahlungen löschen (FK constraint)
       await db.delete(finanzierungZahlungen).where(eq(finanzierungZahlungen.finanzierungId, input.id));
 
       // Dann Finanzierung löschen
@@ -487,8 +490,14 @@ export const finanzierungenRouter = router({
         currentDate.setMonth(currentDate.getMonth() + monthsIncrement);
       }
 
+      // Laufzeit in Monaten berechnen (Obergrenze für Schleife)
+      const laufzeitMonate =
+        (ende.getFullYear() - start.getFullYear()) * 12 +
+        (ende.getMonth() - start.getMonth()) + 1;
+      const maxRaten = Math.ceil(laufzeitMonate / monthsIncrement) + 1;
+
       // Zahlungen generieren
-      while (currentDate <= ende) {
+      for (let i = 0; i < maxRaten && currentDate <= ende; i++) {
         zahlungen.push({
           finanzierungId: input.finanzierungId,
           faelligkeit: new Date(currentDate),
@@ -839,7 +848,7 @@ export const finanzierungenRouter = router({
         buchungstext,
         betrag: finanzierung.ratenBetrag.toString(),
         ustSatz: "0", // Finanzierungskosten sind in der Regel nicht umsatzsteuerpflichtig
-        kategorie: finanzierung.typ,
+        kategorie: ({ kredit: "sonstig", leasing: "fahrzeug", mietkauf: "sonstig", factoring: "sonstig" } as Record<string, string>)[finanzierung.typ] ?? "sonstig",
       } as InsertBuchungsvorlage);
 
       return {

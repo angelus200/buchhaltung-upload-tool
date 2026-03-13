@@ -1,0 +1,10 @@
+232:  kategorie: varchar("kategorie", { length: 100 }),
+442:  kategorie: mysqlEnum("kategorie", ["vertrag", "kreditor", "debitor", "buchung", "allgemein"]).default("allgemein"),
+558:  kategorie: varchar("kategorie", { length: 100 }),
+659:  kategorie: mysqlEnum("kategorie", [
+886:  /** Leistungskategorie */
+887:  kategorie: mysqlEnum("kategorie", [
+946:  kategorie: mysqlEnum("kategorie", [
+1055:  kategorie: mysqlEnum("kategorie", [
+1097:  kategorie: mysqlEnum("kategorie", [
+1449:  kategorie: varchar("kategorie", { length: 100 }), // Optional: von Bank/Kreditkarte

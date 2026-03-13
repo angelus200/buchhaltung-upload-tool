@@ -1,0 +1,29 @@
+126:  const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(null);
+153:    notizen: "",
+161:      unternehmenId: selectedUnternehmen!,
+165:    { enabled: !!selectedUnternehmen }
+169:    { unternehmenId: selectedUnternehmen! },
+170:    { enabled: !!selectedUnternehmen }
+174:    { id: selectedFinanzierung!, unternehmenId: selectedUnternehmen! },
+175:    { enabled: !!selectedFinanzierung && !!selectedUnternehmen }
+185:    if (unternehmen && unternehmen.length > 0 && !selectedUnternehmen) {
+186:      const savedId = localStorage.getItem("selectedUnternehmenId");
+197:  }, [unternehmen, selectedUnternehmen]);
+212:  const deleteMutation = trpc.finanzierungen.delete.useMutation({
+312:      notizen: "",
+324:    if (!selectedFinanzierung || !selectedUnternehmen || uploadFiles.length === 0) return;
+335:          unternehmenId: selectedUnternehmen,
+364:    if (!selectedUnternehmen) {
+400:      unternehmenId: selectedUnternehmen,
+444:          <Select value={String(selectedUnternehmen || "")} onValueChange={(v) => setSelectedUnternehmen(Number(v))}>
+457:          <Button onClick={() => setDialogOpen(true)} disabled={!selectedUnternehmen} className="ml-auto">
+464:        {selectedUnternehmen && stats && (
+505:        {selectedUnternehmen && (
+548:        {selectedUnternehmen && finanzierungen && (
+815:                value={formData.notizen}
+816:                onChange={(e) => setFormData({ ...formData, notizen: e.target.value })}
+911:                      onClick={() => generateZahlungsplanMutation.mutate({ finanzierungId: detail.finanzierung.id, unternehmenId: selectedUnternehmen! })}
+1043:                                      deleteDokumentMutation.mutate({ dokumentId: dok.id, unternehmenId: selectedUnternehmen! });
+1064:                    if (!selectedUnternehmen) return;
+1067:                      unternehmenId: selectedUnternehmen,
+1084:                        deleteMutation.mutate({ id: detail.finanzierung.id, unternehmenId: selectedUnternehmen! });
