@@ -156,6 +156,8 @@ export default function Finanzierungen() {
     notizen: "",
   });
 
+  const trpcUtils = trpc.useUtils();
+
   // Queries
   const { data: unternehmen } = trpc.unternehmen.list.useQuery();
 
@@ -253,6 +255,16 @@ export default function Finanzierungen() {
   const generateZahlungsplanMutation = trpc.finanzierungen.generateZahlungsplan.useMutation({
     onSuccess: (data) => {
       toast.success(`Zahlungsplan erstellt: ${data.anzahl} Raten`);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+
+  const recalculateZinsanteileMutation = trpc.finanzierungen.recalculateZinsanteile.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message ?? "Zinsanteile aktualisiert");
+      trpcUtils.finanzierungen.getById.invalidate();
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -923,14 +935,26 @@ export default function Finanzierungen() {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold">Zahlungsplan</h3>
-                    <Button
-                      size="sm"
-                      onClick={() => generateZahlungsplanMutation.mutate({ finanzierungId: detail.finanzierung.id, unternehmenId: selectedUnternehmen! })}
-                      disabled={generateZahlungsplanMutation.isPending}
-                    >
-                      {generateZahlungsplanMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Plan generieren
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => generateZahlungsplanMutation.mutate({ finanzierungId: detail.finanzierung.id, unternehmenId: selectedUnternehmen! })}
+                        disabled={generateZahlungsplanMutation.isPending}
+                      >
+                        {generateZahlungsplanMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Plan generieren
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => recalculateZinsanteileMutation.mutate({ finanzierungId: detail.finanzierung.id, unternehmenId: selectedUnternehmen! })}
+                        disabled={recalculateZinsanteileMutation.isPending || detail.zahlungen.length === 0}
+                        title="Berechnet Zins/Tilgungsanteil neu ohne bezahlte Raten zu löschen"
+                      >
+                        {recalculateZinsanteileMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Zinsanteile nachberechnen
+                      </Button>
+                    </div>
                   </div>
 
                   {detail.zahlungen.length === 0 ? (

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import { finanzierungen, finanzierungZahlungen, finanzierungDokumente, InsertFinanzierung, InsertFinanzierungZahlung, InsertFinanzierungDokument, buchungsvorlagen, InsertBuchungsvorlage, unternehmen } from "../drizzle/schema";
-import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, desc, asc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { uploadFinanzierungDokument, isStorageAvailable } from "./storage";
 import Anthropic from "@anthropic-ai/sdk";
@@ -540,6 +540,77 @@ export const finanzierungenRouter = router({
       }
 
       return { success: true, anzahl: zahlungen.length };
+    }),
+
+  /**
+   * Zins/Tilgungsanteile für bestehende Zahlungen nachberechnen
+   * Berührt NICHT: status, betrag, faelligkeit
+   */
+  recalculateZinsanteile: protectedProcedure
+    .input(z.object({ finanzierungId: z.number(), unternehmenId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      // Finanzierung laden (mit unternehmenId-Check)
+      const [finanzierung] = await db
+        .select()
+        .from(finanzierungen)
+        .where(and(
+          eq(finanzierungen.id, input.finanzierungId),
+          eq(finanzierungen.unternehmenId, input.unternehmenId)
+        ))
+        .limit(1);
+
+      if (!finanzierung) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Finanzierung nicht gefunden" });
+      }
+
+      const zinssatz = finanzierung.zinssatz
+        ? parseFloat(finanzierung.zinssatz.toString())
+        : 0;
+
+      if (zinssatz === 0) {
+        return { success: true, updated: 0, message: "Kein Zinssatz hinterlegt" };
+      }
+
+      // Bestehende Zahlungen chronologisch laden
+      const zahlungen = await db
+        .select()
+        .from(finanzierungZahlungen)
+        .where(eq(finanzierungZahlungen.finanzierungId, input.finanzierungId))
+        .orderBy(asc(finanzierungZahlungen.faelligkeit));
+
+      if (zahlungen.length === 0) {
+        return { success: true, updated: 0, message: "Keine Zahlungen vorhanden" };
+      }
+
+      // Annuitätenberechnung
+      const monatlicherZins = zinssatz / 100 / 12;
+      let restschuld = parseFloat(
+        finanzierung.gesamtbetrag?.toString() ?? finanzierung.ratenBetrag.toString()
+      );
+
+      let updated = 0;
+      for (const zahlung of zahlungen) {
+        const ratenBetrag = parseFloat(zahlung.betrag.toString());
+        const zinsen = restschuld * monatlicherZins;
+        const tilgung = ratenBetrag - zinsen;
+
+        const zinsenAnteil = zinsen > 0 ? zinsen.toFixed(2) : "0.00";
+        const tilgungAnteil = tilgung > 0 ? tilgung.toFixed(2) : "0.00";
+
+        // NUR diese zwei Felder updaten — status/betrag/faelligkeit unberührt
+        await db
+          .update(finanzierungZahlungen)
+          .set({ zinsenAnteil, tilgungAnteil })
+          .where(eq(finanzierungZahlungen.id, zahlung.id));
+
+        restschuld = Math.max(0, restschuld - (tilgung > 0 ? tilgung : 0));
+        updated++;
+      }
+
+      return { success: true, updated, message: `${updated} Raten aktualisiert` };
     }),
 
   /**
