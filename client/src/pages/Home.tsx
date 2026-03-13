@@ -636,7 +636,10 @@ export default function Home() {
       }
 
       // Auto-calculate brutto when netto or steuersatz changes
-      if (field === "nettobetrag" || field === "steuersatz") {
+      // NICHT bei aktiver Fremdwährung — dort bestimmt belegBetragBrutto × wechselkurs den Bruttobetrag
+      const hatFremdwaehrung = !!updated.belegWaehrung && updated.belegWaehrung !== 'EUR';
+
+      if ((field === "nettobetrag" || field === "steuersatz") && !hatFremdwaehrung) {
         const netto = field === "nettobetrag" ? value as string : b.nettobetrag;
         const steuer = field === "steuersatz" ? value as string : b.steuersatz;
         updated.bruttobetrag = calculateBrutto(netto, steuer);
