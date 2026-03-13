@@ -37,6 +37,22 @@ import {
 // HELPER FUNCTIONS
 // ============================================
 
+async function ensureBuchungenIndex(db: any) {
+  try {
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_buchungen_duplikat
+      ON buchungen (unternehmenId, belegdatum, bruttobetrag)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_buchungen_belegnummer
+      ON buchungen (unternehmenId, belegnummer)
+    `);
+  } catch (e) {
+    // Index existiert bereits — kein Problem
+    console.log("🔵 Buchungen-Index bereits vorhanden");
+  }
+}
+
 /**
  * Berechnet Wirtschaftsjahr und Periode aus Belegdatum
  *
@@ -969,112 +985,152 @@ export const buchungenRouter = router({
       return results;
     }),
 
-  // Doppelbuchungen finden
+  // Doppelbuchungen finden — SQL-JOIN statt O(n²) JS-Loop
   findDuplicates: protectedProcedure
     .input(z.object({ unternehmenId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
 
-      // Hole alle Buchungen des Unternehmens
-      const allBuchungen = await db
-        .select()
-        .from(buchungen)
-        .where(eq(buchungen.unternehmenId, input.unternehmenId))
-        .orderBy(desc(buchungen.belegdatum));
+      // Index sicherstellen (einmalig, persistent in DB)
+      await ensureBuchungenIndex(db);
 
-      // Hole bereits geprüfte Paare
-      const checkedPairs = await db
-        .select()
-        .from(sql`checked_duplicates`)
-        .where(sql`unternehmenId = ${input.unternehmenId}`);
-
+      // Bereits geprüfte Paare laden
+      const checkedPairs = await db.execute(
+        sql`SELECT buchung1Id, buchung2Id FROM checked_duplicates
+            WHERE unternehmenId = ${input.unternehmenId}`
+      );
+      const checkedRows = (checkedPairs[0] as any[]) ?? [];
       const checkedSet = new Set(
-        checkedPairs.map((p: any) => `${p.buchung1Id}-${p.buchung2Id}`)
+        checkedRows.map((p: any) => `${p.buchung1Id}-${p.buchung2Id}`)
       );
 
-      interface DuplicatePair {
-        buchung1: any;
-        buchung2: any;
-        reason: string;
-        similarity: number;
+      const duplicates: any[] = [];
+
+      // --- Kriterium 1: Gleicher Betrag + Datum + Sachkonto ---
+      const result1 = await db.execute(sql`
+        SELECT
+          b1.id as id1, b2.id as id2,
+          b1.belegdatum, b1.bruttobetrag, b1.sachkonto,
+          b1.belegnummer as bel1, b2.belegnummer as bel2,
+          b1.datevBelegnummer as dbel1, b2.datevBelegnummer as dbel2,
+          b1.geschaeftspartner as gp1, b2.geschaeftspartner as gp2,
+          b1.buchungstext as bt1, b2.buchungstext as bt2,
+          b1.datevBuchungstext as dbt1, b2.datevBuchungstext as dbt2,
+          b1.buchungsart as ba1, b2.buchungsart as ba2,
+          b1.sollKonto as sk1, b2.sollKonto as sk2,
+          b1.habenKonto as hk1, b2.habenKonto as hk2,
+          b1.belegUrl as url1, b2.belegUrl as url2
+        FROM buchungen b1
+        INNER JOIN buchungen b2
+          ON b1.unternehmenId = b2.unternehmenId
+          AND b1.belegdatum = b2.belegdatum
+          AND b1.bruttobetrag = b2.bruttobetrag
+          AND b1.sachkonto = b2.sachkonto
+          AND b1.id < b2.id
+        WHERE b1.unternehmenId = ${input.unternehmenId}
+        LIMIT 100
+      `);
+      const rows1 = (result1[0] as any[]) ?? [];
+
+      for (const row of rows1) {
+        const key = `${row.id1}-${row.id2}`;
+        if (!checkedSet.has(key)) {
+          duplicates.push({
+            buchung1: { id: row.id1, belegdatum: row.belegdatum, bruttobetrag: row.bruttobetrag, belegnummer: row.bel1, datevBelegnummer: row.dbel1, geschaeftspartner: row.gp1, buchungstext: row.bt1, datevBuchungstext: row.dbt1, buchungsart: row.ba1, sachkonto: row.sachkonto, sollKonto: row.sk1, habenKonto: row.hk1, belegUrl: row.url1 },
+            buchung2: { id: row.id2, belegdatum: row.belegdatum, bruttobetrag: row.bruttobetrag, belegnummer: row.bel2, datevBelegnummer: row.dbel2, geschaeftspartner: row.gp2, buchungstext: row.bt2, datevBuchungstext: row.dbt2, buchungsart: row.ba2, sachkonto: row.sachkonto, sollKonto: row.sk2, habenKonto: row.hk2, belegUrl: row.url2 },
+            reason: "Gleicher Betrag, Datum und Sachkonto",
+            similarity: 100,
+          });
+        }
       }
 
-      const duplicates: DuplicatePair[] = [];
+      // --- Kriterium 2: Gleiche Belegnummer ---
+      if (duplicates.length < 50) {
+        const result2 = await db.execute(sql`
+          SELECT
+            b1.id as id1, b2.id as id2,
+            b1.belegdatum as datum1, b2.belegdatum as datum2,
+            b1.bruttobetrag as brutto1, b2.bruttobetrag as brutto2,
+            b1.belegnummer, b1.sachkonto as sk1, b2.sachkonto as sk2,
+            b1.datevBelegnummer as dbel1, b2.datevBelegnummer as dbel2,
+            b1.geschaeftspartner as gp1, b2.geschaeftspartner as gp2,
+            b1.buchungstext as bt1, b2.buchungstext as bt2,
+            b1.datevBuchungstext as dbt1, b2.datevBuchungstext as dbt2,
+            b1.buchungsart as ba1, b2.buchungsart as ba2,
+            b1.sollKonto as sk1h, b2.sollKonto as sk2h,
+            b1.habenKonto as hk1, b2.habenKonto as hk2,
+            b1.belegUrl as url1, b2.belegUrl as url2
+          FROM buchungen b1
+          INNER JOIN buchungen b2
+            ON b1.unternehmenId = b2.unternehmenId
+            AND b1.belegnummer = b2.belegnummer
+            AND b1.id < b2.id
+          WHERE b1.unternehmenId = ${input.unternehmenId}
+            AND b1.belegnummer != ''
+            AND b1.belegnummer IS NOT NULL
+          LIMIT 100
+        `);
+        const rows2 = (result2[0] as any[]) ?? [];
 
-      // Prüfe jedes Buchungspaar
-      for (let i = 0; i < allBuchungen.length; i++) {
-        for (let j = i + 1; j < allBuchungen.length; j++) {
-          const b1 = allBuchungen[i];
-          const b2 = allBuchungen[j];
-
-          // Überspringe wenn schon geprüft
-          const pairKey = `${Math.min(b1.id, b2.id)}-${Math.max(b1.id, b2.id)}`;
-          if (checkedSet.has(pairKey)) continue;
-
-          let isDuplicate = false;
-          let reason = "";
-          let similarity = 0;
-
-          // Kriterium 1: Gleicher Betrag + gleiches Datum + gleiches Konto
-          const sameBrutto = b1.bruttobetrag === b2.bruttobetrag;
-          const sameDate = b1.belegdatum.getTime() === b2.belegdatum.getTime();
-          const sameKonto =
-            b1.sachkonto === b2.sachkonto ||
-            (b1.sollKonto && b1.sollKonto === b2.sollKonto) ||
-            (b1.habenKonto && b1.habenKonto === b2.habenKonto);
-
-          if (sameBrutto && sameDate && sameKonto) {
-            isDuplicate = true;
-            reason = "Gleicher Betrag, Datum und Konto";
-            similarity = 100;
-          }
-
-          // Kriterium 2: Gleiche Belegnummer + unterschiedliche IDs
-          if (
-            !isDuplicate &&
-            b1.belegnummer &&
-            b2.belegnummer &&
-            (b1.belegnummer === b2.belegnummer ||
-              b1.datevBelegnummer === b2.datevBelegnummer)
-          ) {
-            isDuplicate = true;
-            reason = "Gleiche Belegnummer";
-            similarity = 95;
-          }
-
-          // Kriterium 3: Gleicher Buchungstext + Betrag + Datum innerhalb 3 Tage
-          if (!isDuplicate && sameBrutto) {
-            const daysDiff =
-              Math.abs(b1.belegdatum.getTime() - b2.belegdatum.getTime()) /
-              (1000 * 60 * 60 * 24);
-
-            const text1 = (b1.buchungstext || b1.datevBuchungstext || "").toLowerCase();
-            const text2 = (b2.buchungstext || b2.datevBuchungstext || "").toLowerCase();
-
-            if (daysDiff <= 3 && text1 && text2 && text1 === text2) {
-              isDuplicate = true;
-              reason = `Gleicher Text und Betrag (${Math.round(daysDiff)} Tage Abstand)`;
-              similarity = 85;
-            }
-          }
-
-          if (isDuplicate) {
+        for (const row of rows2) {
+          const key = `${row.id1}-${row.id2}`;
+          if (!checkedSet.has(key) && !duplicates.find((d: any) => d.buchung1.id === row.id1 && d.buchung2.id === row.id2)) {
             duplicates.push({
-              buchung1: b1,
-              buchung2: b2,
-              reason,
-              similarity,
+              buchung1: { id: row.id1, belegdatum: row.datum1, bruttobetrag: row.brutto1, belegnummer: row.belegnummer, datevBelegnummer: row.dbel1, geschaeftspartner: row.gp1, buchungstext: row.bt1, datevBuchungstext: row.dbt1, buchungsart: row.ba1, sachkonto: row.sk1, sollKonto: row.sk1h, habenKonto: row.hk1, belegUrl: row.url1 },
+              buchung2: { id: row.id2, belegdatum: row.datum2, bruttobetrag: row.brutto2, belegnummer: row.belegnummer, datevBelegnummer: row.dbel2, geschaeftspartner: row.gp2, buchungstext: row.bt2, datevBuchungstext: row.dbt2, buchungsart: row.ba2, sachkonto: row.sk2, sollKonto: row.sk2h, habenKonto: row.hk2, belegUrl: row.url2 },
+              reason: "Gleiche Belegnummer",
+              similarity: 95,
             });
           }
-
-          // Begrenze Ergebnis auf 50 Paare
-          if (duplicates.length >= 50) break;
         }
-        if (duplicates.length >= 50) break;
       }
 
-      return duplicates;
+      // --- Kriterium 3: Gleicher Text + Betrag + Datum ±3 Tage ---
+      if (duplicates.length < 50) {
+        const result3 = await db.execute(sql`
+          SELECT
+            b1.id as id1, b2.id as id2,
+            b1.belegdatum as datum1, b2.belegdatum as datum2,
+            b1.bruttobetrag, b1.buchungstext,
+            b1.belegnummer as bel1, b2.belegnummer as bel2,
+            b1.datevBelegnummer as dbel1, b2.datevBelegnummer as dbel2,
+            b1.sachkonto as sk1, b2.sachkonto as sk2,
+            b1.geschaeftspartner as gp1, b2.geschaeftspartner as gp2,
+            b1.datevBuchungstext as dbt1, b2.datevBuchungstext as dbt2,
+            b1.buchungsart as ba1, b2.buchungsart as ba2,
+            b1.sollKonto as sol1, b2.sollKonto as sol2,
+            b1.habenKonto as hk1, b2.habenKonto as hk2,
+            b1.belegUrl as url1, b2.belegUrl as url2,
+            ABS(DATEDIFF(b1.belegdatum, b2.belegdatum)) as daysDiff
+          FROM buchungen b1
+          INNER JOIN buchungen b2
+            ON b1.unternehmenId = b2.unternehmenId
+            AND b1.bruttobetrag = b2.bruttobetrag
+            AND b1.buchungstext = b2.buchungstext
+            AND ABS(DATEDIFF(b1.belegdatum, b2.belegdatum)) <= 3
+            AND b1.id < b2.id
+          WHERE b1.unternehmenId = ${input.unternehmenId}
+            AND b1.buchungstext IS NOT NULL
+            AND b1.buchungstext != ''
+          LIMIT 100
+        `);
+        const rows3 = (result3[0] as any[]) ?? [];
+
+        for (const row of rows3) {
+          const key = `${row.id1}-${row.id2}`;
+          if (!checkedSet.has(key) && !duplicates.find((d: any) => d.buchung1.id === row.id1 && d.buchung2.id === row.id2)) {
+            duplicates.push({
+              buchung1: { id: row.id1, belegdatum: row.datum1, bruttobetrag: row.bruttobetrag, belegnummer: row.bel1, datevBelegnummer: row.dbel1, geschaeftspartner: row.gp1, buchungstext: row.buchungstext, datevBuchungstext: row.dbt1, buchungsart: row.ba1, sachkonto: row.sk1, sollKonto: row.sol1, habenKonto: row.hk1, belegUrl: row.url1 },
+              buchung2: { id: row.id2, belegdatum: row.datum2, bruttobetrag: row.bruttobetrag, belegnummer: row.bel2, datevBelegnummer: row.dbel2, geschaeftspartner: row.gp2, buchungstext: row.buchungstext, datevBuchungstext: row.dbt2, buchungsart: row.ba2, sachkonto: row.sk2, sollKonto: row.sol2, habenKonto: row.hk2, belegUrl: row.url2 },
+              reason: `Gleicher Text und Betrag (${row.daysDiff} Tage Abstand)`,
+              similarity: 85,
+            });
+          }
+        }
+      }
+
+      return duplicates.slice(0, 50);
     }),
 
   // Buchungspaar als "keine Doppelbuchung" markieren
