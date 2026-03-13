@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { finanzierungen, finanzierungZahlungen, finanzierungDokumente, InsertFinanzierung, InsertFinanzierungZahlung, InsertFinanzierungDokument, buchungsvorlagen, InsertBuchungsvorlage } from "../drizzle/schema";
+import { finanzierungen, finanzierungZahlungen, finanzierungDokumente, InsertFinanzierung, InsertFinanzierungZahlung, InsertFinanzierungDokument, buchungsvorlagen, InsertBuchungsvorlage, unternehmen } from "../drizzle/schema";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { uploadFinanzierungDokument, isStorageAvailable } from "./storage";
@@ -496,14 +496,37 @@ export const finanzierungenRouter = router({
         (ende.getMonth() - start.getMonth()) + 1;
       const maxRaten = Math.ceil(laufzeitMonate / monthsIncrement) + 1;
 
+      // Annuitätenberechnung nur wenn Zinssatz vorhanden und > 0
+      const zinssatz = finanzierung.zinssatz ? parseFloat(finanzierung.zinssatz.toString()) : 0;
+      const hatZinsen = zinssatz > 0;
+
+      // Restschuld für Annuitätenberechnung (Gesamtbetrag als Basis)
+      let restschuld = parseFloat(finanzierung.gesamtbetrag?.toString() ?? finanzierung.ratenBetrag.toString());
+
       // Zahlungen generieren
       for (let i = 0; i < maxRaten && currentDate <= ende; i++) {
+        let zinsenAnteil: string | null = null;
+        let tilgungAnteil: string | null = null;
+
+        if (hatZinsen) {
+          // Monatlicher Zinssatz (bei quartal/halbjährlich/jährlich trotzdem monatlich gerechnet)
+          const monatlicherZins = zinssatz / 100 / 12;
+          const zinsen = restschuld * monatlicherZins;
+          const tilgung = ratenBetrag - zinsen;
+
+          zinsenAnteil = zinsen > 0 ? zinsen.toFixed(2) : "0.00";
+          tilgungAnteil = tilgung > 0 ? tilgung.toFixed(2) : "0.00";
+
+          // Restschuld reduzieren
+          restschuld = Math.max(0, restschuld - (tilgung > 0 ? tilgung : 0));
+        }
+
         zahlungen.push({
           finanzierungId: input.finanzierungId,
           faelligkeit: new Date(currentDate),
           betrag: ratenBetrag.toFixed(2),
-          zinsenAnteil: null,
-          tilgungAnteil: null,
+          zinsenAnteil,
+          tilgungAnteil,
           status: "offen",
         });
 
@@ -839,6 +862,25 @@ export const finanzierungenRouter = router({
         buchungstext = `Factoring-Gebühr ${finanzierung.bezeichnung}`;
       }
 
+      // Unternehmen laden für landCode → länderspezifischer USt-Satz
+      const [company] = await db
+        .select()
+        .from(unternehmen)
+        .where(eq(unternehmen.id, input.unternehmenId))
+        .limit(1);
+
+      if (!company) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Unternehmen nicht gefunden" });
+      }
+
+      // USt-Satz auf Zinsanteil je nach Land
+      // DE: 19%, AT: 20%, CH: 0% (keine USt auf Zinsanteil nach CH-Recht)
+      const ustSatzMap: Record<string, string> = { DE: "19", AT: "20", CH: "0" };
+      const hatZinsen = (finanzierung.typ === "leasing" || finanzierung.typ === "mietkauf")
+        && finanzierung.zinssatz
+        && parseFloat(finanzierung.zinssatz.toString()) > 0;
+      const ustSatz = hatZinsen ? (ustSatzMap[company.landCode] ?? "0") : "0";
+
       // Vorlage in DB erstellen
       await db.insert(buchungsvorlagen).values({
         unternehmenId: input.unternehmenId,
@@ -847,7 +889,7 @@ export const finanzierungenRouter = router({
         habenKonto,
         buchungstext,
         betrag: finanzierung.ratenBetrag.toString(),
-        ustSatz: "0", // Finanzierungskosten sind in der Regel nicht umsatzsteuerpflichtig
+        ustSatz,
         kategorie: ({ kredit: "sonstig", leasing: "fahrzeug", mietkauf: "sonstig", factoring: "sonstig" } as Record<string, string>)[finanzierung.typ] ?? "sonstig",
       } as InsertBuchungsvorlage);
 

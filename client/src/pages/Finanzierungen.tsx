@@ -943,6 +943,9 @@ export default function Finanzierungen() {
                             <TableHead>Fälligkeit</TableHead>
                             <TableHead>Betrag</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Zinsanteil</TableHead>
+                            <TableHead className="text-right">Tilgungsanteil</TableHead>
+                            <TableHead className="text-right">USt (19%)</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -954,6 +957,21 @@ export default function Finanzierungen() {
                                 <Badge variant={zahlung.status === "bezahlt" ? "default" : "outline"}>
                                   {zahlung.status === "bezahlt" ? "Bezahlt" : "Offen"}
                                 </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {zahlung.zinsenAnteil
+                                  ? `${formatCurrency(zahlung.zinsenAnteil)} €`
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {zahlung.tilgungAnteil
+                                  ? `${formatCurrency(zahlung.tilgungAnteil)} €`
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {zahlung.zinsenAnteil
+                                  ? `${formatCurrency((parseFloat(zahlung.zinsenAnteil) * 0.19).toFixed(2))} €`
+                                  : "—"}
                               </TableCell>
                             </TableRow>
                           ))}
