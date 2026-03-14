@@ -1751,11 +1751,19 @@ export const stammdatenRouter = router({
   // Verträge
   vertraege: router({
     list: protectedProcedure
-      .input(z.object({ unternehmenId: z.number() }))
+      .input(z.object({ unternehmenId: z.number(), aktiv: z.boolean().optional() }))
       .query(async ({ input }) => {
         const db = await getDb();
         if (!db) return [];
-        return await db.select().from(vertraege).where(eq(vertraege.unternehmenId, input.unternehmenId));
+        const conditions = [eq(vertraege.unternehmenId, input.unternehmenId)];
+        if (input.aktiv !== undefined) {
+          conditions.push(eq(vertraege.aktiv, input.aktiv));
+        }
+        return await db
+          .select()
+          .from(vertraege)
+          .where(and(...conditions))
+          .orderBy(desc(vertraege.createdAt));
       }),
 
     create: protectedProcedure
@@ -1763,17 +1771,26 @@ export const stammdatenRouter = router({
         z.object({
           unternehmenId: z.number(),
           bezeichnung: z.string(),
-          vertragsart: z.enum(["miete", "leasing", "wartung", "versicherung", "abo", "sonstig"]).optional(),
+          vertragsart: z.enum([
+            "miete", "leasing", "wartung", "versicherung", "abo",
+            "darlehen", "pacht", "lizenz", "dienstleistung", "sonstig",
+          ]).optional(),
           vertragspartner: z.string().optional(),
           vertragsnummer: z.string().optional(),
           beginn: z.string().optional(),
           ende: z.string().optional(),
           kuendigungsfrist: z.string().optional(),
           monatlicheBetrag: z.string().optional(),
+          nettoBetrag: z.string().optional(),
+          ustSatz: z.string().optional(),
+          ustBetrag: z.string().optional(),
           zahlungsrhythmus: z.enum(["monatlich", "quartalsweise", "halbjaehrlich", "jaehrlich"]).optional(),
           buchungskonto: z.string().optional(),
+          gegenkontoNr: z.string().optional(),
           kostenstelleId: z.number().optional(),
           notizen: z.string().optional(),
+          belegUrl: z.string().optional(),
+          aktiv: z.boolean().optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -1789,6 +1806,46 @@ export const stammdatenRouter = router({
         return { id: result[0].insertId };
       }),
 
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          bezeichnung: z.string().optional(),
+          vertragsart: z.enum([
+            "miete", "leasing", "wartung", "versicherung", "abo",
+            "darlehen", "pacht", "lizenz", "dienstleistung", "sonstig",
+          ]).optional(),
+          vertragspartner: z.string().optional(),
+          vertragsnummer: z.string().optional(),
+          beginn: z.string().optional(),
+          ende: z.string().optional(),
+          kuendigungsfrist: z.string().optional(),
+          monatlicheBetrag: z.string().optional(),
+          nettoBetrag: z.string().optional(),
+          ustSatz: z.string().optional(),
+          ustBetrag: z.string().optional(),
+          zahlungsrhythmus: z.enum(["monatlich", "quartalsweise", "halbjaehrlich", "jaehrlich"]).optional(),
+          buchungskonto: z.string().optional(),
+          gegenkontoNr: z.string().optional(),
+          kostenstelleId: z.number().optional(),
+          notizen: z.string().optional(),
+          belegUrl: z.string().optional(),
+          aktiv: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+        const { id, beginn, ende, ...rest } = input;
+        const updateData = {
+          ...rest,
+          ...(beginn !== undefined ? { beginn: beginn ? new Date(beginn) : null } : {}),
+          ...(ende !== undefined ? { ende: ende ? new Date(ende) : null } : {}),
+        };
+        await db.update(vertraege).set(updateData).where(eq(vertraege.id, id));
+        return { success: true };
+      }),
+
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
@@ -1796,6 +1853,29 @@ export const stammdatenRouter = router({
         if (!db) throw new Error("Datenbank nicht verfügbar");
         await db.delete(vertraege).where(eq(vertraege.id, input.id));
         return { success: true };
+      }),
+
+    uploadBeleg: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        unternehmenId: z.number(),
+        fileName: z.string(),
+        fileBase64: z.string(),
+        mimeType: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Datenbank nicht verfügbar");
+
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        const { url } = await uploadBelegLocal(buffer, input.fileName, input.unternehmenId);
+
+        await db
+          .update(vertraege)
+          .set({ belegUrl: url })
+          .where(and(eq(vertraege.id, input.id), eq(vertraege.unternehmenId, input.unternehmenId)));
+
+        return { belegUrl: url };
       }),
   }),
 

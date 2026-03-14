@@ -19,8 +19,8 @@ import { toast } from "sonner";
 import { Link } from "wouter";
 import AppHeader from "@/components/AppHeader";
 import Kontierungsregeln from "@/components/Kontierungsregeln";
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
   Plus,
   Trash2,
   Edit2,
@@ -38,8 +38,12 @@ import {
   UserCircle,
   PiggyBank,
   Calculator,
-  ArrowRightLeft
+  ArrowRightLeft,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { trpc } from "@/lib/trpc";
 
 // Typen für alle Stammdaten
@@ -284,6 +288,120 @@ const STAMMDATEN_TYPEN = [
   },
 ];
 
+// ─── Verträge v2: Konstanten ──────────────────────────────────────────────────
+
+export const VERTRAGSART_LABELS: Record<string, string> = {
+  miete: "Miete",
+  leasing: "Leasing",
+  wartung: "Wartung & Service",
+  versicherung: "Versicherung",
+  abo: "Abo / Subscription",
+  darlehen: "Darlehen",
+  pacht: "Pacht",
+  lizenz: "Lizenz",
+  dienstleistung: "Dienstleistung",
+  sonstig: "Sonstiger Vertrag",
+};
+
+// Kontenrahmen-spezifische Standardkonten (Aufwandskonten) je Vertragsart
+const VERTRAGS_KONTEN: Record<string, Record<string, string>> = {
+  SKR04: {
+    miete: "6310", leasing: "6560", wartung: "6805", versicherung: "6400",
+    abo: "6825", lizenz: "6820", arbeitsvertrag: "6010", darlehen: "7310",
+    rahmenvertrag: "6300", dienstleistung: "6800", pacht: "6315", sonstig: "6300",
+    gegenkonto: "1600", vorsteuer: "1406",
+  },
+  SKR03: {
+    miete: "4210", leasing: "4570", wartung: "4950", versicherung: "4360",
+    abo: "4970", lizenz: "4980", arbeitsvertrag: "4100", darlehen: "2150",
+    rahmenvertrag: "4900", dienstleistung: "4800", pacht: "4220", sonstig: "4900",
+    gegenkonto: "1600", vorsteuer: "1576",
+  },
+  OeKR: {
+    miete: "7400", leasing: "7690", wartung: "7600", versicherung: "7500",
+    abo: "7680", lizenz: "7670", arbeitsvertrag: "6000", darlehen: "8280",
+    rahmenvertrag: "7800", dienstleistung: "7200", pacht: "7420", sonstig: "7800",
+    gegenkonto: "3300", vorsteuer: "2500",
+  },
+  KMU: {
+    miete: "6000", leasing: "6200", wartung: "6300", versicherung: "6500",
+    abo: "6840", lizenz: "6800", arbeitsvertrag: "5000", darlehen: "6900",
+    rahmenvertrag: "6960", dienstleistung: "6400", pacht: "6100", sonstig: "6960",
+    gegenkonto: "2000", vorsteuer: "1170",
+  },
+  RLG: {
+    miete: "7400", leasing: "7690", wartung: "7600", versicherung: "7500",
+    abo: "7680", lizenz: "7670", arbeitsvertrag: "6000", darlehen: "8280",
+    rahmenvertrag: "7800", dienstleistung: "7200", pacht: "7420", sonstig: "7800",
+    gegenkonto: "3300", vorsteuer: "2500",
+  },
+  OR: {
+    miete: "6000", leasing: "6200", wartung: "6300", versicherung: "6500",
+    abo: "6840", lizenz: "6800", arbeitsvertrag: "5000", darlehen: "6900",
+    rahmenvertrag: "6960", dienstleistung: "6400", pacht: "6100", sonstig: "6960",
+    gegenkonto: "2000", vorsteuer: "1170",
+  },
+};
+
+const UST_SAETZE: Record<string, { satz: string; label: string }[]> = {
+  DE: [
+    { satz: "0", label: "0 % (steuerfrei)" },
+    { satz: "7", label: "7 % (ermäßigt)" },
+    { satz: "19", label: "19 % (Regelsteuersatz)" },
+  ],
+  AT: [
+    { satz: "0", label: "0 % (steuerfrei)" },
+    { satz: "10", label: "10 % (ermäßigt)" },
+    { satz: "13", label: "13 % (ermäßigt)" },
+    { satz: "20", label: "20 % (Regelsteuersatz)" },
+    { satz: "22", label: "22 % (Wein / Schaumwein)" },
+  ],
+  CH: [
+    { satz: "0", label: "0 % (befreit)" },
+    { satz: "2.6", label: "2.6 % (Sonderregel)" },
+    { satz: "3.8", label: "3.8 % (Beherbergung)" },
+    { satz: "8.1", label: "8.1 % (Normalsatz)" },
+  ],
+};
+
+interface VertragFormState {
+  bezeichnung: string;
+  vertragsart: string;
+  vertragspartner: string;
+  vertragsnummer: string;
+  beginn: string;
+  ende: string;
+  kuendigungsfrist: string;
+  nettoBetrag: string;
+  ustSatz: string;
+  zahlungsrhythmus: string;
+  gegenkontoNr: string;
+  kostenstelleId: string;
+  belegUrl: string;
+  notizen: string;
+  aktiv: boolean;
+}
+
+const VERTRAG_FORM_DEFAULT: VertragFormState = {
+  bezeichnung: "",
+  vertragsart: "sonstig",
+  vertragspartner: "",
+  vertragsnummer: "",
+  beginn: "",
+  ende: "",
+  kuendigungsfrist: "",
+  nettoBetrag: "",
+  ustSatz: "19",
+  zahlungsrhythmus: "monatlich",
+  gegenkontoNr: "",
+  kostenstelleId: "",
+  belegUrl: "",
+  notizen: "",
+  aktiv: true,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
@@ -319,6 +437,12 @@ export default function Stammdaten() {
   const [editItem, setEditItem] = useState<Stammdatum | null>(null);
   const [editingSachkontoId, setEditingSachkontoId] = useState<number | null>(null);
   const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
+
+  // Verträge v2 – dedizierter State
+  const [vertragDialogOpen, setVertragDialogOpen] = useState(false);
+  const [editingVertragId, setEditingVertragId] = useState<number | null>(null);
+  const [vertragForm, setVertragForm] = useState<VertragFormState>(VERTRAG_FORM_DEFAULT);
+  const [vertragUploadFile, setVertragUploadFile] = useState<File | null>(null);
 
   // Formular-State
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -384,6 +508,17 @@ export default function Stammdaten() {
     { unternehmenId: selectedUnternehmenId!, nurAktive: false },
     { enabled: !!selectedUnternehmenId && (activeTab === "kreditkarte" || activeTab === "zahlungsdienstleister" || activeTab === "brokerkonto") }
   );
+
+  // Lade Verträge für das ausgewählte Unternehmen
+  const { data: vertraegeList, refetch: refetchVertraege } = trpc.stammdaten.vertraege.list.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId && activeTab === "vertrag" }
+  );
+
+  // Unternehmensdaten (für landCode → länderspezifische USt / Konten)
+  const { data: unternehmenList } = trpc.unternehmen.list.useQuery(undefined, {
+    enabled: !!selectedUnternehmenId,
+  });
 
   // Mutations für Kreditoren
   const createKreditorMutation = trpc.stammdaten.kreditoren.create.useMutation({
@@ -637,6 +772,45 @@ export default function Stammdaten() {
     }
   });
 
+  // Mutations für Verträge
+  const createVertragMutation = trpc.stammdaten.vertraege.create.useMutation({
+    onSuccess: () => {
+      refetchVertraege();
+      toast.success("Vertrag erstellt");
+      setVertragDialogOpen(false);
+      setVertragForm(VERTRAG_FORM_DEFAULT);
+      setEditingVertragId(null);
+    },
+    onError: (error) => { toast.error(`Fehler: ${error.message}`); },
+  });
+
+  const updateVertragMutation = trpc.stammdaten.vertraege.update.useMutation({
+    onSuccess: () => {
+      refetchVertraege();
+      toast.success("Vertrag aktualisiert");
+      setVertragDialogOpen(false);
+      setVertragForm(VERTRAG_FORM_DEFAULT);
+      setEditingVertragId(null);
+    },
+    onError: (error) => { toast.error(`Fehler: ${error.message}`); },
+  });
+
+  const deleteVertragMutation = trpc.stammdaten.vertraege.delete.useMutation({
+    onSuccess: () => {
+      refetchVertraege();
+      toast.info("Vertrag gelöscht");
+    },
+    onError: (error) => { toast.error(`Fehler: ${error.message}`); },
+  });
+
+  const uploadBelegVertragMutation = trpc.stammdaten.vertraege.uploadBeleg.useMutation({
+    onSuccess: () => {
+      trpcUtils.buchhaltung.vertraege.list.invalidate();
+      toast.success("Dokument hochgeladen");
+    },
+    onError: (error) => { toast.error(`Upload fehlgeschlagen: ${error.message}`); },
+  });
+
   // Konvertierungs-Mutations
   const convertToDebitorMutation = trpc.stammdaten.kreditoren.convertToDebitor.useMutation({
     onSuccess: () => {
@@ -689,9 +863,13 @@ export default function Stammdaten() {
   }, []);
 
   const openNewDialog = useCallback(() => {
+    if (activeTab === "vertrag") {
+      openVertragDialog();
+      return;
+    }
     resetForm();
     setDialogOpen(true);
-  }, [resetForm]);
+  }, [resetForm, activeTab, openVertragDialog]);
 
   const openEditDialog = useCallback((item: Stammdatum) => {
     setEditItem(item);
@@ -1048,6 +1226,124 @@ export default function Stammdaten() {
     }
   }, [deleteFinanzkontoMutation, selectedUnternehmenId]);
 
+  // Vertrag löschen
+  const handleDeleteVertrag = useCallback((id: number) => {
+    if (confirm("Möchten Sie diesen Vertrag wirklich löschen?")) {
+      deleteVertragMutation.mutate({ id });
+    }
+  }, [deleteVertragMutation]);
+
+  // Vertrag-Dialog öffnen (neu oder bearbeiten)
+  const openVertragDialog = useCallback((vertrag?: any) => {
+    const currentUnternehmen = unternehmenList?.find(
+      (u) => u.unternehmen.id === selectedUnternehmenId
+    )?.unternehmen;
+    const land = (currentUnternehmen?.landCode as string) || "DE";
+    const defaultUstSatz = land === "AT" ? "20" : land === "CH" ? "8.1" : "19";
+
+    if (vertrag) {
+      setEditingVertragId(vertrag.id);
+      setVertragForm({
+        bezeichnung: vertrag.bezeichnung || "",
+        vertragsart: vertrag.vertragsart || "sonstig",
+        vertragspartner: vertrag.vertragspartner || "",
+        vertragsnummer: vertrag.vertragsnummer || "",
+        beginn: vertrag.beginn
+          ? new Date(vertrag.beginn).toISOString().split("T")[0]
+          : "",
+        ende: vertrag.ende
+          ? new Date(vertrag.ende).toISOString().split("T")[0]
+          : "",
+        kuendigungsfrist: vertrag.kuendigungsfrist || "",
+        nettoBetrag: vertrag.nettoBetrag ?? vertrag.monatlicheBetrag ?? "",
+        ustSatz: vertrag.ustSatz ?? defaultUstSatz,
+        zahlungsrhythmus: vertrag.zahlungsrhythmus || "monatlich",
+        gegenkontoNr: vertrag.gegenkontoNr || "",
+        kostenstelleId: vertrag.kostenstelleId?.toString() || "",
+        belegUrl: vertrag.belegUrl || "",
+        notizen: vertrag.notizen || "",
+        aktiv: vertrag.aktiv ?? true,
+      });
+    } else {
+      setEditingVertragId(null);
+      setVertragForm({ ...VERTRAG_FORM_DEFAULT, ustSatz: defaultUstSatz });
+    }
+    setVertragDialogOpen(true);
+  }, [unternehmenList, selectedUnternehmenId]);
+
+  // Vertrag speichern (create oder update, optional mit Datei-Upload)
+  const handleVertragSpeichern = useCallback(() => {
+    if (!vertragForm.bezeichnung.trim()) {
+      toast.error("Vertragsbezeichnung ist erforderlich");
+      return;
+    }
+    if (!selectedUnternehmenId) {
+      toast.error("Bitte wählen Sie zuerst ein Unternehmen aus");
+      return;
+    }
+
+    const netto = parseFloat(vertragForm.nettoBetrag || "0");
+    const ustSatz = parseFloat(vertragForm.ustSatz || "0");
+    const ustBetrag = Math.round(netto * ustSatz / 100 * 100) / 100;
+    const brutto = Math.round((netto + ustBetrag) * 100) / 100;
+
+    const payload = {
+      bezeichnung: vertragForm.bezeichnung,
+      vertragsart: vertragForm.vertragsart as any,
+      vertragspartner: vertragForm.vertragspartner || undefined,
+      vertragsnummer: vertragForm.vertragsnummer || undefined,
+      beginn: vertragForm.beginn || undefined,
+      ende: vertragForm.ende || undefined,
+      kuendigungsfrist: vertragForm.kuendigungsfrist || undefined,
+      nettoBetrag: vertragForm.nettoBetrag || undefined,
+      ustSatz: vertragForm.ustSatz || undefined,
+      ustBetrag: ustBetrag > 0 ? ustBetrag.toFixed(2) : undefined,
+      monatlicheBetrag: brutto > 0 ? brutto.toFixed(2) : undefined,
+      zahlungsrhythmus: vertragForm.zahlungsrhythmus as any,
+      buchungskonto: vertragForm.gegenkontoNr ||
+        (VERTRAGS_KONTEN[currentKontenrahmen]?.[vertragForm.vertragsart] ?? undefined),
+      gegenkontoNr: vertragForm.gegenkontoNr ||
+        (VERTRAGS_KONTEN[currentKontenrahmen]?.gegenkonto ?? undefined),
+      kostenstelleId: vertragForm.kostenstelleId ? parseInt(vertragForm.kostenstelleId) : undefined,
+      notizen: vertragForm.notizen || undefined,
+      belegUrl: vertragForm.belegUrl || undefined,
+      aktiv: vertragForm.aktiv,
+    };
+
+    // Datei nach erfolgreichem Speichern hochladen
+    const doUpload = (id: number) => {
+      if (!vertragUploadFile) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = (e.target?.result as string).split(",")[1];
+        uploadBelegVertragMutation.mutate({
+          id,
+          unternehmenId: selectedUnternehmenId,
+          fileName: vertragUploadFile.name,
+          fileBase64: base64,
+          mimeType: vertragUploadFile.type,
+        });
+      };
+      reader.readAsDataURL(vertragUploadFile);
+    };
+
+    if (editingVertragId) {
+      updateVertragMutation.mutate(
+        { id: editingVertragId, ...payload },
+        { onSuccess: () => doUpload(editingVertragId) }
+      );
+    } else {
+      createVertragMutation.mutate(
+        { unternehmenId: selectedUnternehmenId, ...payload },
+        { onSuccess: (data) => doUpload(data.id) }
+      );
+    }
+  }, [
+    vertragForm, editingVertragId, selectedUnternehmenId, vertragUploadFile,
+    createVertragMutation, updateVertragMutation, uploadBelegVertragMutation,
+    currentKontenrahmen,
+  ]);
+
   // Kreditor bearbeiten
   const openEditKreditorDialog = useCallback((kreditor: any) => {
     setEditItem({
@@ -1262,11 +1558,34 @@ export default function Stammdaten() {
            (f.finanzkonto.depotNummer?.toLowerCase().includes(searchLower) ?? false);
   }) || [];
 
-  // Gefilterte Daten für aktiven Tab
+  // Gefilterte Verträge
+  const gefilterteVertraege = vertraegeList?.filter(v => {
+    if (!suchbegriff) return true;
+    const searchLower = suchbegriff.toLowerCase();
+    return v.bezeichnung.toLowerCase().includes(searchLower) ||
+           (v.vertragspartner?.toLowerCase().includes(searchLower) ?? false) ||
+           (v.vertragsnummer?.toLowerCase().includes(searchLower) ?? false);
+  }) || [];
+
+  // landCode + Kontenrahmen des aktuellen Unternehmens
+  const currentUnternehmenData = unternehmenList?.find(
+    (u) => u.unternehmen.id === selectedUnternehmenId
+  )?.unternehmen;
+  const currentLandCode = (currentUnternehmenData?.landCode as string) || "DE";
+  const currentKontenrahmen = (currentUnternehmenData?.kontenrahmen as string) || "SKR04";
+  const ustSaetzeForLand = UST_SAETZE[currentLandCode] ?? UST_SAETZE["DE"];
+
+  // USt-Berechnung für Vertrag-Dialog
+  const vertragNetto = parseFloat(vertragForm.nettoBetrag || "0");
+  const vertragUstSatz = parseFloat(vertragForm.ustSatz || "0");
+  const vertragUstBetrag = vertragNetto * vertragUstSatz / 100;
+  const vertragBrutto = vertragNetto + vertragUstBetrag;
+
+  // Gefilterte Daten für aktiven Tab (LocalStorage-Typen wie kostenstelle)
   const gefilterteDaten = stammdaten.filter(s => {
     if (s.typ !== activeTab) return false;
     if (!suchbegriff) return true;
-    
+
     const searchLower = suchbegriff.toLowerCase();
     return s.name.toLowerCase().includes(searchLower) ||
            s.kontonummer.toLowerCase().includes(searchLower) ||
@@ -1332,6 +1651,8 @@ export default function Stammdaten() {
                   count = gefilterteZahlungsdienstleister.length;
                 } else if (typ.value === "brokerkonto") {
                   count = gefilterteBrokerkonten.length;
+                } else if (typ.value === "vertrag") {
+                  count = vertraegeList?.length || 0;
                 } else {
                   count = stammdaten.filter(s => s.typ === typ.value).length;
                 }
@@ -2228,6 +2549,150 @@ export default function Stammdaten() {
                     ))}
                   </div>
                 )
+              ) : typ.value === "vertrag" ? (
+                /* ── Verträge v2 – eigene Darstellung ────────────────── */
+                !selectedUnternehmenId ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <FileText className="w-12 h-12 mx-auto mb-4 opacity-50 text-rose-600" />
+                      <p className="font-medium">Kein Unternehmen ausgewählt</p>
+                      <p className="text-sm">Bitte wählen Sie zuerst ein Unternehmen aus</p>
+                    </div>
+                  </Card>
+                ) : gefilterteVertraege.length === 0 ? (
+                  <Card className="p-12">
+                    <div className="text-center text-muted-foreground">
+                      <FileText className="w-12 h-12 mx-auto mb-4 opacity-50 text-rose-600" />
+                      <p className="font-medium">Keine Verträge vorhanden</p>
+                      <p className="text-sm">Legen Sie einen neuen Vertrag an</p>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {gefilterteVertraege.map((v) => {
+                      const netto = parseFloat(v.nettoBetrag ?? v.monatlicheBetrag ?? "0");
+                      const ust = parseFloat(v.ustBetrag ?? "0");
+                      const brutto = netto + ust;
+                      const rhytmusLabel: Record<string, string> = {
+                        monatlich: "mtl.", quartalsweise: "quartl.", halbjaehrlich: "halbj.", jaehrlich: "jährl.",
+                      };
+                      return (
+                        <Card key={v.id} className="flex flex-col">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
+                                  <FileText className="w-5 h-5 text-rose-600" />
+                                </div>
+                                <div>
+                                  <CardTitle className="text-base line-clamp-1">{v.bezeichnung}</CardTitle>
+                                  <CardDescription className="text-xs">
+                                    {VERTRAGSART_LABELS[v.vertragsart || "sonstig"] ?? v.vertragsart}
+                                  </CardDescription>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {v.aktiv ? (
+                                  <CheckCircle className="w-4 h-4 text-green-500" title="Aktiv" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 text-muted-foreground" title="Inaktiv" />
+                                )}
+                                <Button
+                                  variant="ghost" size="icon" className="h-8 w-8"
+                                  onClick={() => openVertragDialog(v)} title="Bearbeiten"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost" size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleDeleteVertrag(v.id)} title="Löschen"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="flex-1 pt-0">
+                            <div className="space-y-1 text-sm">
+                              {v.vertragspartner && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Partner:</span>
+                                  <span className="font-medium">{v.vertragspartner}</span>
+                                </div>
+                              )}
+                              {v.vertragsnummer && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Nr.:</span>
+                                  <span className="font-medium font-mono">{v.vertragsnummer}</span>
+                                </div>
+                              )}
+                              {netto > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    Netto {rhytmusLabel[v.zahlungsrhythmus || "monatlich"] ?? "mtl."}:
+                                  </span>
+                                  <span className="font-medium">
+                                    {netto.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
+                                  </span>
+                                </div>
+                              )}
+                              {v.ustSatz && parseFloat(v.ustSatz) > 0 && (
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-muted-foreground">+ {v.ustSatz} % USt:</span>
+                                  <span>{ust.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}</span>
+                                </div>
+                              )}
+                              {brutto > 0 && v.ustSatz && parseFloat(v.ustSatz) > 0 && (
+                                <div className="flex justify-between font-semibold border-t pt-1 mt-1">
+                                  <span>Brutto:</span>
+                                  <span>{brutto.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}</span>
+                                </div>
+                              )}
+                              {v.beginn && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Beginn:</span>
+                                  <span>{new Date(v.beginn).toLocaleDateString("de-DE")}</span>
+                                </div>
+                              )}
+                              {v.ende && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Ende:</span>
+                                  <span>{new Date(v.ende).toLocaleDateString("de-DE")}</span>
+                                </div>
+                              )}
+                              {v.gegenkontoNr && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Gegenkonto:</span>
+                                  <span className="font-mono">{v.gegenkontoNr}</span>
+                                </div>
+                              )}
+                            </div>
+                            {v.belegUrl && (
+                              <>
+                                <Separator className="my-2" />
+                                <a
+                                  href={v.belegUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs text-primary hover:underline truncate block"
+                                >
+                                  Beleg öffnen
+                                </a>
+                              </>
+                            )}
+                            {v.notizen && (
+                              <>
+                                <Separator className="my-2" />
+                                <p className="text-xs text-muted-foreground line-clamp-2">{v.notizen}</p>
+                              </>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )
               ) : gefilterteDaten.length === 0 ? (
                 <Card className="p-12">
                   <div className="text-center text-muted-foreground">
@@ -2312,6 +2777,268 @@ export default function Stammdaten() {
             </TabsContent>
           ))}
         </Tabs>
+
+        {/* ── Vertrag CRUD-Dialog (Verträge v2) ─────────────────────────── */}
+        <Dialog open={vertragDialogOpen} onOpenChange={(open) => {
+          setVertragDialogOpen(open);
+          if (!open) {
+            setEditingVertragId(null);
+            setVertragForm(VERTRAG_FORM_DEFAULT);
+            setVertragUploadFile(null);
+          }
+        }}>
+          <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-rose-600" />
+                {editingVertragId ? "Vertrag bearbeiten" : "Neuen Vertrag anlegen"}
+              </DialogTitle>
+              <DialogDescription>
+                Kontenrahmen: {currentKontenrahmen} | Land: {currentLandCode} – Konten & USt-Sätze vorbelegt
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4 py-4">
+              {/* Vertragsbezeichnung */}
+              <div className="space-y-1">
+                <Label htmlFor="v-bezeichnung">Vertragsbezeichnung <span className="text-destructive">*</span></Label>
+                <Input
+                  id="v-bezeichnung"
+                  placeholder="z. B. Büromiete Hauptstraße 1"
+                  value={vertragForm.bezeichnung}
+                  onChange={(e) => setVertragForm(f => ({ ...f, bezeichnung: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Vertragsart */}
+                <div className="space-y-1">
+                  <Label>Vertragsart</Label>
+                  <Select
+                    value={vertragForm.vertragsart}
+                    onValueChange={(v) => {
+                      const kontoVorschlag = (VERTRAGS_KONTEN[currentKontenrahmen] ?? VERTRAGS_KONTEN["SKR04"])[v] ?? "";
+                      setVertragForm(f => ({ ...f, vertragsart: v, gegenkontoNr: f.gegenkontoNr || kontoVorschlag }));
+                    }}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(VERTRAGSART_LABELS).map(([val, label]) => (
+                        <SelectItem key={val} value={val}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Vertragspartner */}
+                <div className="space-y-1">
+                  <Label htmlFor="v-partner">Vertragspartner</Label>
+                  <Input
+                    id="v-partner"
+                    placeholder="Name des Vertragspartners"
+                    value={vertragForm.vertragspartner}
+                    onChange={(e) => setVertragForm(f => ({ ...f, vertragspartner: e.target.value }))}
+                  />
+                </div>
+
+                {/* Vertragsnummer */}
+                <div className="space-y-1">
+                  <Label htmlFor="v-nr">Vertragsnummer</Label>
+                  <Input
+                    id="v-nr"
+                    placeholder="Interne oder externe Nr."
+                    value={vertragForm.vertragsnummer}
+                    onChange={(e) => setVertragForm(f => ({ ...f, vertragsnummer: e.target.value }))}
+                  />
+                </div>
+
+                {/* Kündigungsfrist */}
+                <div className="space-y-1">
+                  <Label htmlFor="v-frist">Kündigungsfrist</Label>
+                  <Input
+                    id="v-frist"
+                    placeholder="z. B. 3 Monate"
+                    value={vertragForm.kuendigungsfrist}
+                    onChange={(e) => setVertragForm(f => ({ ...f, kuendigungsfrist: e.target.value }))}
+                  />
+                </div>
+
+                {/* Beginn */}
+                <div className="space-y-1">
+                  <Label htmlFor="v-beginn">Vertragsbeginn</Label>
+                  <Input
+                    id="v-beginn"
+                    type="date"
+                    value={vertragForm.beginn}
+                    onChange={(e) => setVertragForm(f => ({ ...f, beginn: e.target.value }))}
+                  />
+                </div>
+
+                {/* Ende */}
+                <div className="space-y-1">
+                  <Label htmlFor="v-ende">Vertragsende</Label>
+                  <Input
+                    id="v-ende"
+                    type="date"
+                    value={vertragForm.ende}
+                    onChange={(e) => setVertragForm(f => ({ ...f, ende: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Netto / USt / Brutto */}
+              <p className="text-sm font-medium text-muted-foreground">Betrag & Steuer</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="v-netto">Nettobetrag (mtl.)</Label>
+                  <Input
+                    id="v-netto"
+                    type="number"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={vertragForm.nettoBetrag}
+                    onChange={(e) => setVertragForm(f => ({ ...f, nettoBetrag: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>USt-Satz</Label>
+                  <Select
+                    value={vertragForm.ustSatz}
+                    onValueChange={(v) => setVertragForm(f => ({ ...f, ustSatz: v }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ustSaetzeForLand.map(({ satz, label }) => (
+                        <SelectItem key={satz} value={satz}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Bruttobetrag</Label>
+                  <div className="h-10 px-3 py-2 rounded-md border bg-muted text-sm font-semibold flex items-center">
+                    {vertragBrutto > 0
+                      ? vertragBrutto.toLocaleString("de-DE", { style: "currency", currency: "EUR" })
+                      : "–"}
+                  </div>
+                  {vertragUstBetrag > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      davon USt: {vertragUstBetrag.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Zahlungsrhythmus */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label>Zahlungsrhythmus</Label>
+                  <Select
+                    value={vertragForm.zahlungsrhythmus}
+                    onValueChange={(v) => setVertragForm(f => ({ ...f, zahlungsrhythmus: v }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monatlich">Monatlich</SelectItem>
+                      <SelectItem value="quartalsweise">Quartalsweise</SelectItem>
+                      <SelectItem value="halbjaehrlich">Halbjährlich</SelectItem>
+                      <SelectItem value="jaehrlich">Jährlich</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Gegenkonto */}
+                <div className="space-y-1">
+                  <Label htmlFor="v-gegenkonto">Gegenkonto (Aufwand)</Label>
+                  <Input
+                    id="v-gegenkonto"
+                    placeholder={
+                      (VERTRAGS_KONTEN[currentKontenrahmen] ?? VERTRAGS_KONTEN["SKR04"])[vertragForm.vertragsart] ?? ""
+                    }
+                    value={vertragForm.gegenkontoNr}
+                    onChange={(e) => setVertragForm(f => ({ ...f, gegenkontoNr: e.target.value }))}
+                    className="font-mono"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Dokument Upload */}
+              <div className="space-y-2">
+                <Label>Vertragsdokument (PDF / Bild)</Label>
+                {vertragForm.belegUrl && (
+                  <div className="flex items-center gap-2 text-sm text-blue-600 mb-1">
+                    <FileText className="w-4 h-4" />
+                    <a href={vertragForm.belegUrl} target="_blank" rel="noopener noreferrer">
+                      Aktuelles Dokument ansehen
+                    </a>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setVertragUploadFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm text-muted-foreground file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 cursor-pointer"
+                />
+                {vertragUploadFile && (
+                  <p className="text-xs text-muted-foreground">
+                    Ausgewählt: {vertragUploadFile.name} ({(vertragUploadFile.size / 1024).toFixed(0)} KB)
+                  </p>
+                )}
+                {/* Fallback: direkte URL-Eingabe */}
+                <Input
+                  type="url"
+                  placeholder="Oder URL direkt eingeben: https://..."
+                  value={vertragForm.belegUrl}
+                  onChange={(e) => setVertragForm(f => ({ ...f, belegUrl: e.target.value }))}
+                  className="text-sm"
+                />
+              </div>
+
+              {/* Notizen */}
+              <div className="space-y-1">
+                <Label htmlFor="v-notizen">Notizen</Label>
+                <Textarea
+                  id="v-notizen"
+                  placeholder="Zusätzliche Informationen..."
+                  value={vertragForm.notizen}
+                  onChange={(e) => setVertragForm(f => ({ ...f, notizen: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+
+              {/* Aktiv */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="v-aktiv"
+                  checked={vertragForm.aktiv}
+                  onCheckedChange={(checked) => setVertragForm(f => ({ ...f, aktiv: !!checked }))}
+                />
+                <Label htmlFor="v-aktiv" className="cursor-pointer">Vertrag aktiv</Label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setVertragDialogOpen(false)}>
+                Abbrechen
+              </Button>
+              <Button
+                onClick={handleVertragSpeichern}
+                disabled={
+                  createVertragMutation.isPending ||
+                  updateVertragMutation.isPending ||
+                  uploadBelegVertragMutation.isPending
+                }
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {uploadBelegVertragMutation.isPending ? "Lädt hoch..." : "Speichern"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Dialog für Neu/Bearbeiten */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
