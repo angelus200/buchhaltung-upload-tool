@@ -201,6 +201,16 @@ async function convertPdfToImage(pdfBase64: string): Promise<{ imageBase64: stri
   }
 }
 
+// Hilfsfunktion: Date-String timezone-safe parsen (verhindert UTC-Offset-Bug)
+// new Date("2023-03-13") → UTC Mitternacht → in MEZ = 2023-03-12T23:00 → falscher Tag
+function parseDateUTC(dateVal: Date | string | null | undefined): Date {
+  if (!dateVal) return new Date();
+  const str = typeof dateVal === "string" ? dateVal : dateVal.toISOString();
+  const datePart = str.split("T")[0];
+  const [year, month, day] = datePart.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 /**
  * Finanzierungs-Router - Verwaltung von Krediten und Leasingverträgen
  */
@@ -467,8 +477,8 @@ export const finanzierungenRouter = router({
       await db.delete(finanzierungZahlungen).where(eq(finanzierungZahlungen.finanzierungId, input.finanzierungId));
 
       // Zahlungsplan berechnen
-      const start = new Date(finanzierung.vertragsBeginn);
-      const ende = new Date(finanzierung.vertragsEnde);
+      const start = parseDateUTC(finanzierung.vertragsBeginn);
+      const ende = parseDateUTC(finanzierung.vertragsEnde);
       const ratenBetrag = parseFloat(finanzierung.ratenBetrag.toString());
 
       const zahlungen: InsertFinanzierungZahlung[] = [];
