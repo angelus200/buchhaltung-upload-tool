@@ -391,9 +391,10 @@ function CreateBuchungForm({ unternehmenId, onSave, onCancel }: CreateBuchungFor
 
 export default function Uebersicht() {
   const { user, isAuthenticated } = useAuth();
-  const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(
-    null
-  );
+  const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(() => {
+    const saved = localStorage.getItem("selectedUnternehmenId");
+    return saved ? parseInt(saved) : null;
+  });
   // 🔧 FIX BUG 1: Default auf aktuellen Monat/Jahr → reduziert von 24.987 auf ~200-500 Buchungen
   const currentDate = new Date();
   const verfuegbareJahre = Array.from(
