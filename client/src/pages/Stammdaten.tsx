@@ -862,6 +862,44 @@ export default function Stammdaten() {
     setEditingSachkontoId(null);
   }, []);
 
+  // Vertrag-Dialog öffnen (neu oder bearbeiten)
+  const openVertragDialog = useCallback((vertrag?: any) => {
+    const currentUnternehmen = unternehmenList?.find(
+      (u) => u.unternehmen.id === selectedUnternehmenId
+    )?.unternehmen;
+    const land = (currentUnternehmen?.landCode as string) || "DE";
+    const defaultUstSatz = land === "AT" ? "20" : land === "CH" ? "8.1" : "19";
+
+    if (vertrag) {
+      setEditingVertragId(vertrag.id);
+      setVertragForm({
+        bezeichnung: vertrag.bezeichnung || "",
+        vertragsart: vertrag.vertragsart || "sonstig",
+        vertragspartner: vertrag.vertragspartner || "",
+        vertragsnummer: vertrag.vertragsnummer || "",
+        beginn: vertrag.beginn
+          ? new Date(vertrag.beginn).toISOString().split("T")[0]
+          : "",
+        ende: vertrag.ende
+          ? new Date(vertrag.ende).toISOString().split("T")[0]
+          : "",
+        kuendigungsfrist: vertrag.kuendigungsfrist || "",
+        nettoBetrag: vertrag.nettoBetrag ?? vertrag.monatlicheBetrag ?? "",
+        ustSatz: vertrag.ustSatz ?? defaultUstSatz,
+        zahlungsrhythmus: vertrag.zahlungsrhythmus || "monatlich",
+        gegenkontoNr: vertrag.gegenkontoNr || "",
+        kostenstelleId: vertrag.kostenstelleId?.toString() || "",
+        belegUrl: vertrag.belegUrl || "",
+        notizen: vertrag.notizen || "",
+        aktiv: vertrag.aktiv ?? true,
+      });
+    } else {
+      setEditingVertragId(null);
+      setVertragForm({ ...VERTRAG_FORM_DEFAULT, ustSatz: defaultUstSatz });
+    }
+    setVertragDialogOpen(true);
+  }, [unternehmenList, selectedUnternehmenId]);
+
   const openNewDialog = useCallback(() => {
     if (activeTab === "vertrag") {
       openVertragDialog();
@@ -1232,44 +1270,6 @@ export default function Stammdaten() {
       deleteVertragMutation.mutate({ id });
     }
   }, [deleteVertragMutation]);
-
-  // Vertrag-Dialog öffnen (neu oder bearbeiten)
-  const openVertragDialog = useCallback((vertrag?: any) => {
-    const currentUnternehmen = unternehmenList?.find(
-      (u) => u.unternehmen.id === selectedUnternehmenId
-    )?.unternehmen;
-    const land = (currentUnternehmen?.landCode as string) || "DE";
-    const defaultUstSatz = land === "AT" ? "20" : land === "CH" ? "8.1" : "19";
-
-    if (vertrag) {
-      setEditingVertragId(vertrag.id);
-      setVertragForm({
-        bezeichnung: vertrag.bezeichnung || "",
-        vertragsart: vertrag.vertragsart || "sonstig",
-        vertragspartner: vertrag.vertragspartner || "",
-        vertragsnummer: vertrag.vertragsnummer || "",
-        beginn: vertrag.beginn
-          ? new Date(vertrag.beginn).toISOString().split("T")[0]
-          : "",
-        ende: vertrag.ende
-          ? new Date(vertrag.ende).toISOString().split("T")[0]
-          : "",
-        kuendigungsfrist: vertrag.kuendigungsfrist || "",
-        nettoBetrag: vertrag.nettoBetrag ?? vertrag.monatlicheBetrag ?? "",
-        ustSatz: vertrag.ustSatz ?? defaultUstSatz,
-        zahlungsrhythmus: vertrag.zahlungsrhythmus || "monatlich",
-        gegenkontoNr: vertrag.gegenkontoNr || "",
-        kostenstelleId: vertrag.kostenstelleId?.toString() || "",
-        belegUrl: vertrag.belegUrl || "",
-        notizen: vertrag.notizen || "",
-        aktiv: vertrag.aktiv ?? true,
-      });
-    } else {
-      setEditingVertragId(null);
-      setVertragForm({ ...VERTRAG_FORM_DEFAULT, ustSatz: defaultUstSatz });
-    }
-    setVertragDialogOpen(true);
-  }, [unternehmenList, selectedUnternehmenId]);
 
   // Vertrag speichern (create oder update, optional mit Datei-Upload)
   const handleVertragSpeichern = useCallback(() => {
