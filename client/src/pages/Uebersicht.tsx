@@ -396,6 +396,10 @@ export default function Uebersicht() {
   );
   // 🔧 FIX BUG 1: Default auf aktuellen Monat/Jahr → reduziert von 24.987 auf ~200-500 Buchungen
   const currentDate = new Date();
+  const verfuegbareJahre = Array.from(
+    { length: currentDate.getFullYear() - 2022 + 1 },
+    (_, i) => 2023 + i
+  ).reverse();
   const [selectedMonth, setSelectedMonth] = useState<number | undefined>(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number | undefined>(currentDate.getFullYear());
   const [filterSachkonto, setFilterSachkonto] = useState("");
@@ -814,10 +818,9 @@ export default function Uebersicht() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="alle">Alle Jahre</SelectItem>
-              <SelectItem value="2025">2025</SelectItem>
-              <SelectItem value="2024">2024</SelectItem>
-              <SelectItem value="2023">2023</SelectItem>
-              <SelectItem value="2022">2022</SelectItem>
+              {verfuegbareJahre.map(jahr => (
+                <SelectItem key={jahr} value={String(jahr)}>{jahr}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
