@@ -206,6 +206,9 @@ export default function Finanzamt() {
       toast.success("Dokument gelöscht");
       refetchDokumente();
     },
+    onError: (error) => {
+      toast.error(`Fehler beim Löschen: ${error.message}`);
+    },
   });
 
   const uploadMutation = trpc.finanzamt.uploadDatei.useMutation({
@@ -509,7 +512,7 @@ export default function Finanzamt() {
 
   const handleDelete = (id: number) => {
     if (confirm("Dokument wirklich löschen?")) {
-      deleteMutation.mutate({ id });
+      deleteMutation.mutate({ id, unternehmenId: selectedUnternehmenId! });
     }
   };
 

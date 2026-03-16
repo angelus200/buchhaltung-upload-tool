@@ -191,7 +191,7 @@ export const finanzamtRouter = router({
 
   // Dokument löschen
   delete: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: z.number(), unternehmenId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Datenbank nicht verfügbar");
@@ -203,7 +203,10 @@ export const finanzamtRouter = router({
       
       await db
         .delete(finanzamtDokumente)
-        .where(eq(finanzamtDokumente.id, input.id));
+        .where(and(
+          eq(finanzamtDokumente.id, input.id),
+          eq(finanzamtDokumente.unternehmenId, input.unternehmenId)
+        ));
 
       return { success: true };
     }),
