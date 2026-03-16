@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 # Cache Bust: Force clean build on Railway (wird von Railway mit $RAILWAY_DEPLOYMENT_ID überschrieben)
-ARG CACHE_BUST=20260306-1750
+ARG CACHE_BUST=20260316-1611
 RUN echo "Cache bust: ${CACHE_BUST}"
 
 # Install poppler-utils for PDF OCR
