@@ -290,7 +290,7 @@ const STAMMDATEN_TYPEN = [
 
 // ─── Verträge v2: Konstanten ──────────────────────────────────────────────────
 
-export const VERTRAGSART_LABELS: Record<string, string> = {
+const VERTRAGSART_LABELS: Record<string, string> = {
   miete: "Miete",
   leasing: "Leasing",
   wartung: "Wartung & Service",
