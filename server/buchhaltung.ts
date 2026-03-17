@@ -673,23 +673,31 @@ export const buchungenRouter = router({
     .input(
       z.object({
         id: z.number(),
+        unternehmenId: z.number(),
         zahlungsstatus: z.enum(["offen", "teilweise_bezahlt", "bezahlt", "ueberfaellig"]),
         bezahltAm: z.string().optional(),
         bezahlterBetrag: z.string().optional(),
         zahlungsreferenz: z.string().optional(),
+        belegWaehrung: z.string().nullable().optional(),
+        wechselkurs: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Datenbank nicht verfügbar");
 
-      const { id, bezahltAm, ...updateData } = input;
+      const { id, unternehmenId, bezahltAm, ...updateData } = input;
       const finalData: Record<string, unknown> = { ...updateData };
       if (bezahltAm) {
         finalData.bezahltAm = new Date(bezahltAm);
       }
 
-      await db.update(buchungen).set(finalData).where(eq(buchungen.id, id));
+      await db.update(buchungen).set(finalData).where(
+        and(
+          eq(buchungen.id, id),
+          eq(buchungen.unternehmenId, unternehmenId)
+        )
+      );
       return { success: true };
     }),
 

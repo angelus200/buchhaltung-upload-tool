@@ -53,10 +53,18 @@ export default function Zahlungen() {
     bezahltAm: new Date().toISOString().split("T")[0],
     bezahlterBetrag: "",
     zahlungsreferenz: "",
+    zahlungsWaehrung: "EUR" as string,
+    zahlungsWechselkurs: "1.000000" as string,
   });
 
   // Unternehmen laden
   const { data: unternehmenListe } = trpc.unternehmen.list.useQuery();
+
+  // Aktuelle Firmendaten (für Währung)
+  const selectedUnternehmenData = useMemo(
+    () => unternehmenListe?.find((u) => u.unternehmen.id === selectedUnternehmen)?.unternehmen,
+    [unternehmenListe, selectedUnternehmen]
+  );
 
   // Zahlungsübersicht laden
   const { data: zahlungsStats, refetch: refetchStats } = trpc.buchungen.zahlungsUebersicht.useQuery(
@@ -122,6 +130,8 @@ export default function Zahlungen() {
       bezahltAm: new Date().toISOString().split("T")[0],
       bezahlterBetrag: String(buchung.bruttobetrag),
       zahlungsreferenz: "",
+      zahlungsWaehrung: selectedUnternehmenData?.waehrung || "EUR",
+      zahlungsWechselkurs: "1.000000",
     });
     setZahlungsDialog(true);
   };
@@ -129,9 +139,18 @@ export default function Zahlungen() {
   // Zahlung speichern
   const handleZahlungSpeichern = () => {
     if (!selectedBuchung) return;
+    const firmenWaehrung = selectedUnternehmenData?.waehrung || "EUR";
     updateZahlungsstatus.mutate({
       id: selectedBuchung.id,
-      ...zahlungsDaten,
+      unternehmenId: selectedBuchung.unternehmenId,
+      zahlungsstatus: zahlungsDaten.zahlungsstatus,
+      bezahltAm: zahlungsDaten.bezahltAm,
+      bezahlterBetrag: zahlungsDaten.bezahlterBetrag,
+      zahlungsreferenz: zahlungsDaten.zahlungsreferenz,
+      belegWaehrung: zahlungsDaten.zahlungsWaehrung !== firmenWaehrung
+        ? zahlungsDaten.zahlungsWaehrung
+        : null,
+      wechselkurs: zahlungsDaten.zahlungsWechselkurs,
     });
   };
 
@@ -139,7 +158,8 @@ export default function Zahlungen() {
   const formatCurrency = (value: number | string | null) => {
     const num = typeof value === "string" ? parseFloat(value) : value;
     if (num === null || isNaN(num as number)) return "0,00 €";
-    return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(num as number);
+    const waehrung = selectedUnternehmenData?.waehrung || "EUR";
+    return new Intl.NumberFormat("de-DE", { style: "currency", currency: waehrung }).format(num as number);
   };
 
   const formatDate = (date: Date | string | null) => {
@@ -402,6 +422,54 @@ export default function Zahlungen() {
                     placeholder="z.B. Überweisungsreferenz"
                   />
                 </div>
+
+                {/* Währung */}
+                <div className="space-y-2">
+                  <Label>Währung</Label>
+                  <Select
+                    value={zahlungsDaten.zahlungsWaehrung}
+                    onValueChange={(v) => {
+                      setZahlungsDaten({
+                        ...zahlungsDaten,
+                        zahlungsWaehrung: v,
+                        zahlungsWechselkurs: v === "EUR" ? "1.000000" :
+                          v === "CHF" ? "0.950000" :
+                          v === "USD" ? "1.050000" :
+                          v === "GBP" ? "1.150000" : "1.000000",
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                      <SelectItem value="CHF">CHF (Schweizer Franken)</SelectItem>
+                      <SelectItem value="USD">USD (US-Dollar)</SelectItem>
+                      <SelectItem value="GBP">GBP (Britisches Pfund)</SelectItem>
+                      <SelectItem value="CZK">CZK (Tschechische Krone)</SelectItem>
+                      <SelectItem value="PLN">PLN (Polnischer Zloty)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Wechselkurs — nur bei Fremdwährung */}
+                {zahlungsDaten.zahlungsWaehrung !== "EUR" && zahlungsDaten.zahlungsWaehrung !== (selectedUnternehmenData?.waehrung || "EUR") && (
+                  <div className="space-y-2">
+                    <Label>Wechselkurs (1 {zahlungsDaten.zahlungsWaehrung} = ? EUR)</Label>
+                    <Input
+                      type="number"
+                      step="0.000001"
+                      value={zahlungsDaten.zahlungsWechselkurs}
+                      onChange={(e) => setZahlungsDaten({ ...zahlungsDaten, zahlungsWechselkurs: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {zahlungsDaten.bezahlterBetrag && zahlungsDaten.zahlungsWechselkurs
+                        ? `= ${(parseFloat(zahlungsDaten.bezahlterBetrag) * parseFloat(zahlungsDaten.zahlungsWechselkurs)).toFixed(2)} EUR`
+                        : ""}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
