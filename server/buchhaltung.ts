@@ -1,5 +1,5 @@
 import { eq, desc, and, or, gte, lte, count, sum, sql, like, inArray } from "drizzle-orm";
-import { getKmuStandardKonten } from "../shared/kontenrahmen";
+import { getKmuStandardKonten, getSeedKontenFuerKontenrahmen } from "../shared/kontenrahmen";
 import { z } from "zod";
 import { getDb } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -1975,7 +1975,14 @@ export const stammdatenRouter = router({
         if (!db) throw new Error("Datenbank nicht verfügbar");
         const { unternehmenId } = input;
 
-        const standardKonten = getKmuStandardKonten();
+        // Kontenrahmen der Firma laden
+        const [firma] = await db.select({ kontenrahmen: unternehmen.kontenrahmen })
+          .from(unternehmen)
+          .where(eq(unternehmen.id, unternehmenId))
+          .limit(1);
+
+        const firmenKontenrahmen = firma?.kontenrahmen || "SKR03";
+        const standardKonten = getSeedKontenFuerKontenrahmen(firmenKontenrahmen);
 
         // Bereits vorhandene Kontonummern ermitteln — keine Duplikate
         const existing = await db
@@ -1993,7 +2000,7 @@ export const stammdatenRouter = router({
         await db.insert(sachkonten).values(
           toInsert.map(k => ({
             unternehmenId,
-            kontenrahmen: 'KMU' as const,
+            kontenrahmen: firmenKontenrahmen as any,
             kontonummer: k.kontonummer,
             bezeichnung: k.bezeichnung,
             kontotyp: k.kontotyp,
@@ -2001,7 +2008,7 @@ export const stammdatenRouter = router({
           }))
         );
 
-        return { inserted: toInsert.length, message: `${toInsert.length} Konten importiert` };
+        return { inserted: toInsert.length, message: `${toInsert.length} Konten (${firmenKontenrahmen}) importiert` };
       }),
   }),
 });

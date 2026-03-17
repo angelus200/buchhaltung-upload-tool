@@ -528,8 +528,43 @@ export function getKmuStandardKonten(): KmuStandardKonto[] {
 }
 
 // Hilfsfunktion zum Abrufen des Kontenrahmens
-export function getKontenrahmen(typ: "SKR03" | "SKR04"): Kontenrahmen {
-  return typ === "SKR04" ? SKR04 : SKR03;
+export function getKontenrahmen(typ: "SKR03" | "SKR04" | "OeKR" | "KMU" | "OR" | "RLG"): Kontenrahmen {
+  switch (typ) {
+    case "SKR04": return SKR04;
+    case "OeKR":
+    case "RLG": return OeKR;
+    case "KMU":
+    case "OR": return KMU;
+    default: return SKR03;
+  }
+}
+
+// Seed-Konten für einen Kontenrahmen holen (alle Kategorien zusammengeführt)
+export function getSeedKontenFuerKontenrahmen(kontenrahmen: string): { kontonummer: string; bezeichnung: string; kontotyp?: string; kategorie?: string; }[] {
+  switch (kontenrahmen) {
+    case "KMU":
+    case "OR":
+      return getKmuStandardKonten().map(k => ({
+        kontonummer: k.kontonummer,
+        bezeichnung: k.bezeichnung,
+        kontotyp: k.kontotyp,
+        kategorie: k.kategorie,
+      }));
+    case "SKR04":
+      return SKR04.aufwand.map(k => ({ kontonummer: k.konto, bezeichnung: k.bezeichnung, kontotyp: "aufwand", kategorie: "Aufwand" }))
+        .concat(SKR04.ertrag?.map(k => ({ kontonummer: k.konto, bezeichnung: k.bezeichnung, kontotyp: "ertrag", kategorie: "Ertrag" })) || [])
+        .concat(SKR04.anlage?.map(k => ({ kontonummer: k.konto, bezeichnung: k.bezeichnung, kontotyp: "aktiv", kategorie: "Anlagen" })) || []);
+    case "OeKR":
+    case "RLG":
+      return OeKR.aufwand.map(k => ({ kontonummer: k.konto, bezeichnung: k.bezeichnung, kontotyp: "aufwand", kategorie: "Aufwand" }))
+        .concat(OeKR.ertrag?.map(k => ({ kontonummer: k.konto, bezeichnung: k.bezeichnung, kontotyp: "ertrag", kategorie: "Ertrag" })) || [])
+        .concat(OeKR.anlage?.map(k => ({ kontonummer: k.konto, bezeichnung: k.bezeichnung, kontotyp: "aktiv", kategorie: "Anlagen" })) || []);
+    case "SKR03":
+    default:
+      return SKR03.aufwand.map(k => ({ kontonummer: k.konto, bezeichnung: k.bezeichnung, kontotyp: "aufwand", kategorie: "Aufwand" }))
+        .concat(SKR03.ertrag?.map(k => ({ kontonummer: k.konto, bezeichnung: k.bezeichnung, kontotyp: "ertrag", kategorie: "Ertrag" })) || [])
+        .concat(SKR03.anlage?.map(k => ({ kontonummer: k.konto, bezeichnung: k.bezeichnung, kontotyp: "aktiv", kategorie: "Anlagen" })) || []);
+  }
 }
 
 // Hilfsfunktion zum Abrufen aller Konten eines Typs
