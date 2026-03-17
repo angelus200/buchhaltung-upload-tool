@@ -233,6 +233,12 @@ export default function Home() {
     { enabled: !!selectedUnternehmenId }
   );
 
+  // Lade Debitoren für Personenkonto-Autocomplete
+  const { data: debitorenList } = trpc.stammdaten.debitoren.list.useQuery(
+    { unternehmenId: selectedUnternehmenId! },
+    { enabled: !!selectedUnternehmenId }
+  );
+
   // Lade offene Aufgaben für Dashboard-Widget
   const { data: offeneAufgaben } = trpc.aufgaben.list.useQuery(
     { unternehmenId: selectedUnternehmenId!, status: "offen" },
@@ -1126,13 +1132,49 @@ export default function Home() {
                         {/* Geschäftspartner Konto */}
                         <div className="space-y-2">
                           <Label htmlFor={`partnerkonto-${buchung.id}`}>Personenkonto</Label>
-                          <Input
-                            id={`partnerkonto-${buchung.id}`}
-                            placeholder="70000"
-                            value={buchung.geschaeftspartnerKonto}
-                            onChange={(e) => updateBuchung(buchung.id, "geschaeftspartnerKonto", e.target.value)}
-                            className="font-mono"
-                          />
+                          <div className="relative">
+                            <Input
+                              id={`partnerkonto-${buchung.id}`}
+                              placeholder="70000"
+                              value={buchung.geschaeftspartnerKonto}
+                              onChange={(e) => updateBuchung(buchung.id, "geschaeftspartnerKonto", e.target.value)}
+                              className="font-mono"
+                            />
+                            {buchung.geschaeftspartnerKonto && buchung.geschaeftspartnerKonto.length >= 2 && (() => {
+                              const query = buchung.geschaeftspartnerKonto.toLowerCase();
+                              const kreditoren = (kreditorenList || [])
+                                .filter(k => k.kontonummer.startsWith(query) || k.name.toLowerCase().includes(query))
+                                .slice(0, 5)
+                                .map(k => ({ kontonummer: k.kontonummer, name: k.name, typ: "Kreditor" as const }));
+                              const debitoren = (debitorenList || [])
+                                .filter(d => d.kontonummer.startsWith(query) || d.name.toLowerCase().includes(query))
+                                .slice(0, 5)
+                                .map(d => ({ kontonummer: d.kontonummer, name: d.name, typ: "Debitor" as const }));
+                              const suggestions = [...kreditoren, ...debitoren].slice(0, 8);
+                              if (suggestions.length === 0) return null;
+                              return (
+                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                  {suggestions.map((s) => (
+                                    <button
+                                      key={s.kontonummer}
+                                      type="button"
+                                      className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 text-left"
+                                      onClick={() => {
+                                        updateBuchung(buchung.id, "geschaeftspartnerKonto", s.kontonummer);
+                                        updateBuchung(buchung.id, "geschaeftspartner", s.name);
+                                      }}
+                                    >
+                                      <span className="font-mono text-gray-900">{s.kontonummer}</span>
+                                      <span className="text-gray-600 mx-2 flex-1 truncate">{s.name}</span>
+                                      <span className={`text-xs px-1.5 py-0.5 rounded ${s.typ === "Kreditor" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
+                                        {s.typ}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </div>
 
                         {/* Sachkonto mit Suchfunktion */}
