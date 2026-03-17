@@ -326,7 +326,16 @@ export default function Zahlungen() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {formatCurrency(buchung.bruttobetrag)}
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span>{formatCurrency(buchung.bruttobetrag)}</span>
+                              {buchung.belegWaehrung && buchung.belegWaehrung !== (selectedUnternehmenData?.waehrung || "EUR") && (
+                                <span className="text-xs font-medium px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">
+                                  {buchung.belegBetragBrutto
+                                    ? `${parseFloat(buchung.belegBetragBrutto.toString()).toLocaleString("de-DE", { minimumFractionDigits: 2 })} ${buchung.belegWaehrung}`
+                                    : buchung.belegWaehrung}
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             {buchung.faelligkeitsdatum ? (
