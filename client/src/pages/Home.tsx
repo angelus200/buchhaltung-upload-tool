@@ -1275,6 +1275,31 @@ export default function Home() {
                               ))}
                             </SelectContent>
                           </Select>
+                          {/* Reverse Charge */}
+                          <div className="flex items-center gap-2 mt-2">
+                            <input
+                              type="checkbox"
+                              id={`rc-${buchung.id}`}
+                              checked={buchung.buchungstext?.startsWith("[RC]") ?? false}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  updateBuchung(buchung.id, "buchungstext", "[RC] " + (buchung.buchungstext || ""));
+                                  updateBuchung(buchung.id, "steuersatz", "0");
+                                } else {
+                                  updateBuchung(buchung.id, "buchungstext", (buchung.buchungstext || "").replace(/^\[RC\] ?/, ""));
+                                }
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <label htmlFor={`rc-${buchung.id}`} className="text-sm text-gray-700 cursor-pointer">
+                              Reverse Charge (§13b UStG)
+                            </label>
+                          </div>
+                          {buchung.buchungstext?.startsWith("[RC]") && (
+                            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                              ⚠️ Steuersatz 0% auf Rechnung — USt/VSt wird vom Empfänger selbst angemeldet
+                            </p>
+                          )}
                         </div>
 
                         {/* Bruttobetrag */}
@@ -1593,6 +1618,11 @@ export default function Home() {
                                 <Building2 className="w-3 h-3 text-green-600" />
                                 <span className="text-muted-foreground">IBAN:</span>
                                 <span className="font-medium font-mono text-green-700">{buchung.iban}</span>
+                              </div>
+                            )}
+                            {buchung.buchungstext?.startsWith("[RC]") && (
+                              <div className="flex items-center gap-1.5 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                                <span className="text-xs font-medium text-amber-700">⚠️ Reverse Charge §13b</span>
                               </div>
                             )}
                             {buchung.ustIdNr && (
