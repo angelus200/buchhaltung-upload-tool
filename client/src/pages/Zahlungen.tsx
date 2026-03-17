@@ -365,7 +365,19 @@ export default function Zahlungen() {
           <DialogHeader>
             <DialogTitle>Zahlung erfassen</DialogTitle>
           </DialogHeader>
-          
+
+          {selectedBuchung?.belegUrl && (
+            <a
+              href={selectedBuchung.belegUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline mb-3"
+            >
+              <Download className="w-4 h-4" />
+              Beleg / Rechnung öffnen
+            </a>
+          )}
+
           {selectedBuchung && (
             <div className="space-y-4">
               <div className="bg-slate-50 p-4 rounded-lg">

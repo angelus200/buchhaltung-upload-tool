@@ -1081,11 +1081,16 @@ export default function Uebersicht() {
                                 <Trash2 className="w-4 h-4 text-red-500" />
                               </Button>
                               {b.belegUrl && (
-                                <Button variant="ghost" size="sm" asChild title="Beleg einsehen">
-                                  <a href={b.belegUrl} target="_blank" rel="noopener noreferrer">
-                                    <Eye className="w-4 h-4 text-blue-500" />
-                                  </a>
-                                </Button>
+                                <a
+                                  href={b.belegUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
+                                  title="Beleg herunterladen"
+                                >
+                                  <Download className="w-3 h-3" />
+                                  Beleg
+                                </a>
                               )}
                             </div>
                           </TableCell>
