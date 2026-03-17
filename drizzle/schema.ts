@@ -440,6 +440,19 @@ export const buchungen = mysqlTable("buchungen", {
 export type Buchung = typeof buchungen.$inferSelect;
 export type InsertBuchung = typeof buchungen.$inferInsert;
 
+// Geprüfte Doppelbuchungen (D3 Schema-Alignment)
+export const checkedDuplicates = mysqlTable("checked_duplicates", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  buchung1Id: int("buchung1Id").notNull(),
+  buchung2Id: int("buchung2Id").notNull(),
+  checkedBy: varchar("checkedBy", { length: 255 }),
+  checkedAt: timestamp("checkedAt").defaultNow(),
+});
+
+export type CheckedDuplicate = typeof checkedDuplicates.$inferSelect;
+export type InsertCheckedDuplicate = typeof checkedDuplicates.$inferInsert;
+
 /**
  * Notizen
  */
