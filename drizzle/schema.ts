@@ -453,6 +453,60 @@ export const checkedDuplicates = mysqlTable("checked_duplicates", {
 export type CheckedDuplicate = typeof checkedDuplicates.$inferSelect;
 export type InsertCheckedDuplicate = typeof checkedDuplicates.$inferInsert;
 
+// ─── Schema-Alignment P3: Tabellen die in Prod-DB existieren ──────────────
+
+export const brokerAccounts = mysqlTable("broker_accounts", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  broker: varchar("broker", { length: 255 }),
+  depotNumber: varchar("depotNumber", { length: 100 }),
+  clearingAccount: varchar("clearingAccount", { length: 100 }),
+  currency: varchar("currency", { length: 10 }).default("EUR"),
+  notes: text("notes"),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BrokerAccount = typeof brokerAccounts.$inferSelect;
+export type InsertBrokerAccount = typeof brokerAccounts.$inferInsert;
+
+export const creditCards = mysqlTable("credit_cards", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  provider: varchar("provider", { length: 100 }),
+  lastFour: varchar("lastFour", { length: 4 }),
+  creditLimit: decimal("creditLimit", { precision: 15, scale: 2 }),
+  billingDay: int("billingDay"),
+  currency: varchar("currency", { length: 10 }).default("EUR"),
+  notes: text("notes"),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreditCard = typeof creditCards.$inferSelect;
+export type InsertCreditCard = typeof creditCards.$inferInsert;
+
+export const paymentProviders = mysqlTable("payment_providers", {
+  id: int("id").autoincrement().primaryKey(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  provider: varchar("provider", { length: 100 }),
+  accountId: varchar("accountId", { length: 255 }),
+  feePercent: decimal("feePercent", { precision: 5, scale: 2 }),
+  currency: varchar("currency", { length: 10 }).default("EUR"),
+  notes: text("notes"),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PaymentProvider = typeof paymentProviders.$inferSelect;
+export type InsertPaymentProvider = typeof paymentProviders.$inferInsert;
+
 /**
  * Notizen
  */
