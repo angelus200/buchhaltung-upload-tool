@@ -100,7 +100,7 @@ export const unternehmen = mysqlTable("unternehmen", {
   name: varchar("name", { length: 255 }).notNull(),
   rechtsform: varchar("rechtsform", { length: 100 }),
   steuernummer: varchar("steuernummer", { length: 50 }),
-  finanzamtNummer: varchar("finanzamt_nummer", { length: 10 }),
+  finanzamtNummer: varchar("finanzamtNummer", { length: 20 }),
   ustIdNr: varchar("ustIdNr", { length: 50 }),
   handelsregister: varchar("handelsregister", { length: 100 }),
   strasse: varchar("strasse", { length: 255 }),
