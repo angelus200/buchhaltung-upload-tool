@@ -189,10 +189,16 @@ export default function Steuerberater() {
       setDialogOpen(false);
       resetForm();
     },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
   });
   const updateMutation = trpc.steuerberater.update.useMutation({
     onSuccess: () => {
       refetchUebergaben();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
     },
   });
   const deleteMutation = trpc.steuerberater.delete.useMutation({
@@ -294,8 +300,16 @@ export default function Steuerberater() {
   });
 
   // OCR Mutations
-  const ocrMutation = trpc.ocr.analyzeImage.useMutation();
-  const pdfOcrMutation = trpc.ocr.analyzePdf.useMutation();
+  const ocrMutation = trpc.ocr.analyzeImage.useMutation({
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+  const pdfOcrMutation = trpc.ocr.analyzePdf.useMutation({
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
 
   // Automatische AI-Analyse beim Datei-Upload
   const analyzeUploadedFile = async (file: File) => {

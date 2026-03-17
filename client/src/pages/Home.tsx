@@ -294,10 +294,18 @@ export default function Home() {
   );
 
   // Mutation für Buchung in Datenbank speichern
-  const createBuchungMutation = trpc.buchungen.create.useMutation();
+  const createBuchungMutation = trpc.buchungen.create.useMutation({
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
 
   // Mutation für Beleg-Upload zu S3
-  const uploadBelegMutation = trpc.buchungen.uploadBeleg.useMutation();
+  const uploadBelegMutation = trpc.buchungen.uploadBeleg.useMutation({
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
 
   // Mutation für Buchung zu Übergabe hinzufügen
   const addBuchungToUebergabeMutation = trpc.steuerberater.addBuchungen.useMutation({
@@ -321,14 +329,26 @@ export default function Home() {
   });
 
   // OCR Mutations
-  const ocrMutation = trpc.ocr.analyzeImage.useMutation();
-  const pdfOcrMutation = trpc.ocr.analyzePdf.useMutation();
+  const ocrMutation = trpc.ocr.analyzeImage.useMutation({
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
+  const pdfOcrMutation = trpc.ocr.analyzePdf.useMutation({
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
 
   // Auto-Kontierung State
   const [autoKontierungCache, setAutoKontierungCache] = useState<Map<string, any>>(new Map());
 
   // Auto-Kontierung Mutation
-  const markUsedMutation = trpc.kontierungsregeln.markUsed.useMutation();
+  const markUsedMutation = trpc.kontierungsregeln.markUsed.useMutation({
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
 
   // Finde die ausgewählte Buchung für die Vorschau
   const selectedBuchung = buchungen.find(b => b.id === selectedBuchungId);

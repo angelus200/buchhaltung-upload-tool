@@ -735,6 +735,9 @@ export default function Stammdaten() {
       refetchGesellschafter();
       toast.info("Gesellschafter gelöscht");
     },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
   });
 
   // Mutations für Finanzkonten

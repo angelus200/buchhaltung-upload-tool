@@ -158,6 +158,9 @@ export default function Aufgaben() {
       toast.success("Aufgabe aktualisiert");
       refetchAufgaben();
     },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
   });
 
   const erledigMutation = trpc.aufgaben.erledigen.useMutation({
@@ -165,12 +168,18 @@ export default function Aufgaben() {
       toast.success("Aufgabe als erledigt markiert");
       refetchAufgaben();
     },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
   });
 
   const deleteMutation = trpc.aufgaben.delete.useMutation({
     onSuccess: () => {
       toast.success("Aufgabe gelöscht");
       refetchAufgaben();
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
     },
   });
 
@@ -184,6 +193,9 @@ export default function Aufgaben() {
       link.download = `aufgaben-export-${new Date().toISOString().split("T")[0]}.csv`;
       link.click();
       toast.success(`${data.count} Aufgaben exportiert`);
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
     },
   });
 
