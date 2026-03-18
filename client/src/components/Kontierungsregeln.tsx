@@ -73,6 +73,21 @@ export default function Kontierungsregeln({ unternehmenId }: KontierungsregelnPr
     { enabled: !!unternehmenId }
   );
 
+  // resetForm VOR Mutations — verhindert TDZ in Production-Build
+  const resetForm = () => {
+    setFormData({
+      suchbegriff: "",
+      sollKonto: "",
+      habenKonto: "",
+      ustSatz: "19",
+      prioritaet: "0",
+      beschreibung: "",
+      geschaeftspartner: "",
+      aktiv: true,
+    });
+    setEditingRegel(null);
+  };
+
   // Mutations
   const createMutation = trpc.kontierungsregeln.create.useMutation({
     onSuccess: () => {
@@ -115,20 +130,6 @@ export default function Kontierungsregeln({ unternehmenId }: KontierungsregelnPr
 
   const regeln = regelnQuery.data || [];
   const statistik = statistikQuery.data;
-
-  const resetForm = () => {
-    setFormData({
-      suchbegriff: "",
-      sollKonto: "",
-      habenKonto: "",
-      ustSatz: "19",
-      prioritaet: "0",
-      beschreibung: "",
-      geschaeftspartner: "",
-      aktiv: true,
-    });
-    setEditingRegel(null);
-  };
 
   const handleOpenDialog = (regel?: any) => {
     if (regel) {

@@ -91,6 +91,13 @@ export default function Inventur() {
     { enabled: !!selectedInventur }
   );
 
+  // resetForm VOR Mutations — verhindert TDZ in Production-Build
+  const resetForm = () => {
+    setBezeichnung("");
+    setStichtag("");
+    setLagerortId(null);
+  };
+
   // tRPC mutations
   const createMutation = trpc.inventur.inventur.create.useMutation({
     onSuccess: (data) => {
@@ -126,12 +133,6 @@ export default function Inventur() {
       toast.error(`Fehler: ${error.message}`);
     },
   });
-
-  const resetForm = () => {
-    setBezeichnung("");
-    setStichtag("");
-    setLagerortId(null);
-  };
 
   const handleCreate = () => {
     if (!selectedUnternehmenId) return;

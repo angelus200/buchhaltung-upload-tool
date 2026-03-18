@@ -182,6 +182,44 @@ export default function Steuerberater() {
     { enabled: !!selectedUnternehmenId }
   );
 
+  // resetForm-Funktionen VOR Mutations — verhindert TDZ in Production-Build
+  const resetForm = () => {
+    setNeueUebergabe({
+      bezeichnung: "",
+      beschreibung: "",
+      uebergabeart: "datev_export",
+      zeitraumVon: "",
+      zeitraumBis: "",
+      uebergabedatum: new Date().toISOString().split("T")[0],
+    });
+  };
+
+  const resetRechnungForm = () => {
+    setNeueRechnung({
+      rechnungsnummer: "",
+      rechnungsdatum: new Date().toISOString().split("T")[0],
+      zeitraumVon: "",
+      zeitraumBis: "",
+      nettobetrag: "",
+      steuersatz: "19.00",
+      bruttobetrag: "",
+      beschreibung: "",
+    });
+    setUploadedFile(null);
+  };
+
+  const resetPositionForm = () => {
+    setNeuePosition({
+      beschreibung: "",
+      kategorie: "sonstig",
+      bewertung: "unklar",
+      vermeidbarUrsache: "",
+      menge: "1",
+      einzelpreis: "",
+      gesamtpreis: "",
+    });
+  };
+
   // Mutations
   const createMutation = trpc.steuerberater.create.useMutation({
     onSuccess: () => {
@@ -484,43 +522,6 @@ export default function Steuerberater() {
     }
   };
 
-  const resetForm = () => {
-    setNeueUebergabe({
-      bezeichnung: "",
-      beschreibung: "",
-      uebergabeart: "datev_export",
-      zeitraumVon: "",
-      zeitraumBis: "",
-      uebergabedatum: new Date().toISOString().split("T")[0],
-    });
-  };
-
-  const resetRechnungForm = () => {
-    setNeueRechnung({
-      rechnungsnummer: "",
-      rechnungsdatum: new Date().toISOString().split("T")[0],
-      zeitraumVon: "",
-      zeitraumBis: "",
-      nettobetrag: "",
-      steuersatz: "19.00",
-      bruttobetrag: "",
-      beschreibung: "",
-    });
-    setUploadedFile(null);
-  };
-  
-  const resetPositionForm = () => {
-    setNeuePosition({
-      beschreibung: "",
-      kategorie: "sonstig",
-      bewertung: "unklar",
-      vermeidbarUrsache: "",
-      menge: "1",
-      einzelpreis: "",
-      gesamtpreis: "",
-    });
-  };
-  
   const handleCreateRechnung = async () => {
     if (!selectedUnternehmenId || !neueRechnung.rechnungsnummer || !neueRechnung.nettobetrag) return;
 

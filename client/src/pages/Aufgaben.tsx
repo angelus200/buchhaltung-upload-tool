@@ -140,6 +140,19 @@ export default function Aufgaben() {
     { enabled: !!selectedUnternehmenId }
   );
 
+  // resetForm VOR Mutations — verhindert TDZ in Production-Build
+  const resetForm = () => {
+    setNeueAufgabe({
+      titel: "",
+      beschreibung: "",
+      kategorie: "allgemein",
+      prioritaet: "normal",
+      faelligkeitsdatum: "",
+      notizen: "",
+      zugewiesenAn: "",
+    });
+  };
+
   // Mutations
   const createMutation = trpc.aufgaben.create.useMutation({
     onSuccess: () => {
@@ -198,18 +211,6 @@ export default function Aufgaben() {
       toast.error(`Fehler: ${error.message}`);
     },
   });
-
-  const resetForm = () => {
-    setNeueAufgabe({
-      titel: "",
-      beschreibung: "",
-      kategorie: "allgemein",
-      prioritaet: "normal",
-      faelligkeitsdatum: "",
-      notizen: "",
-      zugewiesenAn: "",
-    });
-  };
 
   const handleCreate = () => {
     if (!selectedUnternehmenId) return;

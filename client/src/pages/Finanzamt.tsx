@@ -175,6 +175,28 @@ export default function Finanzamt() {
     { enabled: !!selectedUnternehmenId }
   );
 
+  // resetForm VOR Mutations — verhindert TDZ in Production-Build
+  const resetForm = () => {
+    setNeuesDokument({
+      dokumentTyp: "bescheid",
+      steuerart: "",
+      steuerjahr: new Date().getFullYear().toString(),
+      aktenzeichen: "",
+      betreff: "",
+      beschreibung: "",
+      eingangsdatum: new Date().toISOString().split("T")[0],
+      frist: "",
+      betrag: "",
+      zahlungsfrist: "",
+      dateiUrl: "",
+      dateiName: "",
+    });
+    setPreviewUrl(null);
+    setFileBase64(null);
+    setDragActive(false);
+    setEditingDokumentId(null);
+  };
+
   // Mutations
   const createMutation = trpc.finanzamt.create.useMutation({
     onSuccess: () => {
@@ -318,26 +340,6 @@ export default function Finanzamt() {
     },
   });
 
-  const resetForm = () => {
-    setNeuesDokument({
-      dokumentTyp: "bescheid",
-      steuerart: "",
-      steuerjahr: new Date().getFullYear().toString(),
-      aktenzeichen: "",
-      betreff: "",
-      beschreibung: "",
-      eingangsdatum: new Date().toISOString().split("T")[0],
-      frist: "",
-      betrag: "",
-      zahlungsfrist: "",
-      dateiUrl: "",
-      dateiName: "",
-    });
-    setPreviewUrl(null);
-    setFileBase64(null);
-    setDragActive(false);
-    setEditingDokumentId(null); // 🔧 Edit-Modus beenden
-  };
 
   // Datei verarbeiten (für Input und Drag&Drop)
   const processFile = async (file: File) => {

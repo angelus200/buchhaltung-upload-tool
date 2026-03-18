@@ -102,6 +102,22 @@ export default function Anlagevermoegen() {
     onError: (e) => toast.error(e.message),
   });
 
+  // resetForm VOR Mutations — verhindert TDZ in Production-Build
+  const resetForm = () =>
+    setForm({
+      kontonummer: '',
+      bezeichnung: '',
+      kategorie: 'Andere Anlagen, Betriebs- und Geschäftsausstattung',
+      anschaffungsdatum: new Date().toISOString().split('T')[0],
+      anschaffungskosten: '',
+      nutzungsdauer: 5,
+      abschreibungsmethode: 'linear',
+      sachkonto: '',
+      standort: '',
+      inventarnummer: '',
+      notizen: '',
+    });
+
   const createMutation = trpc.jahresabschluss.anlagevermoegen.create.useMutation({
     onSuccess: () => {
       toast.success('Anlagegut erstellt');
@@ -135,21 +151,6 @@ export default function Anlagevermoegen() {
       setSelectedUnternehmen(unternehmenQuery.data[0].unternehmen.id);
     }
   }, [unternehmenQuery.data, selectedUnternehmen]);
-
-  const resetForm = () =>
-    setForm({
-      kontonummer: '',
-      bezeichnung: '',
-      kategorie: 'Andere Anlagen, Betriebs- und Geschäftsausstattung',
-      anschaffungsdatum: new Date().toISOString().split('T')[0],
-      anschaffungskosten: '',
-      nutzungsdauer: 5,
-      abschreibungsmethode: 'linear',
-      sachkonto: '',
-      standort: '',
-      inventarnummer: '',
-      notizen: '',
-    });
 
   const openEdit = (a: any) => {
     setEditAnlage(a);

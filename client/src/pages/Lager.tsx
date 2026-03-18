@@ -93,6 +93,17 @@ export default function Lager() {
     { enabled: !!selectedUnternehmenId }
   );
 
+  // resetForm VOR Mutations — verhindert TDZ in Production-Build
+  const resetForm = () => {
+    setEingangMenge("");
+    setAusgangMenge("");
+    setKorrekturMenge("");
+    setUmbuchungMenge("");
+    setUmbuchungZielLagerortId(null);
+    setNotiz("");
+    setSelectedArtikel(null);
+  };
+
   // tRPC mutations
   const eingangMutation = trpc.inventur.lager.eingang.useMutation({
     onSuccess: (data) => {
@@ -145,16 +156,6 @@ export default function Lager() {
       toast.error(`Fehler: ${error.message}`);
     },
   });
-
-  const resetForm = () => {
-    setEingangMenge("");
-    setAusgangMenge("");
-    setKorrekturMenge("");
-    setUmbuchungMenge("");
-    setUmbuchungZielLagerortId(null);
-    setNotiz("");
-    setSelectedArtikel(null);
-  };
 
   const handleEingang = () => {
     if (!selectedArtikel || !selectedUnternehmenId) return;

@@ -110,6 +110,23 @@ export default function Vorlagen() {
     }
   );
 
+  // resetForm VOR Mutations — verhindert TDZ in Production-Build
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      beschreibung: "",
+      sollKonto: "",
+      habenKonto: "",
+      betrag: "",
+      buchungstext: "",
+      ustSatz: "19",
+      kategorie: "sonstig",
+      geschaeftspartner: "",
+      farbe: "",
+    });
+    setEditingVorlage(null);
+  };
+
   // Mutations
   const createMutation = trpc.buchungsvorlagen.create.useMutation({
     onSuccess: () => {
@@ -173,22 +190,6 @@ export default function Vorlagen() {
   }, [unternehmenListe, selectedUnternehmen]);
 
   const vorlagen = vorlagenQuery.data || [];
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      beschreibung: "",
-      sollKonto: "",
-      habenKonto: "",
-      betrag: "",
-      buchungstext: "",
-      ustSatz: "19",
-      kategorie: "sonstig",
-      geschaeftspartner: "",
-      farbe: "",
-    });
-    setEditingVorlage(null);
-  };
 
   const handleOpenDialog = (vorlage?: any) => {
     if (vorlage) {

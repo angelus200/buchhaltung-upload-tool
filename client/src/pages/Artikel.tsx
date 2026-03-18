@@ -102,6 +102,24 @@ export default function Artikel() {
     { enabled: !!selectedUnternehmenId }
   );
 
+  // resetForm VOR Mutations — verhindert TDZ in Production-Build
+  const resetForm = () => {
+    setFormData({
+      artikelnummer: "",
+      bezeichnung: "",
+      beschreibung: "",
+      kategorie: "handelsware",
+      einheit: "stueck",
+      einkaufspreis: "",
+      verkaufspreis: "",
+      mindestbestand: "",
+      zielbestand: "",
+      lieferantId: undefined,
+      sachkontoId: undefined,
+      aktiv: true,
+    });
+  };
+
   // tRPC mutations
   const createMutation = trpc.inventur.artikel.create.useMutation({
     onSuccess: () => {
@@ -137,23 +155,6 @@ export default function Artikel() {
       toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
-
-  const resetForm = () => {
-    setFormData({
-      artikelnummer: "",
-      bezeichnung: "",
-      beschreibung: "",
-      kategorie: "handelsware",
-      einheit: "stueck",
-      einkaufspreis: "",
-      verkaufspreis: "",
-      mindestbestand: "",
-      zielbestand: "",
-      lieferantId: undefined,
-      sachkontoId: undefined,
-      aktiv: true,
-    });
-  };
 
   const handleCreate = () => {
     if (!selectedUnternehmenId) {
