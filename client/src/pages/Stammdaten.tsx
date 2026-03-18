@@ -521,6 +521,16 @@ export default function Stammdaten() {
   });
 
   // Mutations für Kreditoren
+  // resetForm VOR den Mutations definieren — verhindert TDZ-Bug im Minifier
+  // (Mutations referenzieren resetForm in onSuccess, daher muss es früher stehen)
+  const resetForm = useCallback(() => {
+    setFormData({});
+    setFormKontonummer("");
+    setFormNotizen("");
+    setEditItem(null);
+    setEditingSachkontoId(null);
+  }, []);
+
   const createKreditorMutation = trpc.stammdaten.kreditoren.create.useMutation({
     onSuccess: () => {
       refetchKreditoren();
@@ -856,14 +866,6 @@ export default function Stammdaten() {
   }, []);
 
   const activeTypConfig = STAMMDATEN_TYPEN.find(t => t.value === activeTab)!;
-
-  const resetForm = useCallback(() => {
-    setFormData({});
-    setFormKontonummer("");
-    setFormNotizen("");
-    setEditItem(null);
-    setEditingSachkontoId(null);
-  }, []);
 
   // Vertrag-Dialog öffnen (neu oder bearbeiten)
   const openVertragDialog = useCallback((vertrag?: any) => {
