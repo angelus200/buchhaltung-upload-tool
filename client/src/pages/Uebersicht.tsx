@@ -103,6 +103,16 @@ function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
     steuersatz: buchung.steuersatz || "0",
     bruttobetrag: buchung.bruttobetrag || "0",
     buchungstext: buchung.buchungstext || "",
+    // Erweiterungsfelder
+    geschaeftspartnerKonto: buchung.geschaeftspartnerKonto || "",
+    belegWaehrung: buchung.belegWaehrung || null as string | null,
+    zahlungsstatus: buchung.zahlungsstatus || "offen",
+    faelligkeitsdatum: buchung.faelligkeitsdatum
+      ? String(buchung.faelligkeitsdatum).split("T")[0]
+      : "",
+    sollKonto: buchung.sollKonto || "",
+    habenKonto: buchung.habenKonto || "",
+    datevBuchungstext: buchung.datevBuchungstext || "",
   });
 
   return (
@@ -187,6 +197,86 @@ function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
             }
           />
         </div>
+        {/* Personenkonto */}
+        <div>
+          <Label>Personenkonto</Label>
+          <Input
+            value={formData.geschaeftspartnerKonto}
+            onChange={(e) =>
+              setFormData({ ...formData, geschaeftspartnerKonto: e.target.value })
+            }
+            placeholder="z.B. 70000"
+          />
+        </div>
+        {/* Belegwährung */}
+        <div>
+          <Label>Belegwährung</Label>
+          <Select
+            value={formData.belegWaehrung || "EUR"}
+            onValueChange={(v) =>
+              setFormData({ ...formData, belegWaehrung: v === "EUR" ? null : v })
+            }
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="EUR">EUR (Euro)</SelectItem>
+              <SelectItem value="CHF">CHF (Schweizer Franken)</SelectItem>
+              <SelectItem value="USD">USD (US-Dollar)</SelectItem>
+              <SelectItem value="GBP">GBP (Britisches Pfund)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {/* Zahlungsstatus */}
+        <div>
+          <Label>Zahlungsstatus</Label>
+          <Select
+            value={formData.zahlungsstatus}
+            onValueChange={(v) =>
+              setFormData({ ...formData, zahlungsstatus: v })
+            }
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="offen">Offen</SelectItem>
+              <SelectItem value="bezahlt">Bezahlt</SelectItem>
+              <SelectItem value="teilweise_bezahlt">Teilweise bezahlt</SelectItem>
+              <SelectItem value="ueberfaellig">Überfällig</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {/* Fälligkeitsdatum */}
+        <div>
+          <Label>Fälligkeitsdatum</Label>
+          <Input
+            type="date"
+            value={formData.faelligkeitsdatum}
+            onChange={(e) =>
+              setFormData({ ...formData, faelligkeitsdatum: e.target.value })
+            }
+          />
+        </div>
+        {/* Soll-Konto */}
+        <div>
+          <Label>Soll-Konto</Label>
+          <Input
+            value={formData.sollKonto}
+            onChange={(e) =>
+              setFormData({ ...formData, sollKonto: e.target.value })
+            }
+            placeholder="z.B. 8400"
+          />
+        </div>
+        {/* Haben-Konto */}
+        <div>
+          <Label>Haben-Konto</Label>
+          <Input
+            value={formData.habenKonto}
+            onChange={(e) =>
+              setFormData({ ...formData, habenKonto: e.target.value })
+            }
+            placeholder="z.B. 10001"
+          />
+        </div>
       </div>
       <div>
         <Label>Buchungstext</Label>
@@ -196,6 +286,17 @@ function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
             setFormData({ ...formData, buchungstext: e.target.value })
           }
           rows={3}
+        />
+      </div>
+      {/* DATEV Buchungstext */}
+      <div>
+        <Label>Buchungstext (DATEV)</Label>
+        <Input
+          value={formData.datevBuchungstext}
+          onChange={(e) =>
+            setFormData({ ...formData, datevBuchungstext: e.target.value })
+          }
+          placeholder="DATEV Buchungstext"
         />
       </div>
       <DialogFooter>

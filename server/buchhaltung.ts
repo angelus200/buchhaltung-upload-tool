@@ -487,13 +487,24 @@ export const buchungenRouter = router({
         belegBetragBrutto: z.string().nullable().optional(),
         wechselkurs: z.string().nullable().optional(),
         status: z.enum(["entwurf", "geprueft", "exportiert"]).optional(),
+        // Zahlungsfelder
+        zahlungsstatus: z.enum(["offen", "teilweise_bezahlt", "bezahlt", "ueberfaellig"]).optional(),
+        faelligkeitsdatum: z.string().nullable().optional(),
+        // Doppelte Buchführung
+        sollKonto: z.string().nullable().optional(),
+        habenKonto: z.string().nullable().optional(),
+        // DATEV
+        datevBuchungstext: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Datenbank nicht verfügbar");
 
-      const { id, belegdatum, ...updateData } = input;
+      const { id, belegdatum, faelligkeitsdatum, ...updateData } = input;
+      if (faelligkeitsdatum !== undefined) {
+        (updateData as any).faelligkeitsdatum = faelligkeitsdatum ? new Date(faelligkeitsdatum) : null;
+      }
       const finalData: Record<string, unknown> = { ...updateData };
 
       // Wenn Belegdatum geändert wird, auch wirtschaftsjahr und periode neu berechnen
