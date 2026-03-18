@@ -520,6 +520,15 @@ export default function Stammdaten() {
     enabled: !!selectedUnternehmenId,
   });
 
+  // landCode + Kontenrahmen des aktuellen Unternehmens
+  // VOR allen Mutations/Callbacks — verhindert TDZ-Bug im Production-Build (terser)
+  const currentUnternehmenData = unternehmenList?.find(
+    (u) => u.unternehmen.id === selectedUnternehmenId
+  )?.unternehmen;
+  const currentLandCode = (currentUnternehmenData?.landCode as string) || "DE";
+  const currentKontenrahmen = (currentUnternehmenData?.kontenrahmen as string) || "SKR04";
+  const ustSaetzeForLand = UST_SAETZE[currentLandCode] ?? UST_SAETZE["DE"];
+
   // Mutations für Kreditoren
   // resetForm VOR den Mutations definieren — verhindert TDZ-Bug im Minifier
   // (Mutations referenzieren resetForm in onSuccess, daher muss es früher stehen)
@@ -1571,14 +1580,6 @@ export default function Stammdaten() {
            (v.vertragspartner?.toLowerCase().includes(searchLower) ?? false) ||
            (v.vertragsnummer?.toLowerCase().includes(searchLower) ?? false);
   }) || [];
-
-  // landCode + Kontenrahmen des aktuellen Unternehmens
-  const currentUnternehmenData = unternehmenList?.find(
-    (u) => u.unternehmen.id === selectedUnternehmenId
-  )?.unternehmen;
-  const currentLandCode = (currentUnternehmenData?.landCode as string) || "DE";
-  const currentKontenrahmen = (currentUnternehmenData?.kontenrahmen as string) || "SKR04";
-  const ustSaetzeForLand = UST_SAETZE[currentLandCode] ?? UST_SAETZE["DE"];
 
   // USt-Berechnung für Vertrag-Dialog
   const vertragNetto = parseFloat(vertragForm.nettoBetrag || "0");
