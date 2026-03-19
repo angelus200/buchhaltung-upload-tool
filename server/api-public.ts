@@ -565,4 +565,224 @@ router.get('/belege', async (req: Request, res: Response) => {
   }
 });
 
+// ═══════════════════════════════════════════
+// POST /api/v1/kreditoren — Kreditor anlegen
+// ═══════════════════════════════════════════
+router.post('/kreditoren', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const { kontonummer, name, kurzbezeichnung, strasse, plz, ort, land,
+            telefon, email, ustIdNr, steuernummer, iban, bic,
+            zahlungsziel, skonto, skontofrist, standardSachkonto, notizen } = req.body;
+
+    if (!kontonummer || !name) {
+      return res.status(400).json({ error: 'kontonummer und name sind Pflichtfelder.' });
+    }
+
+    // Duplikat-Check: kontonummer + unternehmenId
+    const existing = await db.select({ id: kreditoren.id })
+      .from(kreditoren)
+      .where(and(
+        eq(kreditoren.unternehmenId, req.apiUnternehmenId!),
+        eq(kreditoren.kontonummer, kontonummer)
+      ));
+
+    if (existing.length > 0) {
+      return res.status(409).json({ error: `Kreditor mit Kontonummer ${kontonummer} existiert bereits.` });
+    }
+
+    const result = await db.insert(kreditoren).values({
+      unternehmenId: req.apiUnternehmenId!,
+      kontonummer,
+      name,
+      kurzbezeichnung: kurzbezeichnung || null,
+      strasse: strasse || null,
+      plz: plz || null,
+      ort: ort || null,
+      land: land || null,
+      telefon: telefon || null,
+      email: email || null,
+      ustIdNr: ustIdNr || null,
+      steuernummer: steuernummer || null,
+      iban: iban || null,
+      bic: bic || null,
+      zahlungsziel: zahlungsziel ?? 30,
+      skonto: skonto || null,
+      skontofrist: skontofrist || null,
+      standardSachkonto: standardSachkonto || null,
+      notizen: notizen || null,
+      aktiv: true,
+    });
+
+    res.status(201).json({ id: result[0].insertId, kontonummer, name });
+  } catch (err) {
+    console.error('🔴 API POST kreditoren:', err);
+    res.status(500).json({ error: 'Fehler beim Anlegen des Kreditors.' });
+  }
+});
+
+// ═══════════════════════════════════════════
+// PUT /api/v1/debitoren/:id — Debitor bearbeiten
+// ═══════════════════════════════════════════
+router.put('/debitoren/:id', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Ungültige ID.' });
+
+    // Existenz + Zugehörigkeit prüfen
+    const existing = await db.select({ id: debitoren.id })
+      .from(debitoren)
+      .where(and(eq(debitoren.id, id), eq(debitoren.unternehmenId, req.apiUnternehmenId!)));
+
+    if (existing.length === 0) return res.status(404).json({ error: 'Debitor nicht gefunden.' });
+
+    // Nur übergebene Felder aktualisieren
+    const allowed = ['name', 'kurzbezeichnung', 'strasse', 'plz', 'ort', 'land',
+                     'telefon', 'email', 'ustIdNr', 'zahlungsziel', 'notizen', 'aktiv'];
+    const updateData: Record<string, any> = {};
+    for (const field of allowed) {
+      if (req.body[field] !== undefined) updateData[field] = req.body[field];
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'Keine Felder zum Aktualisieren angegeben.' });
+    }
+
+    await db.update(debitoren)
+      .set(updateData)
+      .where(and(eq(debitoren.id, id), eq(debitoren.unternehmenId, req.apiUnternehmenId!)));
+
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error('🔴 API PUT debitoren/:id:', err);
+    res.status(500).json({ error: 'Fehler beim Bearbeiten des Debitors.' });
+  }
+});
+
+// ═══════════════════════════════════════════
+// PUT /api/v1/kreditoren/:id — Kreditor bearbeiten
+// ═══════════════════════════════════════════
+router.put('/kreditoren/:id', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Ungültige ID.' });
+
+    // Existenz + Zugehörigkeit prüfen
+    const existing = await db.select({ id: kreditoren.id })
+      .from(kreditoren)
+      .where(and(eq(kreditoren.id, id), eq(kreditoren.unternehmenId, req.apiUnternehmenId!)));
+
+    if (existing.length === 0) return res.status(404).json({ error: 'Kreditor nicht gefunden.' });
+
+    // Nur übergebene Felder aktualisieren
+    const allowed = ['name', 'kurzbezeichnung', 'strasse', 'plz', 'ort', 'land',
+                     'telefon', 'email', 'ustIdNr', 'steuernummer', 'iban', 'bic',
+                     'zahlungsziel', 'skonto', 'skontofrist', 'standardSachkonto', 'notizen', 'aktiv'];
+    const updateData: Record<string, any> = {};
+    for (const field of allowed) {
+      if (req.body[field] !== undefined) updateData[field] = req.body[field];
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'Keine Felder zum Aktualisieren angegeben.' });
+    }
+
+    await db.update(kreditoren)
+      .set(updateData)
+      .where(and(eq(kreditoren.id, id), eq(kreditoren.unternehmenId, req.apiUnternehmenId!)));
+
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error('🔴 API PUT kreditoren/:id:', err);
+    res.status(500).json({ error: 'Fehler beim Bearbeiten des Kreditors.' });
+  }
+});
+
+// ═══════════════════════════════════════════
+// PUT /api/v1/buchungen/:id — Buchung bearbeiten
+// ═══════════════════════════════════════════
+router.put('/buchungen/:id', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Ungültige ID.' });
+
+    // Existenz + Zugehörigkeit prüfen
+    const existing = await db.select({ id: buchungen.id })
+      .from(buchungen)
+      .where(and(eq(buchungen.id, id), eq(buchungen.unternehmenId, req.apiUnternehmenId!)));
+
+    if (existing.length === 0) return res.status(404).json({ error: 'Buchung nicht gefunden.' });
+
+    const body = req.body;
+    const allowed = ['buchungsart', 'belegnummer', 'geschaeftspartnerTyp', 'geschaeftspartner',
+                     'geschaeftspartnerKonto', 'sachkonto', 'nettobetrag', 'steuersatz',
+                     'bruttobetrag', 'buchungstext', 'zahlungsstatus', 'belegUrl',
+                     'kostenstelleId', 'status'];
+    const updateData: Record<string, any> = {};
+    for (const field of allowed) {
+      if (body[field] !== undefined) updateData[field] = body[field];
+    }
+
+    // belegdatum → wirtschaftsjahr + periode neu berechnen
+    if (body.belegdatum) {
+      const d = new Date(body.belegdatum);
+      updateData.belegdatum = d;
+      updateData.wirtschaftsjahr = d.getFullYear();
+      updateData.periode = d.getMonth() + 1;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'Keine Felder zum Aktualisieren angegeben.' });
+    }
+
+    await db.update(buchungen)
+      .set(updateData)
+      .where(and(eq(buchungen.id, id), eq(buchungen.unternehmenId, req.apiUnternehmenId!)));
+
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error('🔴 API PUT buchungen/:id:', err);
+    res.status(500).json({ error: 'Fehler beim Bearbeiten der Buchung.' });
+  }
+});
+
+// ═══════════════════════════════════════════
+// DELETE /api/v1/buchungen/:id — Buchung löschen
+// ═══════════════════════════════════════════
+router.delete('/buchungen/:id', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Ungültige ID.' });
+
+    // Existenz + Zugehörigkeit prüfen
+    const existing = await db.select({ id: buchungen.id })
+      .from(buchungen)
+      .where(and(eq(buchungen.id, id), eq(buchungen.unternehmenId, req.apiUnternehmenId!)));
+
+    if (existing.length === 0) return res.status(404).json({ error: 'Buchung nicht gefunden.' });
+
+    await db.delete(buchungen)
+      .where(and(eq(buchungen.id, id), eq(buchungen.unternehmenId, req.apiUnternehmenId!)));
+
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error('🔴 API DELETE buchungen/:id:', err);
+    res.status(500).json({ error: 'Fehler beim Löschen der Buchung.' });
+  }
+});
+
 export default router;
