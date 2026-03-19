@@ -41,6 +41,7 @@ import {
   ArrowRightLeft,
   CheckCircle,
   XCircle,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -374,6 +375,7 @@ interface VertragFormState {
   kuendigungsfrist: string;
   nettoBetrag: string;
   ustSatz: string;
+  ustBetragManuell: string;
   zahlungsrhythmus: string;
   gegenkontoNr: string;
   kostenstelleId: string;
@@ -392,6 +394,7 @@ const VERTRAG_FORM_DEFAULT: VertragFormState = {
   kuendigungsfrist: "",
   nettoBetrag: "",
   ustSatz: "19",
+  ustBetragManuell: "",
   zahlungsrhythmus: "monatlich",
   gegenkontoNr: "",
   kostenstelleId: "",
@@ -900,6 +903,7 @@ export default function Stammdaten() {
         kuendigungsfrist: vertrag.kuendigungsfrist || "",
         nettoBetrag: vertrag.nettoBetrag ?? vertrag.monatlicheBetrag ?? "",
         ustSatz: vertrag.ustSatz ?? defaultUstSatz,
+        ustBetragManuell: vertrag.ustBetragManuell ?? "",
         zahlungsrhythmus: vertrag.zahlungsrhythmus || "monatlich",
         gegenkontoNr: vertrag.gegenkontoNr || "",
         kostenstelleId: vertrag.kostenstelleId?.toString() || "",
@@ -1298,7 +1302,10 @@ export default function Stammdaten() {
 
     const netto = parseFloat(vertragForm.nettoBetrag || "0");
     const ustSatz = parseFloat(vertragForm.ustSatz || "0");
-    const ustBetrag = Math.round(netto * ustSatz / 100 * 100) / 100;
+    const ustBetragAuto = Math.round(netto * ustSatz / 100 * 100) / 100;
+    const ustBetrag = vertragForm.ustBetragManuell
+      ? Math.round(parseFloat(vertragForm.ustBetragManuell) * 100) / 100
+      : ustBetragAuto;
     const brutto = Math.round((netto + ustBetrag) * 100) / 100;
 
     const payload = {
@@ -1307,7 +1314,7 @@ export default function Stammdaten() {
       vertragspartner: vertragForm.vertragspartner || undefined,
       vertragsnummer: vertragForm.vertragsnummer || undefined,
       beginn: vertragForm.beginn || undefined,
-      ende: vertragForm.ende || undefined,
+      ende: vertragForm.ende,
       kuendigungsfrist: vertragForm.kuendigungsfrist || undefined,
       nettoBetrag: vertragForm.nettoBetrag || undefined,
       ustSatz: vertragForm.ustSatz || undefined,
@@ -1321,6 +1328,7 @@ export default function Stammdaten() {
       kostenstelleId: vertragForm.kostenstelleId ? parseInt(vertragForm.kostenstelleId) : undefined,
       notizen: vertragForm.notizen || undefined,
       belegUrl: vertragForm.belegUrl || undefined,
+      ustBetragManuell: vertragForm.ustBetragManuell || undefined,
       aktiv: vertragForm.aktiv,
     };
 
@@ -1584,7 +1592,10 @@ export default function Stammdaten() {
   // USt-Berechnung für Vertrag-Dialog
   const vertragNetto = parseFloat(vertragForm.nettoBetrag || "0");
   const vertragUstSatz = parseFloat(vertragForm.ustSatz || "0");
-  const vertragUstBetrag = vertragNetto * vertragUstSatz / 100;
+  const vertragUstBetragAuto = vertragNetto * vertragUstSatz / 100;
+  const vertragUstBetrag = vertragForm.ustBetragManuell
+    ? parseFloat(vertragForm.ustBetragManuell)
+    : vertragUstBetragAuto;
   const vertragBrutto = vertragNetto + vertragUstBetrag;
 
   // Gefilterte Daten für aktiven Tab (LocalStorage-Typen wie kostenstelle)
@@ -2661,12 +2672,10 @@ export default function Stammdaten() {
                                   <span>{new Date(v.beginn).toLocaleDateString("de-DE")}</span>
                                 </div>
                               )}
-                              {v.ende && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Ende:</span>
-                                  <span>{new Date(v.ende).toLocaleDateString("de-DE")}</span>
-                                </div>
-                              )}
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Ende:</span>
+                                <span>{v.ende ? new Date(v.ende).toLocaleDateString("de-DE") : "Unbestimmt"}</span>
+                              </div>
                               {v.gegenkontoNr && (
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Gegenkonto:</span>
@@ -2883,12 +2892,27 @@ export default function Stammdaten() {
                 {/* Ende */}
                 <div className="space-y-1">
                   <Label htmlFor="v-ende">Vertragsende</Label>
-                  <Input
-                    id="v-ende"
-                    type="date"
-                    value={vertragForm.ende}
-                    onChange={(e) => setVertragForm(f => ({ ...f, ende: e.target.value }))}
-                  />
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      id="v-ende"
+                      type="date"
+                      value={vertragForm.ende}
+                      onChange={(e) => setVertragForm(f => ({ ...f, ende: e.target.value }))}
+                      className="flex-1"
+                    />
+                    {vertragForm.ende && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 px-2 text-muted-foreground hover:text-destructive"
+                        onClick={() => setVertragForm(f => ({ ...f, ende: "" }))}
+                        title="Vertragsende entfernen (unbestimmte Laufzeit)"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -2934,7 +2958,25 @@ export default function Stammdaten() {
                       davon USt: {vertragUstBetrag.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
                     </p>
                   )}
+                  {vertragForm.ustBetragManuell && (
+                    <p className="text-xs text-amber-600">USt manuell gesetzt</p>
+                  )}
                 </div>
+              </div>
+
+              {/* USt-Betrag manuell (bei gemischten Steuersätzen) */}
+              <div className="space-y-1">
+                <Label htmlFor="v-ust-manuell" className="text-xs text-muted-foreground">
+                  USt-Betrag manuell (bei gemischten Steuersätzen)
+                </Label>
+                <Input
+                  id="v-ust-manuell"
+                  type="number"
+                  step="0.01"
+                  placeholder="Automatisch berechnet"
+                  value={vertragForm.ustBetragManuell}
+                  onChange={(e) => setVertragForm(f => ({ ...f, ustBetragManuell: e.target.value }))}
+                />
               </div>
 
               {/* Zahlungsrhythmus */}

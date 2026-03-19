@@ -361,6 +361,7 @@ export const vertraege = mysqlTable("vertraege", {
   nettoBetrag: decimal("nettoBetrag", { precision: 15, scale: 2 }),
   ustSatz: decimal("ustSatz", { precision: 5, scale: 2 }),
   ustBetrag: decimal("ustBetrag", { precision: 15, scale: 2 }),
+  ustBetragManuell: varchar("ustBetragManuell", { length: 20 }),
   zahlungsrhythmus: mysqlEnum("zahlungsrhythmus", ["monatlich", "quartalsweise", "halbjaehrlich", "jaehrlich"]).default("monatlich"),
   buchungskonto: varchar("buchungskonto", { length: 20 }),
   gegenkontoNr: varchar("gegenkontoNr", { length: 20 }),

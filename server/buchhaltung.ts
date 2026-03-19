@@ -1803,6 +1803,7 @@ export const stammdatenRouter = router({
           nettoBetrag: z.string().optional(),
           ustSatz: z.string().optional(),
           ustBetrag: z.string().optional(),
+          ustBetragManuell: z.string().optional(),
           zahlungsrhythmus: z.enum(["monatlich", "quartalsweise", "halbjaehrlich", "jaehrlich"]).optional(),
           buchungskonto: z.string().optional(),
           gegenkontoNr: z.string().optional(),
@@ -1820,6 +1821,7 @@ export const stammdatenRouter = router({
           ...rest,
           beginn: beginn ? new Date(beginn) : undefined,
           ende: ende ? new Date(ende) : undefined,
+          ustBetragManuell: input.ustBetragManuell || null,
         };
         const result = await db.insert(vertraege).values(values);
         return { id: result[0].insertId };
@@ -1843,6 +1845,7 @@ export const stammdatenRouter = router({
           nettoBetrag: z.string().optional(),
           ustSatz: z.string().optional(),
           ustBetrag: z.string().optional(),
+          ustBetragManuell: z.string().optional(),
           zahlungsrhythmus: z.enum(["monatlich", "quartalsweise", "halbjaehrlich", "jaehrlich"]).optional(),
           buchungskonto: z.string().optional(),
           gegenkontoNr: z.string().optional(),
@@ -1860,6 +1863,7 @@ export const stammdatenRouter = router({
           ...rest,
           ...(beginn !== undefined ? { beginn: beginn ? new Date(beginn) : null } : {}),
           ...(ende !== undefined ? { ende: ende ? new Date(ende) : null } : {}),
+          ustBetragManuell: input.ustBetragManuell || null,
         };
         await db.update(vertraege).set(updateData).where(eq(vertraege.id, id));
         return { success: true };
