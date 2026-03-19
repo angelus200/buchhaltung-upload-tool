@@ -7,8 +7,8 @@ import { Router, Request, Response } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { validateApiKey } from './api-keys';
 import { getDb } from './db';
-import { sachkonten, debitoren, unternehmen, buchungen, belege } from '../drizzle/schema';
-import { eq, and } from 'drizzle-orm';
+import { sachkonten, debitoren, kreditoren, unternehmen, buchungen, belege } from '../drizzle/schema';
+import { eq, and, desc, asc } from 'drizzle-orm';
 import { ENV } from './_core/env';
 
 const BELEGE_BASE_PATH = process.env.RAILWAY_ENVIRONMENT
@@ -338,6 +338,230 @@ Antworte NUR mit dem JSON-Objekt, kein anderer Text.`,
   } catch (err) {
     console.error('🔴 API POST belege/upload:', err);
     res.status(500).json({ error: 'Fehler beim Beleg-Upload.' });
+  }
+});
+
+// ═══════════════════════════════════════════
+// GET /api/v1/buchungen — Buchungen auflisten
+// ═══════════════════════════════════════════
+router.get('/buchungen', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const conditions = [eq(buchungen.unternehmenId, req.apiUnternehmenId!)];
+    if (req.query.wirtschaftsjahr) conditions.push(eq(buchungen.wirtschaftsjahr, parseInt(req.query.wirtschaftsjahr as string)));
+    if (req.query.periode) conditions.push(eq(buchungen.periode, parseInt(req.query.periode as string)));
+    if (req.query.buchungsart) conditions.push(eq(buchungen.buchungsart, req.query.buchungsart as any));
+    if (req.query.zahlungsstatus) conditions.push(eq(buchungen.zahlungsstatus, req.query.zahlungsstatus as any));
+
+    const results = await db.select({
+      id: buchungen.id,
+      buchungsart: buchungen.buchungsart,
+      belegdatum: buchungen.belegdatum,
+      belegnummer: buchungen.belegnummer,
+      geschaeftspartnerTyp: buchungen.geschaeftspartnerTyp,
+      geschaeftspartner: buchungen.geschaeftspartner,
+      geschaeftspartnerKonto: buchungen.geschaeftspartnerKonto,
+      sachkonto: buchungen.sachkonto,
+      nettobetrag: buchungen.nettobetrag,
+      steuersatz: buchungen.steuersatz,
+      bruttobetrag: buchungen.bruttobetrag,
+      buchungstext: buchungen.buchungstext,
+      zahlungsstatus: buchungen.zahlungsstatus,
+      wirtschaftsjahr: buchungen.wirtschaftsjahr,
+      periode: buchungen.periode,
+      status: buchungen.status,
+      importQuelle: buchungen.importQuelle,
+      belegUrl: buchungen.belegUrl,
+      createdAt: buchungen.createdAt,
+    })
+    .from(buchungen)
+    .where(and(...conditions))
+    .orderBy(desc(buchungen.belegdatum))
+    .limit(limit)
+    .offset(offset);
+
+    res.json({ count: results.length, buchungen: results });
+  } catch (err) {
+    console.error('🔴 API GET buchungen:', err);
+    res.status(500).json({ error: 'Fehler beim Abrufen der Buchungen.' });
+  }
+});
+
+// ═══════════════════════════════════════════
+// GET /api/v1/buchungen/:id — Einzelne Buchung
+// ═══════════════════════════════════════════
+router.get('/buchungen/:id', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Ungültige ID.' });
+
+    const results = await db.select()
+      .from(buchungen)
+      .where(and(eq(buchungen.id, id), eq(buchungen.unternehmenId, req.apiUnternehmenId!)));
+
+    if (results.length === 0) return res.status(404).json({ error: 'Buchung nicht gefunden.' });
+
+    res.json(results[0]);
+  } catch (err) {
+    console.error('🔴 API GET buchungen/:id:', err);
+    res.status(500).json({ error: 'Fehler beim Abrufen der Buchung.' });
+  }
+});
+
+// ═══════════════════════════════════════════
+// GET /api/v1/debitoren — Alle Debitoren
+// ═══════════════════════════════════════════
+router.get('/debitoren', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const results = await db.select({
+      id: debitoren.id,
+      kontonummer: debitoren.kontonummer,
+      name: debitoren.name,
+      kurzbezeichnung: debitoren.kurzbezeichnung,
+      strasse: debitoren.strasse,
+      plz: debitoren.plz,
+      ort: debitoren.ort,
+      land: debitoren.land,
+      telefon: debitoren.telefon,
+      email: debitoren.email,
+      ustIdNr: debitoren.ustIdNr,
+      zahlungsziel: debitoren.zahlungsziel,
+      notizen: debitoren.notizen,
+      aktiv: debitoren.aktiv,
+      createdAt: debitoren.createdAt,
+    })
+    .from(debitoren)
+    .where(eq(debitoren.unternehmenId, req.apiUnternehmenId!))
+    .orderBy(asc(debitoren.kontonummer));
+
+    res.json({ count: results.length, debitoren: results });
+  } catch (err) {
+    console.error('🔴 API GET debitoren:', err);
+    res.status(500).json({ error: 'Fehler beim Abrufen der Debitoren.' });
+  }
+});
+
+// ═══════════════════════════════════════════
+// GET /api/v1/kreditoren — Alle Kreditoren
+// ═══════════════════════════════════════════
+router.get('/kreditoren', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const results = await db.select({
+      id: kreditoren.id,
+      kontonummer: kreditoren.kontonummer,
+      name: kreditoren.name,
+      kurzbezeichnung: kreditoren.kurzbezeichnung,
+      strasse: kreditoren.strasse,
+      plz: kreditoren.plz,
+      ort: kreditoren.ort,
+      land: kreditoren.land,
+      telefon: kreditoren.telefon,
+      email: kreditoren.email,
+      ustIdNr: kreditoren.ustIdNr,
+      iban: kreditoren.iban,
+      zahlungsziel: kreditoren.zahlungsziel,
+      notizen: kreditoren.notizen,
+      aktiv: kreditoren.aktiv,
+      createdAt: kreditoren.createdAt,
+    })
+    .from(kreditoren)
+    .where(eq(kreditoren.unternehmenId, req.apiUnternehmenId!))
+    .orderBy(asc(kreditoren.kontonummer));
+
+    res.json({ count: results.length, kreditoren: results });
+  } catch (err) {
+    console.error('🔴 API GET kreditoren:', err);
+    res.status(500).json({ error: 'Fehler beim Abrufen der Kreditoren.' });
+  }
+});
+
+// ═══════════════════════════════════════════
+// GET /api/v1/kreditoren/search — Kreditor suchen
+// ═══════════════════════════════════════════
+router.get('/kreditoren/search', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const { q } = req.query;
+    if (!q || typeof q !== 'string') {
+      return res.status(400).json({ error: 'Suchbegriff (q) erforderlich.' });
+    }
+
+    const all = await db.select({
+      id: kreditoren.id,
+      kontonummer: kreditoren.kontonummer,
+      name: kreditoren.name,
+      email: kreditoren.email,
+      iban: kreditoren.iban,
+    })
+    .from(kreditoren)
+    .where(eq(kreditoren.unternehmenId, req.apiUnternehmenId!));
+
+    const search = q.toLowerCase();
+    const filtered = all.filter(k =>
+      k.name?.toLowerCase().includes(search) ||
+      k.email?.toLowerCase().includes(search) ||
+      k.kontonummer?.toLowerCase().includes(search) ||
+      k.iban?.toLowerCase().includes(search)
+    );
+
+    res.json({ count: filtered.length, kreditoren: filtered });
+  } catch (err) {
+    console.error('🔴 API GET kreditoren/search:', err);
+    res.status(500).json({ error: 'Fehler bei der Kreditorensuche.' });
+  }
+});
+
+// ═══════════════════════════════════════════
+// GET /api/v1/belege — Belege auflisten
+// ═══════════════════════════════════════════
+router.get('/belege', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: 'DB nicht verfügbar' });
+
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const conditions = [eq(belege.unternehmenId, req.apiUnternehmenId!)];
+    if (req.query.buchungId) conditions.push(eq(belege.buchungId, parseInt(req.query.buchungId as string)));
+
+    const results = await db.select({
+      id: belege.id,
+      buchungId: belege.buchungId,
+      dateiName: belege.dateiName,
+      dateiUrl: belege.dateiUrl,
+      dateiTyp: belege.dateiTyp,
+      dateiGroesse: belege.dateiGroesse,
+      belegdatum: belege.belegdatum,
+      beschreibung: belege.beschreibung,
+      createdAt: belege.createdAt,
+    })
+    .from(belege)
+    .where(and(...conditions))
+    .orderBy(desc(belege.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+    res.json({ count: results.length, belege: results });
+  } catch (err) {
+    console.error('🔴 API GET belege:', err);
+    res.status(500).json({ error: 'Fehler beim Abrufen der Belege.' });
   }
 });
 
