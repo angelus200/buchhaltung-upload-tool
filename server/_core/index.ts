@@ -10,6 +10,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { stripeWebhookHandler } from "./stripeWebhook";
+import apiPublicRouter from "../api-public";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -58,6 +59,9 @@ async function startServer() {
       createContext,
     })
   );
+  // Öffentliche REST API v1 (Manus Agent) — muss VOR dem SPA-Fallback stehen
+  app.use('/api/v1', apiPublicRouter);
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

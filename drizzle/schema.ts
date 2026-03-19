@@ -1786,3 +1786,21 @@ export const onboardingOrders = mysqlTable("onboarding_orders", {
 
 export type OnboardingOrder = typeof onboardingOrders.$inferSelect;
 export type InsertOnboardingOrder = typeof onboardingOrders.$inferInsert;
+
+/**
+ * API Keys — Authentifizierung für externe Agenten (z.B. Manus)
+ */
+export const apiKeys = mysqlTable("api_keys", {
+  id: int("id").autoincrement().primaryKey(),
+  keyHash: varchar("keyHash", { length: 64 }).notNull(),
+  keyPrefix: varchar("keyPrefix", { length: 8 }).notNull(),
+  unternehmenId: int("unternehmenId").references(() => unternehmen.id).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  active: boolean("active").default(true).notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type InsertApiKey = typeof apiKeys.$inferInsert;
