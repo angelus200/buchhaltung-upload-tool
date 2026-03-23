@@ -108,11 +108,12 @@ function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
     belegWaehrung: buchung.belegWaehrung || null as string | null,
     zahlungsstatus: buchung.zahlungsstatus || "offen",
     faelligkeitsdatum: buchung.faelligkeitsdatum
-      ? String(buchung.faelligkeitsdatum).split("T")[0]
+      ? new Date(buchung.faelligkeitsdatum).toISOString().split("T")[0]
       : "",
     sollKonto: buchung.sollKonto || "",
     habenKonto: buchung.habenKonto || "",
     datevBuchungstext: buchung.datevBuchungstext || "",
+    unternehmenId: buchung.unternehmenId as number,
   });
 
   return (

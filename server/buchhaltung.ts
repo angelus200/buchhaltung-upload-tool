@@ -495,13 +495,15 @@ export const buchungenRouter = router({
         habenKonto: z.string().nullable().optional(),
         // DATEV
         datevBuchungstext: z.string().nullable().optional(),
+        // Security: unternehmenId für IDOR-Schutz (muss mit gespeicherter Buchung übereinstimmen)
+        unternehmenId: z.number(),
       })
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Datenbank nicht verfügbar");
 
-      const { id, belegdatum, faelligkeitsdatum, ...updateData } = input;
+      const { id, belegdatum, faelligkeitsdatum, unternehmenId, ...updateData } = input;
       if (faelligkeitsdatum !== undefined) {
         (updateData as any).faelligkeitsdatum = faelligkeitsdatum ? new Date(faelligkeitsdatum) : null;
       }
@@ -537,7 +539,8 @@ export const buchungenRouter = router({
         }
       }
 
-      await db.update(buchungen).set(finalData).where(eq(buchungen.id, id));
+      await db.update(buchungen).set(finalData)
+        .where(and(eq(buchungen.id, id), eq(buchungen.unternehmenId, unternehmenId)));
       return { success: true };
     }),
 
