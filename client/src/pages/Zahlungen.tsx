@@ -336,6 +336,11 @@ export default function Zahlungen() {
                                     : buchung.belegWaehrung}
                                 </span>
                               )}
+                              {buchung.zahlungsstatus === "teilweise_bezahlt" && buchung.bezahlterBetrag && (
+                                <span className="text-xs text-slate-500">
+                                  Bezahlt: {formatCurrency(buchung.bezahlterBetrag)} · Offen: {formatCurrency(parseFloat(String(buchung.bruttobetrag)) - parseFloat(String(buchung.bezahlterBetrag)))}
+                                </span>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -475,10 +480,10 @@ export default function Zahlungen() {
                   </Select>
                 </div>
 
-                {/* Wechselkurs — nur bei Fremdwährung */}
-                {zahlungsDaten.zahlungsWaehrung !== "EUR" && zahlungsDaten.zahlungsWaehrung !== (selectedUnternehmenData?.waehrung || "EUR") && (
+                {/* Wechselkurs — nur bei Fremdwährung (≠ Firmenwährung) */}
+                {zahlungsDaten.zahlungsWaehrung !== (selectedUnternehmenData?.waehrung || "EUR") && (
                   <div className="space-y-2">
-                    <Label>Wechselkurs (1 {zahlungsDaten.zahlungsWaehrung} = ? EUR)</Label>
+                    <Label>Wechselkurs (1 {zahlungsDaten.zahlungsWaehrung} = ? {selectedUnternehmenData?.waehrung || "EUR"})</Label>
                     <Input
                       type="number"
                       step="0.000001"
@@ -487,7 +492,7 @@ export default function Zahlungen() {
                     />
                     <p className="text-xs text-muted-foreground">
                       {zahlungsDaten.bezahlterBetrag && zahlungsDaten.zahlungsWechselkurs
-                        ? `= ${(parseFloat(zahlungsDaten.bezahlterBetrag) * parseFloat(zahlungsDaten.zahlungsWechselkurs)).toFixed(2)} EUR`
+                        ? `= ${(parseFloat(zahlungsDaten.bezahlterBetrag) * parseFloat(zahlungsDaten.zahlungsWechselkurs)).toFixed(2)} ${selectedUnternehmenData?.waehrung || "EUR"}`
                         : ""}
                     </p>
                   </div>
