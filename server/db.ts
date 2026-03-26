@@ -6,6 +6,20 @@ import { getCurrentTenantDb, getTenantDb } from './tenant-db';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+// Master-DB immer direkt — kein AsyncLocalStorage-Check.
+// Muss für User-Tabelle (global) genutzt werden, nie für Tenant-Daten.
+function getMasterDb(): ReturnType<typeof drizzle> | null {
+  if (!_db && process.env.DATABASE_URL) {
+    try {
+      _db = drizzle(process.env.DATABASE_URL);
+    } catch (error) {
+      console.warn("[Database] Failed to connect to master DB:", error);
+      _db = null;
+    }
+  }
+  return _db;
+}
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 // Tenant-aware: Wenn AsyncLocalStorage einen Tenant-DB-Namen enthält,
 // wird die Tenant-DB zurückgegeben. Sonst die Master-DB (wie bisher).
@@ -40,9 +54,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     throw new Error("User clerkId is required for upsert");
   }
 
-  const db = await getDb();
+  // Immer Master-DB — users-Tabelle ist global, nicht tenant-spezifisch
+  const db = getMasterDb();
   if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
+    console.warn("[Database] Cannot upsert user: master database not available");
     return;
   }
 
@@ -92,9 +107,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 }
 
 export async function getUserByClerkId(clerkId: string) {
-  const db = await getDb();
+  // Immer Master-DB — users-Tabelle ist global, nicht tenant-spezifisch
+  const db = getMasterDb();
   if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
+    console.warn("[Database] Cannot get user: master database not available");
     return undefined;
   }
 
