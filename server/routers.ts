@@ -24,6 +24,7 @@ import { buchungsvorschlaegeRouter } from "./buchungsvorschlaege";
 import { dropboxRouter } from "./dropbox";
 import { elsterRouter } from "./elster";
 import { stripeRouter } from "./stripe";
+import { adminRouter } from "./admin";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -108,6 +109,9 @@ export const appRouter = router({
 
   // Stripe Subscription & Payments
   stripe: stripeRouter,
+
+  // SaaS Admin (Tenant-Verwaltung)
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;
