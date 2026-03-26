@@ -2,11 +2,28 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { getCurrentTenantDb, getTenantDb } from './tenant-db';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
+// Tenant-aware: Wenn AsyncLocalStorage einen Tenant-DB-Namen enthält,
+// wird die Tenant-DB zurückgegeben. Sonst die Master-DB (wie bisher).
 export async function getDb() {
+  // Prüfe ob ein Tenant-Kontext aktiv ist (SaaS-Kunde)
+  const tenantDbName = getCurrentTenantDb();
+
+  if (tenantDbName) {
+    // Tenant-Request → Tenant-DB zurückgeben
+    const tenantDb = getTenantDb(tenantDbName);
+    if (tenantDb) return tenantDb;
+    // Fallback: Wenn Tenant-DB nicht erreichbar, NICHT auf Master-DB fallen!
+    // Das wäre ein Sicherheitsrisiko (Tenant sieht Angelus-Daten)
+    console.error(`🔴 Tenant-DB ${tenantDbName} nicht erreichbar — Request wird abgelehnt`);
+    return null;
+  }
+
+  // Kein Tenant → Master-DB (interner Betrieb, wie bisher)
   if (!_db && process.env.DATABASE_URL) {
     try {
       _db = drizzle(process.env.DATABASE_URL);

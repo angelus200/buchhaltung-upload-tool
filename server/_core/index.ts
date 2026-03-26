@@ -6,6 +6,7 @@ import net from "net";
 import path from "path";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { clerkMiddleware } from "@clerk/express";
+import { tenantMiddleware } from "../tenant-middleware";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -44,6 +45,8 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Clerk authentication middleware
   app.use(clerkMiddleware());
+  // Tenant-DB-Routing: setzt AsyncLocalStorage wenn Clerk orgId vorhanden
+  app.use(tenantMiddleware());
 
   // Static file serving for uploaded belege (Railway Volume or local)
   const BELEGE_BASE_PATH = process.env.NODE_ENV === 'production'
