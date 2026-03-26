@@ -1804,3 +1804,26 @@ export const apiKeys = mysqlTable("api_keys", {
 
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertApiKey = typeof apiKeys.$inferInsert;
+
+/**
+ * Tenants — SaaS Multi-Tenant Verwaltung
+ * Brücke zwischen Clerk orgId und physischer Tenant-Datenbank.
+ * Interne Angelus-User haben KEINE Zeile hier (Fallback auf Master-DB).
+ */
+export const tenants = mysqlTable("tenants", {
+  id: int("id").autoincrement().primaryKey(),
+  clerkOrgId: varchar("clerkOrgId", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  databaseName: varchar("databaseName", { length: 100 }).notNull(),
+  stripeCustId: varchar("stripeCustId", { length: 255 }),
+  stripeSubId: varchar("stripeSubId", { length: 255 }),
+  plan: mysqlEnum("plan", ["starter", "business", "enterprise", "unlimited"]).notNull().default("starter"),
+  planStatus: mysqlEnum("planStatus", ["trial", "active", "past_due", "cancelled"]).notNull().default("trial"),
+  maxFirmen: int("maxFirmen").notNull().default(1),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Tenant = typeof tenants.$inferSelect;
+export type InsertTenant = typeof tenants.$inferInsert;
