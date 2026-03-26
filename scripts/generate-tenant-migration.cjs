@@ -32,6 +32,14 @@ async function generate() {
     // AUTO_INCREMENT Wert entfernen (soll bei 1 starten in neuer DB)
     createSQL = createSQL.replace(/AUTO_INCREMENT=\d+\s*/g, '');
 
+    // FK-Constraints auf users-Tabelle entfernen
+    // users existiert nur in der Master-DB (Clerk-Auth ist zentral)
+    // Spalten (createdBy, userId etc.) bleiben erhalten — nur der CONSTRAINT fällt weg
+    createSQL = createSQL.replace(/,?\s*CONSTRAINT\s+`[^`]*`\s+FOREIGN\s+KEY\s+\([^)]*\)\s+REFERENCES\s+`users`\s+\([^)]*\)[^,)]*/gi, '');
+    createSQL = createSQL.replace(/,?\s*FOREIGN\s+KEY\s+\([^)]*\)\s+REFERENCES\s+`users`\s+\([^)]*\)[^,)]*/gi, '');
+    // Aufräumen: Trailing comma vor closing parenthesis + ENGINE entfernen
+    createSQL = createSQL.replace(/,(\s*)\)\s*ENGINE/g, '$1) ENGINE');
+
     // IF NOT EXISTS ergänzen für Idempotenz
     createSQL = createSQL.replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS');
 

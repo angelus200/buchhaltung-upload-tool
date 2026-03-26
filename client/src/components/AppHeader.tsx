@@ -51,6 +51,7 @@ import {
   Percent,
   BookOpen,
 } from "lucide-react";
+import { OrganizationSwitcher } from "@clerk/clerk-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
@@ -478,6 +479,17 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
 
           {/* Rechts: Benutzer-Menü */}
           <div className="flex items-center gap-2">
+            {/* Org-Switcher: wechselt Clerk-Session-Kontext → Backend bekommt orgId im JWT */}
+            <OrganizationSwitcher
+              afterSelectOrganizationUrl="/app"
+              afterLeaveOrganizationUrl="/app"
+              appearance={{
+                elements: {
+                  rootBox: "h-7",
+                  organizationSwitcherTrigger: "h-7 text-xs px-2 rounded-md border border-slate-300 hover:bg-slate-50",
+                },
+              }}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

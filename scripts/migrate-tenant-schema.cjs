@@ -1,5 +1,5 @@
 // scripts/migrate-tenant-schema.cjs
-// AUTO-GENERIERT am 2026-03-26T18:13:31.478Z
+// AUTO-GENERIERT am 2026-03-26T19:04:08.410Z
 // Erstellt alle Business-Tabellen in einer Tenant-Datenbank
 // NICHT MANUELL BEARBEITEN — neu generieren mit: node scripts/generate-tenant-migration.cjs
 
@@ -34,9 +34,7 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`aktivitaetsprotokoll_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`aktivitaetsprotokoll_userId_users_id_fk\` (\`userId\`),
-  CONSTRAINT \`aktivitaetsprotokoll_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`),
-  CONSTRAINT \`aktivitaetsprotokoll_userId_users_id_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
+  CONSTRAINT \`aktivitaetsprotokoll_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
   // Tabelle 3/51: anlagevermoegen
   await conn.execute(`CREATE TABLE IF NOT EXISTS \`anlagevermoegen\` (
@@ -115,12 +113,8 @@ async function migrate(conn) {
   KEY \`aufgaben_erstelltVon_users_id_fk\` (\`erstelltVon\`),
   KEY \`aufgaben_finanzamtDokumentId_finanzamt_dokumente_id_fk\` (\`finanzamtDokumentId\`),
   KEY \`aufgaben_erledigtVon_users_id_fk\` (\`erledigtVon\`),
-  CONSTRAINT \`aufgaben_erledigtVon_users_id_fk\` FOREIGN KEY (\`erledigtVon\`) REFERENCES \`users\` (\`id\`),
-  CONSTRAINT \`aufgaben_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`aufgaben_finanzamtDokumentId_finanzamt_dokumente_id_fk\` FOREIGN KEY (\`finanzamtDokumentId\`) REFERENCES \`finanzamt_dokumente\` (\`id\`),
-  CONSTRAINT \`aufgaben_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`),
-  CONSTRAINT \`aufgaben_zugewiesenAn_users_id_fk\` FOREIGN KEY (\`zugewiesenAn\`) REFERENCES \`users\` (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
+  CONSTRAINT \`aufgaben_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
   // Tabelle 6/51: auszuege
   await conn.execute(`CREATE TABLE IF NOT EXISTS \`auszuege\` (
@@ -146,9 +140,7 @@ async function migrate(conn) {
   KEY \`idx_auszuege_status\` (\`status\`),
   KEY \`idx_auszuege_zeitraum\` (\`zeitraumVon\`,\`zeitraumBis\`),
   KEY \`fk_auszuege_erstelltVon\` (\`erstelltVon\`),
-  CONSTRAINT \`auszuege_ibfk_1\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`) ON DELETE CASCADE,
-  CONSTRAINT \`fk_auszuege_erstelltVon\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+  CONSTRAINT \`auszuege_ibfk_1\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
 
   // Tabelle 7/51: auszug_positionen
   await conn.execute(`CREATE TABLE IF NOT EXISTS \`auszug_positionen\` (
@@ -217,9 +209,7 @@ async function migrate(conn) {
   KEY \`belege_buchungId_buchungen_id_fk\` (\`buchungId\`),
   KEY \`belege_uploadedBy_users_id_fk\` (\`uploadedBy\`),
   CONSTRAINT \`belege_buchungId_buchungen_id_fk\` FOREIGN KEY (\`buchungId\`) REFERENCES \`buchungen\` (\`id\`),
-  CONSTRAINT \`belege_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`),
-  CONSTRAINT \`belege_uploadedBy_users_id_fk\` FOREIGN KEY (\`uploadedBy\`) REFERENCES \`users\` (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
+  CONSTRAINT \`belege_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
   // Tabelle 10/51: berechtigungen
   await conn.execute(`CREATE TABLE IF NOT EXISTS \`berechtigungen\` (
@@ -256,7 +246,6 @@ async function migrate(conn) {
   KEY \`bestandsbewegungen_erstelltVon_users_id_fk\` (\`erstelltVon\`),
   CONSTRAINT \`bestandsbewegungen_artikelId_artikel_id_fk\` FOREIGN KEY (\`artikelId\`) REFERENCES \`artikel\` (\`id\`),
   CONSTRAINT \`bestandsbewegungen_buchungId_buchungen_id_fk\` FOREIGN KEY (\`buchungId\`) REFERENCES \`buchungen\` (\`id\`),
-  CONSTRAINT \`bestandsbewegungen_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`bestandsbewegungen_lagerortId_lagerorte_id_fk\` FOREIGN KEY (\`lagerortId\`) REFERENCES \`lagerorte\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -346,7 +335,6 @@ async function migrate(conn) {
   KEY \`buchungen_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`buchungen_kostenstelleId_kostenstellen_id_fk\` (\`kostenstelleId\`),
   KEY \`buchungen_createdBy_users_id_fk\` (\`createdBy\`),
-  CONSTRAINT \`buchungen_createdBy_users_id_fk\` FOREIGN KEY (\`createdBy\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`buchungen_kostenstelleId_kostenstellen_id_fk\` FOREIGN KEY (\`kostenstelleId\`) REFERENCES \`kostenstellen\` (\`id\`),
   CONSTRAINT \`buchungen_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
@@ -372,7 +360,6 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`buchungsvorlagen_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`buchungsvorlagen_erstelltVon_users_id_fk\` (\`erstelltVon\`),
-  CONSTRAINT \`buchungsvorlagen_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`buchungsvorlagen_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -409,9 +396,7 @@ async function migrate(conn) {
   KEY \`bearbeitetVon\` (\`bearbeitetVon\`),
   CONSTRAINT \`buchungsvorschlaege_ibfk_1\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`),
   CONSTRAINT \`buchungsvorschlaege_ibfk_2\` FOREIGN KEY (\`kreditorId\`) REFERENCES \`kreditoren\` (\`id\`),
-  CONSTRAINT \`buchungsvorschlaege_ibfk_3\` FOREIGN KEY (\`buchungId\`) REFERENCES \`buchungen\` (\`id\`),
-  CONSTRAINT \`buchungsvorschlaege_ibfk_4\` FOREIGN KEY (\`bearbeitetVon\`) REFERENCES \`users\` (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
+  CONSTRAINT \`buchungsvorschlaege_ibfk_3\` FOREIGN KEY (\`buchungId\`) REFERENCES \`buchungen\` (\`id\`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
   // Tabelle 17/51: checked_duplicates
   await conn.execute(`CREATE TABLE IF NOT EXISTS \`checked_duplicates\` (
@@ -429,7 +414,6 @@ async function migrate(conn) {
   KEY \`checked_duplicates_checkedBy_fk\` (\`checkedBy\`),
   CONSTRAINT \`checked_duplicates_buchung1Id_fk\` FOREIGN KEY (\`buchung1Id\`) REFERENCES \`buchungen\` (\`id\`) ON DELETE CASCADE,
   CONSTRAINT \`checked_duplicates_buchung2Id_fk\` FOREIGN KEY (\`buchung2Id\`) REFERENCES \`buchungen\` (\`id\`) ON DELETE CASCADE,
-  CONSTRAINT \`checked_duplicates_checkedBy_fk\` FOREIGN KEY (\`checkedBy\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`checked_duplicates_unternehmenId_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -503,9 +487,7 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`unternehmenId\` (\`unternehmenId\`),
   KEY \`createdBy\` (\`createdBy\`),
-  CONSTRAINT \`dropbox_connections_ibfk_1\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`),
-  CONSTRAINT \`dropbox_connections_ibfk_2\` FOREIGN KEY (\`createdBy\`) REFERENCES \`users\` (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
+  CONSTRAINT \`dropbox_connections_ibfk_1\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
   // Tabelle 21/51: dropbox_sync_log
   await conn.execute(`CREATE TABLE IF NOT EXISTS \`dropbox_sync_log\` (
@@ -547,8 +529,6 @@ async function migrate(conn) {
   KEY \`einladungen_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`einladungen_eingeladenVon_users_id_fk\` (\`eingeladenVon\`),
   KEY \`einladungen_acceptedBy_users_id_fk\` (\`acceptedBy\`),
-  CONSTRAINT \`einladungen_acceptedBy_users_id_fk\` FOREIGN KEY (\`acceptedBy\`) REFERENCES \`users\` (\`id\`),
-  CONSTRAINT \`einladungen_eingeladenVon_users_id_fk\` FOREIGN KEY (\`eingeladenVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`einladungen_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -570,7 +550,6 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`eroeffnungsbilanz_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`eroeffnungsbilanz_erstelltVon_users_id_fk\` (\`erstelltVon\`),
-  CONSTRAINT \`eroeffnungsbilanz_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`eroeffnungsbilanz_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -590,9 +569,7 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`fa_dok_versionen_dokumentId_finanzamt_dokumente_id_fk\` (\`dokumentId\`),
   KEY \`fa_dok_versionen_erstelltVon_users_id_fk\` (\`erstelltVon\`),
-  CONSTRAINT \`fa_dok_versionen_dokumentId_finanzamt_dokumente_id_fk\` FOREIGN KEY (\`dokumentId\`) REFERENCES \`finanzamt_dokumente\` (\`id\`),
-  CONSTRAINT \`fa_dok_versionen_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
+  CONSTRAINT \`fa_dok_versionen_dokumentId_finanzamt_dokumente_id_fk\` FOREIGN KEY (\`dokumentId\`) REFERENCES \`finanzamt_dokumente\` (\`id\`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
   // Tabelle 25/51: finanzamt_dokumente
   await conn.execute(`CREATE TABLE IF NOT EXISTS \`finanzamt_dokumente\` (
@@ -620,7 +597,6 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`finanzamt_dokumente_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`finanzamt_dokumente_erstelltVon_users_id_fk\` (\`erstelltVon\`),
-  CONSTRAINT \`finanzamt_dokumente_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`finanzamt_dokumente_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -767,8 +743,6 @@ async function migrate(conn) {
   KEY \`inventuren_lagerortId_lagerorte_id_fk\` (\`lagerortId\`),
   KEY \`inventuren_erstelltVon_users_id_fk\` (\`erstelltVon\`),
   KEY \`inventuren_abgeschlossenVon_users_id_fk\` (\`abgeschlossenVon\`),
-  CONSTRAINT \`inventuren_abgeschlossenVon_users_id_fk\` FOREIGN KEY (\`abgeschlossenVon\`) REFERENCES \`users\` (\`id\`),
-  CONSTRAINT \`inventuren_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`inventuren_lagerortId_lagerorte_id_fk\` FOREIGN KEY (\`lagerortId\`) REFERENCES \`lagerorte\` (\`id\`),
   CONSTRAINT \`inventuren_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
@@ -793,7 +767,6 @@ async function migrate(conn) {
   KEY \`inventurpositionen_lagerortId_lagerorte_id_fk\` (\`lagerortId\`),
   KEY \`inventurpositionen_gezaehltVon_users_id_fk\` (\`gezaehltVon\`),
   CONSTRAINT \`inventurpositionen_artikelId_artikel_id_fk\` FOREIGN KEY (\`artikelId\`) REFERENCES \`artikel\` (\`id\`),
-  CONSTRAINT \`inventurpositionen_gezaehltVon_users_id_fk\` FOREIGN KEY (\`gezaehltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`inventurpositionen_inventurId_inventuren_id_fk\` FOREIGN KEY (\`inventurId\`) REFERENCES \`inventuren\` (\`id\`),
   CONSTRAINT \`inventurpositionen_lagerortId_lagerorte_id_fk\` FOREIGN KEY (\`lagerortId\`) REFERENCES \`lagerorte\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
@@ -818,7 +791,6 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`kontierungsregeln_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`kontierungsregeln_erstelltVon_users_id_fk\` (\`erstelltVon\`),
-  CONSTRAINT \`kontierungsregeln_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`kontierungsregeln_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -920,8 +892,6 @@ async function migrate(conn) {
   KEY \`monatsabschluss_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`monatsabschluss_abgeschlossenVon_users_id_fk\` (\`abgeschlossenVon\`),
   KEY \`monatsabschluss_erstelltVon_users_id_fk\` (\`erstelltVon\`),
-  CONSTRAINT \`monatsabschluss_abgeschlossenVon_users_id_fk\` FOREIGN KEY (\`abgeschlossenVon\`) REFERENCES \`users\` (\`id\`),
-  CONSTRAINT \`monatsabschluss_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`monatsabschluss_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -942,7 +912,6 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`monatsabschluss_items_monatsabschlussId_monatsabschluss_id_fk\` (\`monatsabschlussId\`),
   KEY \`monatsabschluss_items_erledigtVon_users_id_fk\` (\`erledigtVon\`),
-  CONSTRAINT \`monatsabschluss_items_erledigtVon_users_id_fk\` FOREIGN KEY (\`erledigtVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`monatsabschluss_items_monatsabschlussId_monatsabschluss_id_fk\` FOREIGN KEY (\`monatsabschlussId\`) REFERENCES \`monatsabschluss\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -960,7 +929,6 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`notizen_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`notizen_createdBy_users_id_fk\` (\`createdBy\`),
-  CONSTRAINT \`notizen_createdBy_users_id_fk\` FOREIGN KEY (\`createdBy\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`notizen_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -1057,7 +1025,6 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`stb_rechnungen_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`stb_rechnungen_erstelltVon_users_id_fk\` (\`erstelltVon\`),
-  CONSTRAINT \`stb_rechnungen_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`stb_rechnungen_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -1106,7 +1073,6 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`stb_uebergaben_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
   KEY \`stb_uebergaben_erstelltVon_users_id_fk\` (\`erstelltVon\`),
-  CONSTRAINT \`stb_uebergaben_erstelltVon_users_id_fk\` FOREIGN KEY (\`erstelltVon\`) REFERENCES \`users\` (\`id\`),
   CONSTRAINT \`stb_uebergaben_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
@@ -1155,9 +1121,7 @@ async function migrate(conn) {
   \`createdAt\` timestamp NOT NULL DEFAULT (now()),
   \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (\`id\`),
-  KEY \`unternehmen_createdBy_users_id_fk\` (\`createdBy\`),
-  CONSTRAINT \`unternehmen_createdBy_users_id_fk\` FOREIGN KEY (\`createdBy\`) REFERENCES \`users\` (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
+  KEY \`unternehmen_createdBy_users_id_fk\` (\`createdBy\`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
   // Tabelle 50/51: user_unternehmen
   await conn.execute(`CREATE TABLE IF NOT EXISTS \`user_unternehmen\` (
@@ -1176,9 +1140,7 @@ async function migrate(conn) {
   PRIMARY KEY (\`id\`),
   KEY \`user_unternehmen_userId_users_id_fk\` (\`userId\`),
   KEY \`user_unternehmen_unternehmenId_unternehmen_id_fk\` (\`unternehmenId\`),
-  CONSTRAINT \`user_unternehmen_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`),
-  CONSTRAINT \`user_unternehmen_userId_users_id_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
+  CONSTRAINT \`user_unternehmen_unternehmenId_unternehmen_id_fk\` FOREIGN KEY (\`unternehmenId\`) REFERENCES \`unternehmen\` (\`id\`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
 
   // Tabelle 51/51: vertraege
   await conn.execute(`CREATE TABLE IF NOT EXISTS \`vertraege\` (
