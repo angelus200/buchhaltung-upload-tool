@@ -469,7 +469,10 @@ export default function LandingPage() {
               <span className="text-sm font-semibold text-white">Buchhaltung-KI</span>
             </div>
             <div className="flex flex-wrap items-center gap-6 text-sm">
-              {["Impressum", "Datenschutz", "AGB", "Kontakt"].map((t, i) => <a key={i} href={`mailto:info@non-dom.group?subject=${t}`} className="hover:text-white transition-colors cursor-pointer">{t}</a>)}
+              <Link href="/impressum"><a className="hover:text-white transition-colors">Impressum</a></Link>
+              <Link href="/datenschutz"><a className="hover:text-white transition-colors">Datenschutz</a></Link>
+              <Link href="/agb"><a className="hover:text-white transition-colors">AGB</a></Link>
+              <a href="mailto:info@non-dom.group" className="hover:text-white transition-colors">Kontakt</a>
             </div>
             <div className="text-sm">© 2026 Non Dom Group</div>
           </div>

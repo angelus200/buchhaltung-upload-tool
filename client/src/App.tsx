@@ -43,6 +43,9 @@ import SteuerberaterHandbuch from "./pages/SteuerberaterHandbuch";
 import MwstAbrechnung from "./pages/MwstAbrechnung";
 import LandingPage from "./pages/LandingPage";
 import SignUpAfterPayment from "./pages/SignUpAfterPayment";
+import Impressum from "./pages/Impressum";
+import Datenschutz from "./pages/Datenschutz";
+import AGB from "./pages/AGB";
 import Setup from "./pages/Setup";
 import Auszuege from "./pages/Auszuege";
 import Finanzierungen from "./pages/Finanzierungen";
@@ -60,6 +63,9 @@ function Router() {
       <Route path={"/sign-up"} component={SignUpAfterPayment} />
       <Route path={"/login"} component={Login} />
       <Route path={"/steuerberater-handbuch"} component={SteuerberaterHandbuch} />
+      <Route path={"/impressum"} component={Impressum} />
+      <Route path={"/datenschutz"} component={Datenschutz} />
+      <Route path={"/agb"} component={AGB} />
 
       {/* Setup nach Sign-Up (geschützt) */}
       <Route path={"/app/setup"}>
