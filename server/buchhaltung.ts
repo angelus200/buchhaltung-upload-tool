@@ -1918,6 +1918,35 @@ export const stammdatenRouter = router({
           .from(sachkonten)
           .where(eq(sachkonten.unternehmenId, input.unternehmenId))
           .orderBy(sachkonten.kategorie, sachkonten.kontonummer);
+
+        // Fallback: Wenn keine Sachkonten vorhanden → Standard-Kontenrahmen der Firma laden
+        if (konten.length === 0) {
+          const [firma] = await db
+            .select({ kontenrahmen: unternehmen.kontenrahmen })
+            .from(unternehmen)
+            .where(eq(unternehmen.id, input.unternehmenId))
+            .limit(1);
+
+          const kr = firma?.kontenrahmen ?? "SKR03";
+          const standardKonten = getSeedKontenFuerKontenrahmen(kr);
+
+          // Virtuelle Konten zurückgeben (ohne DB-Eintrag)
+          return standardKonten.map((k, idx) => ({
+            id: -(idx + 1),
+            unternehmenId: input.unternehmenId,
+            kontenrahmen: kr as "SKR03" | "SKR04" | "OeKR" | "RLG" | "KMU" | "OR" | "UK_GAAP" | "IFRS" | "CY_GAAP",
+            kontonummer: k.kontonummer,
+            bezeichnung: k.bezeichnung,
+            kategorie: k.kategorie ?? null,
+            kontotyp: (k.kontotyp ?? "aufwand") as "aktiv" | "passiv" | "aufwand" | "ertrag" | "neutral",
+            standardSteuersatz: null,
+            aktiv: true,
+            notizen: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }));
+        }
+
         return konten;
       }),
 
@@ -1927,23 +1956,50 @@ export const stammdatenRouter = router({
       .query(async ({ input }) => {
         const db = await getDb();
         if (!db) return [];
-        
+
         const konten = await db
           .select()
           .from(sachkonten)
           .where(eq(sachkonten.unternehmenId, input.unternehmenId))
           .orderBy(sachkonten.kategorie, sachkonten.kontonummer);
-        
+
+        // Fallback: Wenn keine Sachkonten vorhanden → Standard-Kontenrahmen der Firma laden
+        const quelleKonten = konten.length > 0 ? konten : await (async () => {
+          const [firma] = await db
+            .select({ kontenrahmen: unternehmen.kontenrahmen })
+            .from(unternehmen)
+            .where(eq(unternehmen.id, input.unternehmenId))
+            .limit(1);
+
+          const kr = firma?.kontenrahmen ?? "SKR03";
+          const standardKonten = getSeedKontenFuerKontenrahmen(kr);
+
+          return standardKonten.map((k, idx) => ({
+            id: -(idx + 1),
+            unternehmenId: input.unternehmenId,
+            kontenrahmen: kr as "SKR03" | "SKR04" | "OeKR" | "RLG" | "KMU" | "OR" | "UK_GAAP" | "IFRS" | "CY_GAAP",
+            kontonummer: k.kontonummer,
+            bezeichnung: k.bezeichnung,
+            kategorie: k.kategorie ?? null,
+            kontotyp: (k.kontotyp ?? "aufwand") as "aktiv" | "passiv" | "aufwand" | "ertrag" | "neutral",
+            standardSteuersatz: null,
+            aktiv: true,
+            notizen: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }));
+        })();
+
         // Gruppiere nach Kategorie
-        const grouped: Record<string, typeof konten> = {};
-        for (const konto of konten) {
+        const grouped: Record<string, typeof quelleKonten> = {};
+        for (const konto of quelleKonten) {
           const kategorie = konto.kategorie || "Sonstige";
           if (!grouped[kategorie]) {
             grouped[kategorie] = [];
           }
           grouped[kategorie].push(konto);
         }
-        
+
         return grouped;
       }),
 
