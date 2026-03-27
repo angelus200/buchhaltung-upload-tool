@@ -47,6 +47,7 @@ type Zahlungsstatus = "offen" | "teilweise_bezahlt" | "bezahlt" | "ueberfaellig"
 export default function Zahlungen() {
   const [selectedUnternehmen, setSelectedUnternehmen] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<Zahlungsstatus | "alle">("alle");
+  const [buchungsartFilter, setBuchungsartFilter] = useState<"alle" | "aufwand" | "ertrag" | "anlage" | "sonstig">("alle");
   const [selectedBuchung, setSelectedBuchung] = useState<any>(null);
   const [zahlungsDialog, setZahlungsDialog] = useState(false);
   const [zahlungsDaten, setZahlungsDaten] = useState({
@@ -100,12 +101,58 @@ export default function Zahlungen() {
     },
   });
 
-  // Gefilterte Buchungen
+  // Gefilterte Buchungen (Buchungsart + Status kombiniert)
   const gefilterteBuchungen = useMemo(() => {
     if (!alleBuchungen?.buchungen) return [];
-    if (filterStatus === "alle") return alleBuchungen.buchungen;
-    return alleBuchungen.buchungen.filter((b) => b.zahlungsstatus === filterStatus);
-  }, [alleBuchungen, filterStatus]);
+    let result = alleBuchungen.buchungen;
+    if (buchungsartFilter !== "alle") {
+      result = result.filter((b) => b.buchungsart === buchungsartFilter);
+    }
+    if (filterStatus !== "alle") {
+      result = result.filter((b) => b.zahlungsstatus === filterStatus);
+    }
+    return result;
+  }, [alleBuchungen, filterStatus, buchungsartFilter]);
+
+  // Statistiken aus gefilterten Daten berechnen (reagiert auf Buchungsart-Filter)
+  const berechneteStats = useMemo(() => {
+    const stats = { offen: 0, teilweise: 0, bezahlt: 0, ueberfaellig: 0, offenerBetrag: 0, bezahlterBetrag: 0 };
+    if (!alleBuchungen?.buchungen) return stats;
+    // Nur Buchungsart-Filter — Kacheln zeigen immer alle Status der gewählten Buchungsart
+    const quelle = buchungsartFilter !== "alle"
+      ? alleBuchungen.buchungen.filter((b) => b.buchungsart === buchungsartFilter)
+      : alleBuchungen.buchungen;
+    const heute = new Date();
+    for (const b of quelle) {
+      const brutto = parseFloat(String(b.bruttobetrag)) || 0;
+      const bezahlt = parseFloat(String(b.bezahlterBetrag)) || 0;
+      switch (b.zahlungsstatus) {
+        case "offen":
+          if (b.faelligkeitsdatum && new Date(b.faelligkeitsdatum) < heute) {
+            stats.ueberfaellig++;
+            stats.offenerBetrag += brutto;
+          } else {
+            stats.offen++;
+            stats.offenerBetrag += brutto;
+          }
+          break;
+        case "teilweise_bezahlt":
+          stats.teilweise++;
+          stats.offenerBetrag += brutto - bezahlt;
+          stats.bezahlterBetrag += bezahlt;
+          break;
+        case "bezahlt":
+          stats.bezahlt++;
+          stats.bezahlterBetrag += brutto;
+          break;
+        case "ueberfaellig":
+          stats.ueberfaellig++;
+          stats.offenerBetrag += brutto;
+          break;
+      }
+    }
+    return stats;
+  }, [alleBuchungen, buchungsartFilter]);
 
   // Zahlungsstatus-Badge
   const getStatusBadge = (status: Zahlungsstatus | null) => {
@@ -217,7 +264,7 @@ export default function Zahlungen() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{zahlungsStats?.offen || 0}</div>
+                  <div className="text-3xl font-bold text-slate-900">{berechneteStats.offen}</div>
                   <p className="text-sm text-slate-500 mt-1">Noch nicht bezahlt</p>
                 </CardContent>
               </Card>
@@ -229,7 +276,7 @@ export default function Zahlungen() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-red-600">{zahlungsStats?.ueberfaellig || 0}</div>
+                  <div className="text-3xl font-bold text-red-600">{berechneteStats.ueberfaellig}</div>
                   <p className="text-sm text-slate-500 mt-1">Fälligkeit überschritten</p>
                 </CardContent>
               </Card>
@@ -241,7 +288,7 @@ export default function Zahlungen() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{formatCurrency(zahlungsStats?.offenerBetrag || 0)}</div>
+                  <div className="text-3xl font-bold text-slate-900">{formatCurrency(berechneteStats.offenerBetrag)}</div>
                   <p className="text-sm text-slate-500 mt-1">Noch zu zahlen</p>
                 </CardContent>
               </Card>
@@ -253,8 +300,8 @@ export default function Zahlungen() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-green-600">{formatCurrency(zahlungsStats?.bezahlterBetrag || 0)}</div>
-                  <p className="text-sm text-slate-500 mt-1">{zahlungsStats?.bezahlt || 0} Rechnungen</p>
+                  <div className="text-3xl font-bold text-green-600">{formatCurrency(berechneteStats.bezahlterBetrag)}</div>
+                  <p className="text-sm text-slate-500 mt-1">{berechneteStats.bezahlt} Rechnungen</p>
                 </CardContent>
               </Card>
             </div>
@@ -278,6 +325,20 @@ export default function Zahlungen() {
                       <SelectItem value="teilweise_bezahlt">Teilweise bezahlt</SelectItem>
                       <SelectItem value="bezahlt">Bezahlt</SelectItem>
                       <SelectItem value="ueberfaellig">Überfällig</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Label className="text-sm font-medium ml-4">Buchungsart:</Label>
+                  <Select
+                    value={buchungsartFilter}
+                    onValueChange={(v) => setBuchungsartFilter(v as "alle" | "aufwand" | "ertrag" | "anlage" | "sonstig")}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="alle">Alle</SelectItem>
+                      <SelectItem value="aufwand">Aufwand (Ausgaben)</SelectItem>
+                      <SelectItem value="ertrag">Ertrag (Einnahmen)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
