@@ -36,10 +36,11 @@ const C = { cyan: '#00B4D8', dark: '#0077B6', deep: '#005F8A', light: '#90E0EF',
 const faqs = [
   { q: "Ersetzt Buchhaltung-KI meinen Steuerberater?", a: "Nicht komplett — aber sie übernimmt 80% der laufenden Arbeit. Ihr Steuerberater bekommt fertige DATEV-Dateien und prüft nur noch." },
   { q: "Wie funktioniert die KI-Belegerkennung?", a: "Foto oder PDF hochladen — KI erkennt Rechnungsnummer, Datum, Betrag, Steuersatz, Partner und schlägt die Buchung vor. Bestätigen mit einem Klick." },
-  { q: "Welche Kontenrahmen?", a: "SKR03 und SKR04. Bei Einrichtung wählen, alle Konten werden automatisch angelegt." },
+  { q: "Welche Kontenrahmen?", a: "SKR03/SKR04 (Deutschland), ÖKR (Österreich), KMU und OR (Schweiz). Bei Einrichtung wählen, alle Konten werden automatisch angelegt." },
   { q: "Steuerberater-Zugang?", a: "Ja — eigener Zugang mit Leserechten plus DATEV-Export jederzeit." },
-  { q: "Datensicherheit?", a: "Verschlüsselt, EU-Server, DSGVO-konform, GoBD-konform, Audit-Trail." },
-  { q: "Mehrere Firmen?", a: "Business bis 5 Firmen, Enterprise unbegrenzt — ein Login, strikte Datentrennung." },
+  { q: "Datensicherheit?", a: "Verschlüsselt, EU-Server, DSGVO-konform (EU), DSG-konform (CH), GoBD-konform (DE), Audit-Trail." },
+  { q: "Mehrere Firmen?", a: "Business bis 5 Firmen, Enterprise unbegrenzt — ein Login, strikte Datentrennung. Auch länderübergreifend (z.B. DE + CH in einem Account)." },
+  { q: "Unterstützt die Software mehrere Währungen?", a: "Ja — jede Firma wird in ihrer Landeswährung geführt (EUR oder CHF). Bei Buchungen in Fremdwährung erfolgt automatische Umrechnung zum Tageskurs." },
   { q: "Welche Banken?", a: "Sparkasse, VR Bank, Deutsche Bank, Commerzbank, PayPal, SumUp, Amex, Soldo und mehr." },
   { q: "Vertragslaufzeit?", a: "Keine. Monatlich kündbar." },
   { q: "Was passiert mit meinen bisherigen Daten?", a: "Unsere Onboarding-Pakete importieren DATEV-Daten, Geschäftspartner und Kontoauszüge. Oder Sie nutzen den integrierten DATEV-Import selbst." },
@@ -129,7 +130,7 @@ export default function LandingPage() {
             <div className="hidden sm:block w-px h-7 bg-slate-200" />
             <div className="hidden sm:block">
               <span className="text-lg font-bold text-slate-900 tracking-tight block leading-none">Buchhaltung-KI</span>
-              <span className="text-[10px] uppercase tracking-widest font-medium" style={{ color: C.cyan }}>Deutschland</span>
+              <span className="text-[10px] uppercase tracking-widest font-medium" style={{ color: C.cyan }}>Deutschland · Österreich · Schweiz</span>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-slate-500 font-medium">
@@ -159,7 +160,7 @@ export default function LandingPage() {
               <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: C.pale }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.dark} strokeWidth="3"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></svg>
               </span>
-              KI-gestützte Buchhaltung für deutsche KMU
+              KI-gestützte Buchhaltung für KMU in der DACH-Region
             </div>
             <h1 className="a1 fd text-5xl leading-[1.1] text-slate-900 sm:text-6xl md:text-7xl">Ihre Buchhaltung<br /><span className="gt">erledigt sich selbst.</span></h1>
             <p className="a2 mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-slate-500 md:text-xl">Belege hochladen, KI kontiert automatisch, DATEV-Export auf Knopfdruck. Weniger Steuerberater-Kosten, mehr Kontrolle.</p>
@@ -170,7 +171,7 @@ export default function LandingPage() {
               <a href="#funktionen" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-10 py-5 text-base font-semibold text-slate-700 transition-all hover:shadow-lg">Alle Funktionen</a>
             </div>
             <div className="a4 mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-slate-400">
-              {["GoBD-konform", "DSGVO-konform", "DATEV-Schnittstelle", "SKR03 & SKR04"].map((t, i) => (<span key={i} className="flex items-center gap-2"><span style={{ color: '#10b981' }}>{I.check()}</span>{t}</span>))}
+              {["GoBD-konform", "DSGVO-konform", "DATEV-Schnittstelle", "DE · AT · CH"].map((t, i) => (<span key={i} className="flex items-center gap-2"><span style={{ color: '#10b981' }}>{I.check()}</span>{t}</span>))}
             </div>
           </div>
         </div>
@@ -179,7 +180,7 @@ export default function LandingPage() {
       {/* ─── Stats ─── */}
       <section className="border-y border-slate-100 py-8" style={{ background: `${C.pale}12` }}>
         <div className="mx-auto max-w-6xl px-6 flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-center">
-          {[{ v: "40.000+", l: "Buchungen" }, { v: "~30 Mio €", l: "Volumen" }, { v: "12+", l: "Bank-Formate" }, { v: "SKR03/04", l: "Kontenrahmen" }].map((s, i) => (
+          {[{ v: "40.000+", l: "Buchungen" }, { v: "~30 Mio €", l: "Volumen" }, { v: "12+", l: "Bank-Formate" }, { v: "DE · AT · CH", l: "3 Länder" }].map((s, i) => (
             <div key={i} className="flex items-center gap-4">{i > 0 && <div className="hidden sm:block w-px h-10 bg-slate-200" />}<div><span className="text-2xl font-bold text-slate-900">{s.v}</span><span className="block text-xs text-slate-400 mt-0.5">{s.l}</span></div></div>
           ))}
         </div>
@@ -217,10 +218,10 @@ export default function LandingPage() {
           </div>
           {[
             { cat: "KI & Automatisierung", items: [[I.brain(), "KI-Belegerkennung", "Claude Vision AI erkennt Betrag, Datum, Steuersatz, Partner aus Fotos/PDFs."], [I.zap(), "Auto-Kontierung", "KI schlägt Konto vor, lernt aus Korrekturen."], [I.scan(), "Beleg-Upload", "Drag & Drop, Foto, PDF. Alle Formate."], [I.receipt(), "E-Rechnung", "ZUGFeRD und XRechnung. Vollautomatisch."]] },
-            { cat: "Buchhaltung & Finanzen", items: [[I.file(), "DATEV-Export", "Buchungsstapel, Sachkonten, Personenkonten."], [I.file(), "DATEV-Import", "Bestehende Daten importieren. Migration in Minuten."], [I.chart(), "BWA auf Knopfdruck", "Umsatz, Kosten, Ergebnis — Monat, Quartal, Jahr."], [I.receipt(), "USt-Voranmeldung", "Automatisch berechnet. Bereit für ELSTER."]] },
+            { cat: "Buchhaltung & Finanzen", items: [[I.file(), "DATEV-Export", "Buchungsstapel, Sachkonten, Personenkonten."], [I.file(), "DATEV-Import", "Bestehende Daten importieren. Migration in Minuten."], [I.chart(), "BWA auf Knopfdruck", "Umsatz, Kosten, Ergebnis — Monat, Quartal, Jahr."], [I.receipt(), "EUR & CHF", "Automatische Währungsumrechnung zwischen EUR und CHF. Firmen in eigener Währung führen."]] },
             { cat: "Bank & Zahlungsverkehr", items: [[I.bank(), "12+ Bank-Parser", "Sparkasse, VR Bank, Deutsche Bank, Commerzbank, ING."], [I.bank(), "Payment-Provider", "PayPal, SumUp, Amex, Soldo."], [I.upload(), "CSV-Import", "Universell mit intelligenter Spaltenerkennung."], [I.db(), "Finanzkonten", "Bankkonten, Kreditkarten, Kassen — zentral."]] },
-            { cat: "Stammdaten & Verwaltung", items: [[I.building(), "Multi-Firma", "Mehrere Firmen, ein Account, strikte Trennung."], [I.db(), "Kontenrahmen", "SKR03/04 vollständig. Individuelle Konten."], [I.users(), "Geschäftspartner", "Kunden/Lieferanten zentral. Auto-Zuordnung."], [I.settings(), "STB-Positionen", "Strukturierte Übergabe an Steuerberater."]] },
-            { cat: "Team & Sicherheit", items: [[I.users(), "Team-Rollen", "GF, Buchhalter, STB — jeder sieht nur was er soll."], [I.mail(), "Einladungssystem", "Per E-Mail einladen. Auto-Rollenzuweisung."], [I.shield(), "GoBD-konform", "Revisionssicher, Audit-Trail."], [I.lock(), "DSGVO & Verschlüsselung", "EU-Server, verschlüsselt, Multi-Tenant."]] },
+            { cat: "Stammdaten & Verwaltung", items: [[I.building(), "Multi-Firma", "Mehrere Firmen, ein Account, strikte Trennung."], [I.db(), "Kontenrahmen", "SKR03/04 (DE), ÖKR (AT), KMU/OR (CH). Alle Länder."], [I.users(), "Geschäftspartner", "Kunden/Lieferanten zentral. Auto-Zuordnung."], [I.settings(), "STB-Positionen", "Strukturierte Übergabe an Steuerberater."]] },
+            { cat: "Team & Sicherheit", items: [[I.users(), "Team-Rollen", "GF, Buchhalter, STB — jeder sieht nur was er soll."], [I.mail(), "Einladungssystem", "Per E-Mail einladen. Auto-Rollenzuweisung."], [I.shield(), "GoBD-konform", "Revisionssicher, Audit-Trail."], [I.lock(), "DSGVO & DSG konform", "EU-Server, verschlüsselt, Multi-Tenant. CH-DSG + EU-DSGVO."]] },
           ].map((sec, si) => (
             <div key={si} className="mb-12">
               <h3 className="text-sm font-bold uppercase tracking-widest mb-6 flex items-center gap-3" style={{ color: C.dark }}>
@@ -276,9 +277,9 @@ export default function LandingPage() {
             <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-8 transition-all hover:shadow-xl">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Starter</h3>
               <div className="mt-3 flex items-baseline gap-1"><span className="text-4xl font-bold text-slate-900">299 €</span><span className="text-sm text-slate-400">/ Monat</span></div>
-              <p className="mt-2 text-sm text-slate-500 mb-6">1 Firma · 2 Benutzer</p>
+              <p className="mt-2 text-sm text-slate-500 mb-6">1 Firma · 2 Benutzer · DE/AT/CH</p>
               <ul className="mb-8 flex-1 space-y-3">
-                {["KI-Belegerkennung", "Auto-Kontierung", "SKR03 oder SKR04", "DATEV-Import & Export", "12+ Bank-Parser", "BWA-Berichte", "USt-Voranmeldung", "E-Rechnung (ZUGFeRD/XRechnung)", "GoBD-konform", "E-Mail Support"].map((f, i) => (
+                {["KI-Belegerkennung", "Auto-Kontierung", "SKR03/04 · ÖKR · KMU/OR", "DATEV-Import & Export", "12+ Bank-Parser", "BWA-Berichte", "USt-Voranmeldung", "E-Rechnung (ZUGFeRD/XRechnung)", "GoBD-konform", "E-Mail Support"].map((f, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600"><span className="mt-0.5 shrink-0" style={{ color: C.cyan }}>{I.check()}</span>{f}</li>
                 ))}
               </ul>
@@ -290,7 +291,7 @@ export default function LandingPage() {
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider text-white" style={{ background: `linear-gradient(135deg,${C.goldDark},${C.gold})` }}>Empfohlen</div>
               <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: C.gold }}>Business</h3>
               <div className="mt-3 flex items-baseline gap-1"><span className="text-4xl font-bold text-slate-900">499 €</span><span className="text-sm text-slate-400">/ Monat</span></div>
-              <p className="mt-2 text-sm text-slate-500 mb-6">Bis 5 Firmen · 5 Benutzer</p>
+              <p className="mt-2 text-sm text-slate-500 mb-6">Bis 5 Firmen · 5 Benutzer · DE/AT/CH</p>
               <ul className="mb-8 flex-1 space-y-3">
                 {["Alles aus Starter, plus:", "Multi-Firma Dashboard", "Team-Rollen & Berechtigungen", "Steuerberater-Zugang", "Geschäftspartner-Verwaltung", "Einladungssystem", "Finanzkonten-Übersicht", "Priority Support", "Audit-Trail & Protokoll"].map((f, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600"><span className="mt-0.5 shrink-0" style={{ color: C.cyan }}>{I.check()}</span>{f}</li>
@@ -305,11 +306,50 @@ export default function LandingPage() {
               <div className="mt-3"><span className="text-4xl font-bold text-slate-900">Individuell</span></div>
               <p className="mt-2 text-sm text-slate-500 mb-6">Unbegrenzt Firmen & Benutzer</p>
               <ul className="mb-8 flex-1 space-y-3">
-                {["Alles aus Business, plus:", "Dedizierter Ansprechpartner", "Custom Onboarding", "SLA & Telefon-Support", "Individuelle Kontenrahmen", "Konzern-BWA", "API-Zugang", "Schulungen", "Vorrang bei Features"].map((f, i) => (
+                {["Alles aus Business, plus:", "Dedizierter Ansprechpartner", "Custom Onboarding", "SLA & Telefon-Support", "Individuelle Kontenrahmen", "Konzern-BWA", "API-Zugang (Manus-Schnittstelle)", "Schulungen", "Vorrang bei Features"].map((f, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600"><span className="mt-0.5 shrink-0" style={{ color: C.cyan }}>{I.check()}</span>{f}</li>
                 ))}
               </ul>
               <a href="mailto:info@non-dom.group" className="w-full rounded-xl py-3.5 text-sm font-semibold border-2 border-slate-200 text-slate-700 transition-all hover:border-cyan-400 hover:text-cyan-700 text-center block">Kontakt aufnehmen</a>
+            </div>
+          </div>
+
+          {/* Manus-API Add-on */}
+          <div className="mx-auto max-w-4xl mt-12 rounded-2xl border border-dashed border-cyan-300 bg-white p-8 relative overflow-hidden" style={{ background: `linear-gradient(135deg, white, ${C.pale}15)` }}>
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `linear-gradient(135deg, ${C.dark}, ${C.cyan})` }}>
+                    <span className="text-white text-lg">⚡</span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-white" style={{ background: C.cyan }}>Add-on</span>
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Manus-API Schnittstelle</h3>
+                <p className="text-sm text-slate-500 leading-relaxed mb-4">
+                  Verbinden Sie Ihre Buchhaltung mit dem Manus-Agenten für vollautomatische Datenverarbeitung.
+                  18 REST-API-Endpoints für Buchungen, Belege, Debitoren, Kreditoren und Sachkonten.
+                  Inkl. OCR-Upload und automatische Kontierung über die API.
+                </p>
+                <ul className="grid grid-cols-2 gap-2">
+                  {["18 REST-API Endpoints", "SHA-256 API-Key Auth", "Automatischer OCR-Upload", "Cross-Tenant Isolation", "DATEV-kompatibel", "Unbegrenzte Requests"].map((f, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-slate-600">
+                      <span style={{ color: C.cyan }}>{I.check(14)}</span>{f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="text-center md:text-right shrink-0">
+                <div className="flex items-baseline justify-center md:justify-end gap-1 mb-1">
+                  <span className="text-3xl font-bold text-slate-900">+119 €</span>
+                  <span className="text-sm text-slate-400">/ Monat</span>
+                </div>
+                <p className="text-xs text-slate-400 mb-4">zzgl. MwSt. · Zu jedem Plan buchbar</p>
+                <a href="mailto:info@non-dom.group?subject=Manus-API%20Schnittstelle" className="bp inline-flex items-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5">
+                  API-Zugang anfragen {I.arrow()}
+                </a>
+              </div>
             </div>
           </div>
         </div>
