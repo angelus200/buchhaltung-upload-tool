@@ -1316,7 +1316,7 @@ export default function Uebersicht() {
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteMutation.mutate({ id: selectedBuchung?.id })}
+              onClick={() => deleteMutation.mutate({ id: selectedBuchung?.id, unternehmenId: selectedBuchung?.unternehmenId ?? selectedUnternehmen ?? 0 })}
               className="bg-red-600 hover:bg-red-700"
             >
               Löschen
@@ -1627,7 +1627,7 @@ export default function Uebersicht() {
             <AlertDialogAction
               onClick={() => {
                 if (deletingBuchungId) {
-                  deleteDuplicateMutation.mutate({ id: deletingBuchungId });
+                  deleteDuplicateMutation.mutate({ id: deletingBuchungId, unternehmenId: selectedUnternehmen ?? 0 });
                 }
               }}
               className="bg-red-600 hover:bg-red-700"

@@ -1,4 +1,5 @@
-import { eq, desc, and, or, gte, lte, count, sum, sql, like, inArray } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, count, sum, sql, like, inArray, isNotNull } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { getKmuStandardKonten, getSeedKontenFuerKontenrahmen } from "../shared/kontenrahmen";
 import { z } from "zod";
 import { getDb } from "./db";
@@ -19,6 +20,11 @@ import {
   notizen,
   sachkonten,
   auszugPositionen,
+  belege,
+  bestandsbewegungen,
+  steuerberaterUebergabePositionen,
+  finanzierungZahlungen,
+  buchungsvorschlaege,
   InsertUnternehmen,
   InsertKreditor,
   InsertDebitor,
@@ -544,15 +550,45 @@ export const buchungenRouter = router({
       return { success: true };
     }),
 
-  // Buchung löschen
+  // Buchung löschen — mit unternehmenId-Prüfung und CASCADE SET NULL für FK-Referenzen
   delete: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: z.number(), unternehmenId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new Error("Datenbank nicht verfügbar");
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
 
-      await db.delete(buchungen).where(eq(buchungen.id, input.id));
-      return { success: true };
+      try {
+        // Existenz + Zugehörigkeit prüfen (Multi-Tenant-Sicherheit)
+        const [existing] = await db
+          .select({ id: buchungen.id })
+          .from(buchungen)
+          .where(and(eq(buchungen.id, input.id), eq(buchungen.unternehmenId, input.unternehmenId)))
+          .limit(1);
+
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Buchung nicht gefunden" });
+        }
+
+        // FK-Referenzen auf NULL setzen — verhindert ER_ROW_IS_REFERENCED_2
+        await db.update(belege).set({ buchungId: null }).where(eq(belege.buchungId, input.id));
+        await db.update(auszugPositionen).set({ zugeordneteBuchungId: null }).where(eq(auszugPositionen.zugeordneteBuchungId, input.id));
+        await db.update(bestandsbewegungen).set({ buchungId: null }).where(eq(bestandsbewegungen.buchungId, input.id));
+        await db.update(steuerberaterUebergabePositionen).set({ buchungId: null }).where(eq(steuerberaterUebergabePositionen.buchungId, input.id));
+        await db.update(finanzierungZahlungen).set({ buchungId: null }).where(eq(finanzierungZahlungen.buchungId, input.id));
+        await db.update(buchungsvorschlaege).set({ buchungId: null }).where(eq(buchungsvorschlaege.buchungId, input.id));
+
+        // Buchung löschen (Multi-Tenant: beide Bedingungen im WHERE)
+        await db.delete(buchungen)
+          .where(and(eq(buchungen.id, input.id), eq(buchungen.unternehmenId, input.unternehmenId)));
+
+        return { success: true };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Buchung konnte nicht gelöscht werden",
+        });
+      }
     }),
 
   // Statistiken abrufen (Anzahl, Summen)
