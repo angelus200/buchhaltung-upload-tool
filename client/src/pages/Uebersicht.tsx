@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -53,6 +54,7 @@ import {
   AlertTriangle,
   X,
   CheckCircle2,
+  RotateCcw,
 } from "lucide-react";
 
 const MONATE = [
@@ -540,6 +542,15 @@ export default function Uebersicht() {
   const [pendingBuchungData, setPendingBuchungData] = useState<any>(null);
   const [duplicateData, setDuplicateData] = useState<any>(null);
 
+  // Storno-Dialog
+  const [stornoDialogOpen, setStornoDialogOpen] = useState(false);
+  const [stornoBuchung, setStornoBuchung] = useState<{
+    id: number;
+    betrag: number;
+    buchungstext: string;
+  } | null>(null);
+  const [stornoGrund, setStornoGrund] = useState('');
+
   // tRPC Queries & Utils
   const trpcUtils = trpc.useUtils();
   const unternehmenQuery = trpc.unternehmen.list.useQuery(undefined, {
@@ -660,6 +671,21 @@ export default function Uebersicht() {
     },
   });
 
+  // Storno-Mutation
+  const storniereM = trpc.buchungen.storniere.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message || 'Buchung erfolgreich storniert');
+      setStornoDialogOpen(false);
+      setStornoBuchung(null);
+      setStornoGrund('');
+      buchungenQuery.refetch();
+      statsQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(`Fehler beim Stornieren: ${error.message}`);
+    },
+  });
+
   // Set default Unternehmen
   useEffect(() => {
     if (unternehmenQuery.data && unternehmenQuery.data.length > 0 && !selectedUnternehmen) {
@@ -690,6 +716,11 @@ export default function Uebersicht() {
   const buchungen = useMemo(() => {
     return searchActive ? (searchQuery.data || []) : alleBuchungen;
   }, [searchActive, searchQuery.data, alleBuchungen]);
+
+  // Währung der aktuell gewählten Firma
+  const waehrung = unternehmenQuery.data?.find(
+    (u) => u.unternehmen.id === selectedUnternehmen
+  )?.unternehmen.waehrung ?? 'EUR';
 
   const stats = useMemo(() => {
     return statsQuery.data || {
@@ -794,6 +825,27 @@ export default function Uebersicht() {
       console.error("Duplikatprüfung fehlgeschlagen:", error);
       updateMutation.mutate({ id, ...data });
     }
+  };
+
+  // Storno-Handlers
+  const handleStornoClick = (b: any) => {
+    const betrag = Math.abs(Number(b.bruttobetrag ?? b.nettobetrag ?? 0));
+    setStornoBuchung({
+      id: b.id,
+      betrag,
+      buchungstext: b.buchungstext || `Buchung #${b.id}`,
+    });
+    setStornoGrund('');
+    setStornoDialogOpen(true);
+  };
+
+  const handleStornoBestaetigen = () => {
+    if (!stornoBuchung || !selectedUnternehmen) return;
+    storniereM.mutate({
+      buchungId: stornoBuchung.id,
+      unternehmenId: selectedUnternehmen,
+      stornoGrund: stornoGrund.trim() || undefined,
+    });
   };
 
   // Bestätigte Buchung trotz Duplikat speichern
@@ -1141,6 +1193,16 @@ export default function Uebersicht() {
                           <TableCell>{formatDate(b.belegdatum)}</TableCell>
                           <TableCell className="font-mono text-sm">
                             {b.belegnummer}
+                            {b.istStorniert === 1 && (
+                              <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                Storniert
+                              </span>
+                            )}
+                            {b.stornoVonId !== null && (
+                              <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                                Storno
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell className="max-w-[200px] truncate">
                             {b.geschaeftspartner}
@@ -1172,6 +1234,17 @@ export default function Uebersicht() {
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>
+                              {b.istStorniert === 0 && b.stornoVonId === null && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                  onClick={() => handleStornoClick(b)}
+                                  title="Buchung stornieren"
+                                >
+                                  <RotateCcw className="w-4 h-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1693,6 +1766,72 @@ export default function Uebersicht() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Storno-Bestätigungsdialog ─────────────────────────────────────── */}
+      <Dialog open={stornoDialogOpen} onOpenChange={setStornoDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-orange-600" />
+              Buchung stornieren
+            </DialogTitle>
+            <DialogDescription>
+              Diese Aktion erstellt eine Gegenbuchung und kann nicht rückgängig gemacht werden.
+            </DialogDescription>
+          </DialogHeader>
+
+          {stornoBuchung && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg bg-muted p-3 space-y-1">
+                <p className="text-sm font-medium">{stornoBuchung.buchungstext}</p>
+                <p className="text-sm text-muted-foreground">
+                  Betrag:{' '}
+                  <span className="font-medium text-foreground">
+                    {stornoBuchung.betrag.toFixed(2)} {waehrung}
+                  </span>
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="stornoGrund">
+                  Stornogrund{' '}
+                  <span className="text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <Input
+                  id="stornoGrund"
+                  placeholder="z.B. Rückgabe vom Kunden, Falschbuchung..."
+                  value={stornoGrund}
+                  onChange={(e) => setStornoGrund(e.target.value)}
+                  maxLength={500}
+                />
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Es wird eine Stornobuchung über{' '}
+                <strong>-{stornoBuchung.betrag.toFixed(2)} {waehrung}</strong> erstellt.
+                Die Originalbuchung bleibt sichtbar und wird als storniert markiert.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setStornoDialogOpen(false)}
+              disabled={storniereM.isPending}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleStornoBestaetigen}
+              disabled={storniereM.isPending || !stornoBuchung}
+            >
+              {storniereM.isPending ? 'Wird storniert...' : 'Jetzt stornieren'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

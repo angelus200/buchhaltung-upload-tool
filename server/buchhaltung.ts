@@ -1218,6 +1218,131 @@ export const buchungenRouter = router({
 
       return { success: true };
     }),
+
+  // ── Buchung stornieren (Gutschrift-Workflow) ─────────────────────────────
+  storniere: protectedProcedure
+    .input(
+      z.object({
+        buchungId: z.number().int().positive(),
+        unternehmenId: z.number().int().positive(),
+        stornoGrund: z.string().max(500).optional(),
+        // Teilstorno: wenn angegeben, wird nur dieser Betrag storniert (positiver Wert)
+        teilbetrag: z.number().positive().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Datenbank nicht verfügbar" });
+
+      try {
+        // 1. Original-Buchung laden (Multi-Tenant-Check!)
+        const [original] = await db
+          .select()
+          .from(buchungen)
+          .where(
+            and(
+              eq(buchungen.id, input.buchungId),
+              eq(buchungen.unternehmenId, input.unternehmenId)
+            )
+          )
+          .limit(1);
+
+        if (!original) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Buchung nicht gefunden" });
+        }
+
+        // 2. Bereits storniert?
+        if (original.istStorniert === 1) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Diese Buchung wurde bereits storniert" });
+        }
+
+        // 3. Ist diese selbst eine Stornobuchung?
+        if (original.stornoVonId !== null) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Eine Stornobuchung kann nicht nochmals storniert werden" });
+        }
+
+        const stornoDatum = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
+        // 4. Beträge negieren (Teilstorno oder voller Betrag)
+        const nettoOriginal = Number(original.nettobetrag);
+        const bruttoOriginal = Number(original.bruttobetrag);
+        const steuersatz = Number(original.steuersatz);
+
+        let stornoNetto: number;
+        let stornoBrutto: number;
+
+        if (input.teilbetrag !== undefined) {
+          // Teilstorno: Brutto = teilbetrag, Netto anteilig berechnen
+          stornoBrutto = -Math.abs(input.teilbetrag);
+          stornoNetto = steuersatz > 0
+            ? +(stornoBrutto / (1 + steuersatz / 100)).toFixed(2)
+            : stornoBrutto;
+        } else {
+          stornoNetto = -Math.abs(nettoOriginal);
+          stornoBrutto = -Math.abs(bruttoOriginal);
+        }
+
+        const stornoSteuerBetrag = +(stornoBrutto - stornoNetto).toFixed(2);
+
+        // 5. Stornobuchung einfügen
+        const [result] = await db.insert(buchungen).values({
+          unternehmenId: input.unternehmenId,
+          buchungsart: original.buchungsart,
+          belegdatum: stornoDatum,
+          belegnummer: `STORNO-${original.belegnummer.slice(0, 43)}`,
+          geschaeftspartnerTyp: original.geschaeftspartnerTyp,
+          geschaeftspartner: original.geschaeftspartner,
+          geschaeftspartnerKonto: original.geschaeftspartnerKonto,
+          sachkonto: original.sachkonto,
+          kostenstelleId: original.kostenstelleId,
+          nettobetrag: stornoNetto.toFixed(2),
+          steuersatz: original.steuersatz,
+          bruttobetrag: stornoBrutto.toFixed(2),
+          buchungstext: `Storno: ${original.buchungstext ?? `Buchung #${input.buchungId}`}`,
+          sollKonto: original.sollKonto,
+          habenKonto: original.habenKonto,
+          wirtschaftsjahr: original.wirtschaftsjahr,
+          periode: original.periode,
+          importQuelle: "manuell",
+          status: "entwurf",
+          zahlungsstatus: "offen",
+          // Storno-Metadaten
+          stornoVonId: input.buchungId,
+          stornoDatum: stornoDatum,
+          stornoGrund: input.stornoGrund ?? null,
+          istStorniert: 0,
+        });
+
+        const stornoBuchungId = (result as { insertId: number }).insertId;
+
+        // 6. Original als storniert markieren
+        await db
+          .update(buchungen)
+          .set({
+            istStorniert: 1,
+            stornoDatum: stornoDatum,
+            stornoGrund: input.stornoGrund ?? null,
+          })
+          .where(
+            and(
+              eq(buchungen.id, input.buchungId),
+              eq(buchungen.unternehmenId, input.unternehmenId)
+            )
+          );
+
+        return {
+          success: true,
+          stornoBuchungId,
+          message: `Stornobuchung #${stornoBuchungId} erfolgreich erstellt`,
+        };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Stornierung fehlgeschlagen",
+        });
+      }
+    }),
 });
 
 // ============================================

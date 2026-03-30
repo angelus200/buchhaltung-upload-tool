@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, date, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, date, boolean, tinyint } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -436,6 +436,12 @@ export const buchungen = mysqlTable("buchungen", {
   createdBy: int("createdBy").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+
+  // === Gutschrift-Workflow ===
+  stornoVonId: int("stornoVonId"), // FK auf buchungen.id der Originalbuchung
+  istStorniert: tinyint("istStorniert").notNull().default(0), // 1 = wurde storniert
+  stornoDatum: date("stornoDatum"),
+  stornoGrund: varchar("stornoGrund", { length: 500 }),
 });
 
 export type Buchung = typeof buchungen.$inferSelect;
@@ -1415,6 +1421,10 @@ export const belege = mysqlTable("belege", {
   uploadedBy: int("uploadedBy").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+
+  // === Gutschrift-Workflow ===
+  belegTyp: mysqlEnum("belegTyp", ["rechnung", "gutschrift", "sonstiges"]).notNull().default("rechnung"),
+  referenzBelegId: int("referenzBelegId"), // FK auf belege.id der Originalrechnung
 });
 
 export type Beleg = typeof belege.$inferSelect;
