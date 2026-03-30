@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -55,6 +57,8 @@ import {
   X,
   CheckCircle2,
   RotateCcw,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
 
 const MONATE = [
@@ -84,6 +88,96 @@ function formatDate(dateStr: string | Date): string {
   return date.toLocaleDateString("de-DE");
 }
 
+// ── Geschäftspartner-Combobox ────────────────────────────────────────────────
+function GeschaeftspartnerCombobox({
+  unternehmenId,
+  geschaeftspartnerTyp,
+  value,
+  onChange,
+}: {
+  unternehmenId: number;
+  geschaeftspartnerTyp: string;
+  value: string;
+  onChange: (name: string, kontonummer: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(value);
+
+  const kreditorenQuery = trpc.stammdaten.kreditoren.list.useQuery(
+    { unternehmenId },
+    { enabled: !!unternehmenId && geschaeftspartnerTyp === "kreditor" }
+  );
+  const debitorenQuery = trpc.stammdaten.debitoren.list.useQuery(
+    { unternehmenId },
+    { enabled: !!unternehmenId && geschaeftspartnerTyp === "debitor" }
+  );
+
+  const eintraege: { name: string; kontonummer: string }[] =
+    geschaeftspartnerTyp === "kreditor"
+      ? (kreditorenQuery.data || []).map((k) => ({ name: k.name, kontonummer: k.kontonummer }))
+      : geschaeftspartnerTyp === "debitor"
+      ? (debitorenQuery.data || []).map((d) => ({ name: d.name, kontonummer: d.kontonummer }))
+      : [];
+
+  const gefiltert = eintraege.filter(
+    (e) =>
+      e.name.toLowerCase().includes(search.toLowerCase()) ||
+      e.kontonummer.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const isLoading = kreditorenQuery.isLoading || debitorenQuery.isLoading;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          <span className="truncate">{value || "Geschäftspartner suchen..."}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[400px] p-0" align="start">
+        <Command>
+          <CommandInput
+            placeholder="Name oder Kontonummer..."
+            value={search}
+            onValueChange={setSearch}
+          />
+          <CommandList>
+            <CommandEmpty>
+              {isLoading ? "Lädt..." : eintraege.length === 0 ? "Manuelle Eingabe möglich" : "Kein Eintrag gefunden"}
+            </CommandEmpty>
+            <CommandGroup>
+              {gefiltert.slice(0, 50).map((eintrag) => (
+                <CommandItem
+                  key={eintrag.kontonummer}
+                  value={eintrag.name}
+                  onSelect={() => {
+                    onChange(eintrag.name, eintrag.kontonummer);
+                    setSearch(eintrag.name);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={`mr-2 h-4 w-4 ${value === eintrag.name ? "opacity-100" : "opacity-0"}`}
+                  />
+                  <span className="font-mono text-xs text-muted-foreground mr-2">{eintrag.kontonummer}</span>
+                  <span className="truncate">{eintrag.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 interface EditBuchungFormProps {
   buchung: any;
   onSave: (data: any) => void;
@@ -106,6 +200,7 @@ function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
     bruttobetrag: buchung.bruttobetrag || "0",
     buchungstext: buchung.buchungstext || "",
     // Erweiterungsfelder
+    geschaeftspartnerTyp: buchung.geschaeftspartnerTyp || "kreditor",
     geschaeftspartnerKonto: buchung.geschaeftspartnerKonto || "",
     belegWaehrung: buchung.belegWaehrung || null as string | null,
     wechselkurs: buchung.wechselkurs || "",
@@ -143,10 +238,12 @@ function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
         </div>
         <div>
           <Label>Geschäftspartner</Label>
-          <Input
+          <GeschaeftspartnerCombobox
+            unternehmenId={formData.unternehmenId}
+            geschaeftspartnerTyp={formData.geschaeftspartnerTyp || "sonstig"}
             value={formData.geschaeftspartner}
-            onChange={(e) =>
-              setFormData({ ...formData, geschaeftspartner: e.target.value })
+            onChange={(name, konto) =>
+              setFormData({ ...formData, geschaeftspartner: name, geschaeftspartnerKonto: konto })
             }
           />
         </div>
@@ -425,10 +522,12 @@ function CreateBuchungForm({ unternehmenId, onSave, onCancel }: CreateBuchungFor
         </div>
         <div>
           <Label>Geschäftspartner</Label>
-          <Input
+          <GeschaeftspartnerCombobox
+            unternehmenId={unternehmenId}
+            geschaeftspartnerTyp={formData.geschaeftspartnerTyp}
             value={formData.geschaeftspartner}
-            onChange={(e) =>
-              setFormData({ ...formData, geschaeftspartner: e.target.value })
+            onChange={(name, konto) =>
+              setFormData({ ...formData, geschaeftspartner: name, geschaeftspartnerKonto: konto })
             }
           />
         </div>
@@ -1384,6 +1483,7 @@ export default function Uebersicht() {
           </DialogHeader>
           {selectedBuchung && (
             <EditBuchungForm
+              key={selectedBuchung.id}
               buchung={selectedBuchung}
               onSave={(data) => handleUpdateBuchung(selectedBuchung.id, data)}
               onCancel={() => setEditDialogOpen(false)}
