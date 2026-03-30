@@ -155,23 +155,35 @@ export default function LandingPage() {
         <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${C.pale}30, white 50%, white)` }} />
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: C.light }} />
         <div className="relative mx-auto max-w-6xl px-6 pt-20 pb-24 md:pt-28 md:pb-32">
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="a0 mb-8 inline-flex items-center gap-2.5 rounded-full border bg-white px-5 py-2 text-sm font-medium shadow-sm" style={{ borderColor: `${C.cyan}30`, color: C.dark }}>
-              <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: C.pale }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.dark} strokeWidth="3"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></svg>
-              </span>
-              KI-gestützte Buchhaltung für KMU in der DACH-Region
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            {/* Text links */}
+            <div>
+              <div className="a0 mb-8 inline-flex items-center gap-2.5 rounded-full border bg-white px-5 py-2 text-sm font-medium shadow-sm" style={{ borderColor: `${C.cyan}30`, color: C.dark }}>
+                <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ background: C.pale }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.dark} strokeWidth="3"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></svg>
+                </span>
+                Das einzige Buchhaltungstool für DE, AT und CH
+              </div>
+              <h1 className="a1 fd text-5xl leading-[1.1] text-slate-900 sm:text-6xl md:text-6xl">Ihre Buchhaltung<br /><span className="gt">erledigt sich selbst.</span></h1>
+              <p className="a2 mt-6 text-lg leading-relaxed text-slate-500">Ein Account. Alle Kontenrahmen. Alle Währungen. Von Berlin bis Zürich.</p>
+              <div className="a3 mt-10 flex flex-col sm:flex-row items-start gap-4">
+                <button onClick={() => handleCheckout("starter")} disabled={loading} className="bp inline-flex items-center gap-2.5 rounded-2xl px-8 py-4 text-base font-semibold text-white shadow-xl transition-all hover:shadow-2xl hover:-translate-y-0.5" style={{ boxShadow: `0 8px 30px ${C.cyan}25` }}>
+                  {loading ? "Lädt..." : <>Jetzt buchen — ab 299 €/Monat {I.arrow()}</>}
+                </button>
+                <a href="#funktionen" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-8 py-4 text-base font-semibold text-slate-700 transition-all hover:shadow-lg">Alle Funktionen</a>
+              </div>
+              <div className="a4 mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-400">
+                {["GoBD-konform", "DSGVO-konform", "DATEV-Schnittstelle", "DE · AT · CH"].map((t, i) => (<span key={i} className="flex items-center gap-2"><span style={{ color: '#10b981' }}>{I.check()}</span>{t}</span>))}
+              </div>
             </div>
-            <h1 className="a1 fd text-5xl leading-[1.1] text-slate-900 sm:text-6xl md:text-7xl">Ihre Buchhaltung<br /><span className="gt">erledigt sich selbst.</span></h1>
-            <p className="a2 mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-slate-500 md:text-xl">Belege hochladen, KI kontiert automatisch, DATEV-Export auf Knopfdruck. Weniger Steuerberater-Kosten, mehr Kontrolle.</p>
-            <div className="a3 mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button onClick={() => handleCheckout("starter")} disabled={loading} className="bp inline-flex items-center gap-2.5 rounded-2xl px-10 py-5 text-base font-semibold text-white shadow-xl transition-all hover:shadow-2xl hover:-translate-y-0.5" style={{ boxShadow: `0 8px 30px ${C.cyan}25` }}>
-                {loading ? "Lädt..." : <>Jetzt buchen — ab 299 €/Monat {I.arrow()}</>}
-              </button>
-              <a href="#funktionen" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-10 py-5 text-base font-semibold text-slate-700 transition-all hover:shadow-lg">Alle Funktionen</a>
-            </div>
-            <div className="a4 mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-slate-400">
-              {["GoBD-konform", "DSGVO-konform", "DATEV-Schnittstelle", "DE · AT · CH"].map((t, i) => (<span key={i} className="flex items-center gap-2"><span style={{ color: '#10b981' }}>{I.check()}</span>{t}</span>))}
+            {/* Hero-Bild rechts */}
+            <div className="hidden md:block relative">
+              <img
+                src="/images/hero-dashboard.jpeg"
+                alt="Buchhaltungs-Dashboard mit Finanzübersicht"
+                className="rounded-2xl shadow-2xl object-cover w-full"
+                style={{ maxHeight: 480 }}
+              />
             </div>
           </div>
         </div>
@@ -183,6 +195,73 @@ export default function LandingPage() {
           {[{ v: "40.000+", l: "Buchungen" }, { v: "~30 Mio €", l: "Volumen" }, { v: "12+", l: "Bank-Formate" }, { v: "DE · AT · CH", l: "3 Länder" }].map((s, i) => (
             <div key={i} className="flex items-center gap-4">{i > 0 && <div className="hidden sm:block w-px h-10 bg-slate-200" />}<div><span className="text-2xl font-bold text-slate-900">{s.v}</span><span className="block text-xs text-slate-400 mt-0.5">{s.l}</span></div></div>
           ))}
+        </div>
+      </section>
+
+      {/* ─── DACH-Karte ─── */}
+      <section style={{ background: C.pale + "30" }} className="py-16">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="text-center mb-10">
+            <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full text-white mb-4 inline-block" style={{ background: C.cyan }}>
+              DACH-nativ
+            </span>
+            <h2 className="text-3xl font-bold text-slate-900 mt-3 mb-3">Ein System für drei Länder</h2>
+            <p className="text-slate-500 max-w-xl mx-auto">
+              sevDesk und Lexware decken nur Deutschland ab. Wir sind die einzige Lösung
+              die ein deutsches, österreichisches und Schweizer Unternehmen
+              im gleichen Account führen kann — mit korrekten Kontenrahmen und Steuersätzen.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { land: "Deutschland", flag: "🇩🇪", konten: "SKR03 / SKR04", steuer: "0% · 7% · 19%", waehrung: "EUR", compliance: "GoBD · DSGVO", farbe: "#1B4FD8" },
+              { land: "Österreich",  flag: "🇦🇹", konten: "ÖKR / RLG",    steuer: "0% · 10% · 13% · 20%", waehrung: "EUR", compliance: "BAO · DSGVO",   farbe: "#C0392B" },
+              { land: "Schweiz",     flag: "🇨🇭", konten: "KMU / OR",     steuer: "0% · 2.6% · 3.8% · 8.1%", waehrung: "CHF", compliance: "OR · DSG · MWSTG", farbe: "#E74C3C" },
+            ].map((l) => (
+              <div key={l.land} className="rounded-2xl border bg-white p-6 shadow-sm" style={{ borderTopWidth: 4, borderTopColor: l.farbe }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">{l.flag}</span>
+                  <div>
+                    <div className="font-bold text-slate-900">{l.land}</div>
+                    <div className="text-xs text-slate-400">{l.waehrung}</div>
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-slate-500">Kontenrahmen</span><span className="font-medium text-slate-700">{l.konten}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">MwSt.-Sätze</span><span className="font-medium text-slate-700">{l.steuer}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Compliance</span><span className="font-medium text-slate-700">{l.compliance}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-sm text-slate-400 mt-6">
+            Alle Kontenrahmen werden automatisch beim Anlegen der Firma als Seed-Daten importiert.
+          </p>
+        </div>
+      </section>
+
+      {/* ─── 3-Schritte-Block ─── */}
+      <section className="py-20 bg-white">
+        <div className="mx-auto max-w-4xl px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">In drei Schritten startklar</h2>
+            <p className="text-slate-500">Keine Installation. Kein IT-Aufwand. Sofort loslegen.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { nr: "01", titel: "Firma anlegen", text: "Land und Kontenrahmen wählen — SKR04 für Deutschland, ÖKR für Österreich, KMU für die Schweiz. Alle Konten werden automatisch importiert." },
+              { nr: "02", titel: "Belege hochladen", text: "PDF oder Foto hochladen. Claude Vision erkennt automatisch: Datum, Betrag, IBAN, Geschäftspartner und schlägt das passende Sachkonto vor." },
+              { nr: "03", titel: "DATEV-Export", text: "Buchungen prüfen und mit einem Klick als DATEV-kompatible Datei exportieren. Ihr Steuerberater erhält strukturierte Daten ohne Medienbruch." },
+            ].map((s) => (
+              <div key={s.nr}>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg mb-4" style={{ background: `linear-gradient(135deg, ${C.dark}, ${C.cyan})` }}>
+                  {s.nr}
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">{s.titel}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{s.text}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -232,6 +311,54 @@ export default function LandingPage() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ─── Zielgruppen ─── */}
+      <section className="py-20 bg-white">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">Für wen ist buchhaltung-ki.app?</h2>
+            <p className="text-slate-500">Wir sind nicht für jeden. Aber für diese drei Gruppen die beste Wahl.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: "🏪", titel: "KMU in DACH",
+                beschreibung: "Kleine und mittlere Unternehmen in Deutschland, Österreich oder der Schweiz, die eine moderne Cloud-Lösung suchen — ohne teure Lizenzkosten.",
+                highlights: ["Alle Kontenrahmen enthalten", "KI-Belegerkennung ab Business", "DATEV-Export für den Steuerberater"],
+                cta: "Starter ab 299 €/Monat", ctaLink: "#preise", highlight: false,
+              },
+              {
+                icon: "🏢", titel: "Firmengruppen",
+                beschreibung: "Holding-Strukturen mit Firmen in mehreren DACH-Ländern — ein Login, alle Firmen, strikte Datentrennung.",
+                highlights: ["Unbegrenzte Firmen (Enterprise)", "DE + AT + CH im gleichen Account", "Physisch isolierte Datenbanken"],
+                cta: "Enterprise-Plan ansehen", ctaLink: "#preise", highlight: true,
+              },
+              {
+                icon: "📋", titel: "Steuerberater",
+                beschreibung: "Kanzleien die ihren Mandanten eine moderne Cloud-Lösung empfehlen und DATEV-kompatible Daten erhalten wollen.",
+                highlights: ["DATEV-Export out-of-the-box", "Übersicht über alle Mandanten", "Provision-Modell für Partner"],
+                cta: "Partner werden", ctaLink: "mailto:info@buchhaltung-ki.app?subject=Steuerberater-Partner", highlight: false,
+              },
+            ].map((z) => (
+              <div key={z.titel} className={`rounded-2xl p-8 border ${z.highlight ? "border-2 shadow-lg" : "border bg-white shadow-sm"}`} style={z.highlight ? { borderColor: C.cyan, background: `${C.pale}15` } : {}}>
+                <div className="text-4xl mb-4">{z.icon}</div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{z.titel}</h3>
+                <p className="text-sm text-slate-500 mb-4 leading-relaxed">{z.beschreibung}</p>
+                <ul className="space-y-2 mb-6">
+                  {z.highlights.map((h) => (
+                    <li key={h} className="flex items-start gap-2 text-sm text-slate-600">
+                      <span style={{ color: C.cyan }} className="mt-0.5 shrink-0">{I.check(14)}</span>{h}
+                    </li>
+                  ))}
+                </ul>
+                <a href={z.ctaLink} className="inline-flex items-center gap-1 text-sm font-semibold" style={{ color: C.cyan }}>
+                  {z.cta} {I.arrow()}
+                </a>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -446,6 +573,101 @@ export default function LandingPage() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Steuerberater-Section ─── */}
+      <section className="py-20" style={{ background: `linear-gradient(135deg, ${C.dark} 0%, #1a2744 100%)` }}>
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4 inline-block text-white" style={{ background: C.cyan + "40", border: `1px solid ${C.cyan}` }}>
+                Steuerberater-Partnerprogramm
+              </span>
+              <h2 className="text-3xl font-bold text-white mt-3 mb-4">
+                Empfehlen Sie Ihren Mandanten die beste DACH-Lösung
+              </h2>
+              <p className="text-slate-300 leading-relaxed mb-6">
+                DATEV-kompatibel, alle Kontenrahmen, physisch isolierte Mandantendatenbanken.
+                Ihre Mandanten buchen selbst — Sie erhalten strukturierte, prüfungsfähige Daten.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {[
+                  "DATEV-Export out-of-the-box — funktioniert sofort",
+                  "Übersicht über alle Mandanten in einem Dashboard",
+                  "Provision oder Rabattmodell für Partner",
+                  "Alle DACH-Kontenrahmen — ein Tool für alle Länder",
+                ].map((p) => (
+                  <li key={p} className="flex items-start gap-3 text-sm text-slate-200">
+                    <span style={{ color: C.cyan }} className="mt-0.5 shrink-0">{I.check(14)}</span>{p}
+                  </li>
+                ))}
+              </ul>
+              <a href="mailto:info@buchhaltung-ki.app?subject=Steuerberater-Partnerschaft" className="bp inline-flex items-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold text-white shadow-md">
+                Partner werden {I.arrow()}
+              </a>
+            </div>
+            <div className="relative">
+              <img
+                src="/images/steuerberater.jpeg"
+                alt="Steuerberater mit Mandanten"
+                className="rounded-2xl shadow-2xl object-cover w-full"
+                style={{ maxHeight: 420 }}
+              />
+              <div className="absolute bottom-4 left-4 right-4 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  {[{ v: "40.000+", l: "Buchungen" }, { v: "~30 Mio €", l: "Volumen" }, { v: "6", l: "Kontenrahmen" }, { v: "12+", l: "Bank-Formate" }].map((s) => (
+                    <div key={s.l}>
+                      <div className="text-lg font-bold text-white">{s.v}</div>
+                      <div className="text-xs text-slate-300">{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Social Proof ─── */}
+      <section className="py-16 bg-white">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="text-center mb-10">
+            <p className="text-sm text-slate-400 uppercase tracking-widest font-medium">Was unsere Nutzer sagen</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                zitat: "Endlich eine Lösung die sowohl unsere österreichische GmbH als auch die Schweizer AG im gleichen Account führt. Das hat vorher kein Tool gekonnt.",
+                name: "Thomas G.", rolle: "CEO, Unternehmensgruppe (DE/AT/CH)", foto: null,
+              },
+              {
+                zitat: "Die KI-Belegerkennung ist beeindruckend. Ich lade die PDF hoch und 90% der Felder werden automatisch ausgefüllt. Das spart mir täglich Zeit.",
+                name: "Franziska S.", rolle: "Buchhaltung, E-Commerce", foto: "/images/social-proof-1.jpeg",
+              },
+              {
+                zitat: "Der DATEV-Export funktioniert einwandfrei. Mein Steuerberater bekommt strukturierte Daten und muss nichts mehr nachbereiten.",
+                name: "Isabel A.", rolle: "Geschäftsführerin, Handelsunternehmen", foto: null,
+              },
+            ].map((z) => (
+              <div key={z.name} className="rounded-2xl border bg-slate-50 p-6">
+                <p className="text-sm text-slate-600 leading-relaxed mb-4 italic">"{z.zitat}"</p>
+                <div className="flex items-center gap-3">
+                  {z.foto ? (
+                    <img src={z.foto} alt={z.name} className="w-10 h-10 rounded-full object-cover object-top" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: C.cyan }}>
+                      {z.name[0]}
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800">{z.name}</div>
+                    <div className="text-xs text-slate-400">{z.rolle}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
