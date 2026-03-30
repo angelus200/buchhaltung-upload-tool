@@ -260,12 +260,19 @@ export default function Zahlungen() {
               <Card className="border-l-4 border-l-yellow-500">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-                    <Clock className="w-4 h-4" /> Offene Rechnungen
+                    <Clock className="w-4 h-4" />
+                    {buchungsartFilter === "ertrag" ? "Offene Forderungen" :
+                     buchungsartFilter === "aufwand" ? "Offene Verbindlichkeiten" :
+                     "Offene Rechnungen"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-slate-900">{berechneteStats.offen}</div>
-                  <p className="text-sm text-slate-500 mt-1">Noch nicht bezahlt</p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {buchungsartFilter === "ertrag" ? "Noch nicht eingegangen" :
+                     buchungsartFilter === "aufwand" ? "Noch nicht bezahlt" :
+                     "Noch nicht bezahlt"}
+                  </p>
                 </CardContent>
               </Card>
 
@@ -284,19 +291,29 @@ export default function Zahlungen() {
               <Card className="border-l-4 border-l-teal-500">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-                    <TrendingDown className="w-4 h-4" /> Offener Betrag
+                    <TrendingDown className="w-4 h-4" />
+                    {buchungsartFilter === "ertrag" ? "Offene Forderungen (€)" :
+                     buchungsartFilter === "aufwand" ? "Offene Verbindlichkeiten (€)" :
+                     "Offener Betrag"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-slate-900">{formatCurrency(berechneteStats.offenerBetrag)}</div>
-                  <p className="text-sm text-slate-500 mt-1">Noch zu zahlen</p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {buchungsartFilter === "ertrag" ? "Noch nicht eingegangen" :
+                     buchungsartFilter === "aufwand" ? "Noch zu zahlen" :
+                     "Noch zu zahlen"}
+                  </p>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-green-500">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> Bezahlt
+                    <CheckCircle2 className="w-4 h-4" />
+                    {buchungsartFilter === "ertrag" ? "Eingegangene Zahlungen" :
+                     buchungsartFilter === "aufwand" ? "Geleistete Zahlungen" :
+                     "Bezahlt"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
