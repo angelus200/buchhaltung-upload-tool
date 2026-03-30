@@ -108,6 +108,7 @@ function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
     // Erweiterungsfelder
     geschaeftspartnerKonto: buchung.geschaeftspartnerKonto || "",
     belegWaehrung: buchung.belegWaehrung || null as string | null,
+    wechselkurs: buchung.wechselkurs || "",
     zahlungsstatus: buchung.zahlungsstatus || "offen",
     faelligkeitsdatum: buchung.faelligkeitsdatum
       ? new Date(buchung.faelligkeitsdatum).toISOString().split("T")[0]
@@ -229,6 +230,21 @@ function EditBuchungForm({ buchung, onSave, onCancel }: EditBuchungFormProps) {
             </SelectContent>
           </Select>
         </div>
+        {/* Wechselkurs — nur bei Fremdwährung */}
+        {formData.belegWaehrung && formData.belegWaehrung !== 'EUR' && (
+          <div className="col-span-2">
+            <Label>Wechselkurs (1 {formData.belegWaehrung} = ? EUR)</Label>
+            <Input
+              type="number"
+              step="0.000001"
+              value={formData.wechselkurs}
+              onChange={(e) =>
+                setFormData({ ...formData, wechselkurs: e.target.value })
+              }
+              placeholder="0.950000"
+            />
+          </div>
+        )}
         {/* Zahlungsstatus */}
         <div>
           <Label>Zahlungsstatus</Label>
