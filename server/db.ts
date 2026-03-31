@@ -8,7 +8,7 @@ let _db: ReturnType<typeof drizzle> | null = null;
 
 // Master-DB immer direkt — kein AsyncLocalStorage-Check.
 // Muss für User-Tabelle (global) genutzt werden, nie für Tenant-Daten.
-function getMasterDb(): ReturnType<typeof drizzle> | null {
+export function getMasterDb(): ReturnType<typeof drizzle> | null {
   if (!_db && process.env.DATABASE_URL) {
     try {
       _db = drizzle(process.env.DATABASE_URL);

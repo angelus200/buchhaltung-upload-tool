@@ -11,6 +11,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { stripeWebhookHandler } from "./stripeWebhook";
+import { stripeRestRouter } from "../stripe-rest";
+import { onboardingRouter } from "../onboarding";
 import apiPublicRouter from "../api-public";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -53,6 +55,11 @@ async function startServer() {
     ? '/data/belege'
     : path.join(process.cwd(), 'uploads', 'belege');
   app.use('/belege', express.static(BELEGE_BASE_PATH));
+
+  // Stripe REST API (Checkout, Portal, Session-Lookup)
+  app.use('/api/stripe', stripeRestRouter);
+  // Onboarding REST API (nach Stripe Checkout)
+  app.use('/api/onboarding', onboardingRouter);
 
   // tRPC API
   app.use(

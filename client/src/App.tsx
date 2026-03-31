@@ -53,6 +53,7 @@ import Buchungsvorschlaege from "./pages/Buchungsvorschlaege";
 import DropboxEinstellungen from "./pages/DropboxEinstellungen";
 import UStVoranmeldung from "./pages/UStVoranmeldung";
 import DatevExport from "./pages/DatevExport";
+import Onboarding from "./pages/Onboarding";
 
 // Router-Konfiguration
 function Router() {
@@ -62,6 +63,7 @@ function Router() {
       <Route path={"/"} component={LandingPage} />
       <Route path={"/sign-up"} component={SignUpAfterPayment} />
       <Route path={"/login"} component={Login} />
+      <Route path={"/onboarding"} component={Onboarding} />
       <Route path={"/steuerberater-handbuch"} component={SteuerberaterHandbuch} />
       <Route path={"/impressum"} component={Impressum} />
       <Route path={"/datenschutz"} component={Datenschutz} />
