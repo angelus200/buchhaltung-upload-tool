@@ -10,9 +10,7 @@ import mysql from 'mysql2/promise';
 import path from 'path';
 import fs from 'fs';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-01-27.acacia' as any,
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 const PLAN_CONFIG: Record<string, { maxFirmen: number; priceEnv: string }> = {
   starter:    { maxFirmen: 1,   priceEnv: 'STRIPE_PRICE_STARTER' },
