@@ -238,13 +238,13 @@ function LeadDialog({
 
 export default function AdminCRM() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterLand, setFilterLand] = useState('');
+  const [filterStatus, setFilterStatus] = useState('alle');
+  const [filterLand, setFilterLand] = useState('alle');
   const [suche, setSuche] = useState('');
 
   const { data: stats, refetch: refetchStats } = trpc.crm.getStats.useQuery();
   const { data: leadsData, refetch: refetchLeads } = trpc.crm.listLeads.useQuery(
-    { status: filterStatus || undefined, land: filterLand || undefined, suche: suche || undefined },
+    { status: filterStatus === 'alle' ? undefined : filterStatus, land: filterLand === 'alle' ? undefined : filterLand, suche: suche || undefined },
     { keepPreviousData: true } as never,
   );
 
@@ -312,7 +312,7 @@ export default function AdminCRM() {
               <SelectValue placeholder="Alle Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Alle Status</SelectItem>
+              <SelectItem value="alle">Alle Status</SelectItem>
               {Object.entries(STATUS_LABELS).map(([val, label]) => (
                 <SelectItem key={val} value={val}>{label}</SelectItem>
               ))}
@@ -323,7 +323,7 @@ export default function AdminCRM() {
               <SelectValue placeholder="Alle Länder" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Alle Länder</SelectItem>
+              <SelectItem value="alle">Alle Länder</SelectItem>
               <SelectItem value="DE">Deutschland</SelectItem>
               <SelectItem value="AT">Österreich</SelectItem>
               <SelectItem value="CH">Schweiz</SelectItem>
