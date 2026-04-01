@@ -132,10 +132,10 @@ function LeadFormSection() {
       <div className="max-w-2xl mx-auto px-6">
         <div className="mb-4 text-sm font-semibold uppercase tracking-widest text-center" style={{ color: C.cyan }}>Kontakt</div>
         <h2 className="text-3xl font-bold text-center text-slate-900 mb-3 fd">
-          Kostenlose Beratung anfragen
+          Live Präsentation anfragen
         </h2>
         <p className="text-center text-slate-500 mb-10">
-          Erzählen Sie uns von Ihrem Unternehmen — wir zeigen Ihnen, wie Buchhaltung-KI Ihre Prozesse vereinfacht.
+          Erleben Sie buchhaltung-ki.app in einer persönlichen Demo — wir zeigen Ihnen wie Ihre Buchhaltung einfacher wird.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -219,7 +219,7 @@ function LeadFormSection() {
             disabled={createLeadMutation.isPending}
             className="bp w-full py-4 text-white font-semibold rounded-xl shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50"
           >
-            {createLeadMutation.isPending ? 'Wird gesendet...' : 'Unverbindlich anfragen'}
+            {createLeadMutation.isPending ? 'Wird gesendet...' : 'Demo anfragen'}
           </button>
         </form>
       </div>
@@ -286,6 +286,7 @@ export default function LandingPage() {
             <a href="#preise" className="hover:text-cyan-600 transition-colors">Preise</a>
             <a href="#onboarding" className="hover:text-cyan-600 transition-colors">Onboarding</a>
             <a href="#faq" className="hover:text-cyan-600 transition-colors">FAQ</a>
+            <a href="#kontakt" className="hover:text-cyan-600 transition-colors">Live Demo</a>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login">
