@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, date, boolean, tinyint } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, date, datetime, boolean, tinyint } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1837,3 +1837,32 @@ export const tenants = mysqlTable("tenants", {
 
 export type Tenant = typeof tenants.$inferSelect;
 export type InsertTenant = typeof tenants.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════
+// CRM — Lead-Management (Master-DB)
+// ═══════════════════════════════════════════════════════════════
+
+export const leads = mysqlTable("leads", {
+  id: int("id").autoincrement().primaryKey(),
+  firmenName: varchar("firmenName", { length: 255 }).notNull(),
+  ansprechpartner: varchar("ansprechpartner", { length: 255 }),
+  email: varchar("email", { length: 255 }).notNull(),
+  telefon: varchar("telefon", { length: 50 }),
+  webseite: varchar("webseite", { length: 255 }),
+  land: mysqlEnum("land", ["DE", "AT", "CH"]).notNull().default("DE"),
+  branche: varchar("branche", { length: 100 }),
+  firmenGroesse: mysqlEnum("firmenGroesse", ["1-5", "6-20", "21-50", "51-200", "200+"]),
+  quelle: mysqlEnum("quelle", ["landing_page", "empfehlung", "steuerberater", "manuell", "api", "marketing"]).notNull().default("landing_page"),
+  status: mysqlEnum("status", ["neu", "kontaktiert", "demo_geplant", "demo_durchgefuehrt", "angebot_gesendet", "gewonnen", "verloren"]).notNull().default("neu"),
+  interessiertAnPlan: mysqlEnum("interessiertAnPlan", ["starter", "business", "individuell"]),
+  notizen: text("notizen"),
+  naechsteAktion: varchar("naechsteAktion", { length: 255 }),
+  naechsteAktionDatum: date("naechsteAktionDatum"),
+  konvertiertAmDatum: datetime("konvertiertAmDatum"),
+  konvertiertZuTenantId: int("konvertiertZuTenantId"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow().onUpdateNow(),
+});
+
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = typeof leads.$inferInsert;

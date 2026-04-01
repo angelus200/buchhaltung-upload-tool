@@ -79,6 +79,154 @@ function SRow({ label, stb, ki }: { label: string; stb: string; ki: string }) {
   );
 }
 
+// ─── Lead-Formular Section ───────────────────────────────────────────────────
+
+function LeadFormSection() {
+  const [submitted, setSubmitted] = useState(false);
+  const [formData, setFormData] = useState({
+    firmenName: '',
+    email: '',
+    ansprechpartner: '',
+    telefon: '',
+    land: 'DE' as 'DE' | 'AT' | 'CH',
+    interessiertAnPlan: '' as '' | 'starter' | 'business' | 'individuell',
+  });
+
+  const createLeadMutation = trpc.crm.createLead.useMutation({
+    onSuccess: () => setSubmitted(true),
+    onError: (error) => toast.error(`Fehler: ${error.message}`),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.firmenName.trim() || !formData.email.trim()) return;
+    createLeadMutation.mutate({
+      firmenName: formData.firmenName,
+      email: formData.email,
+      ansprechpartner: formData.ansprechpartner || undefined,
+      telefon: formData.telefon || undefined,
+      land: formData.land,
+      interessiertAnPlan: formData.interessiertAnPlan || undefined,
+      quelle: 'landing_page',
+    });
+  };
+
+  if (submitted) {
+    return (
+      <section id="kontakt" className="py-24 bg-gradient-to-b from-white to-slate-50">
+        <div className="max-w-xl mx-auto text-center px-6">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: `linear-gradient(135deg, ${C.pale}, ${C.light})`, color: C.dark }}>
+            {I.check(32)}
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Vielen Dank!</h2>
+          <p className="text-slate-600">Wir melden uns innerhalb von 24 Stunden bei Ihnen.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const inputCls = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400";
+
+  return (
+    <section id="kontakt" className="py-24 bg-gradient-to-b from-white to-slate-50">
+      <div className="max-w-2xl mx-auto px-6">
+        <div className="mb-4 text-sm font-semibold uppercase tracking-widest text-center" style={{ color: C.cyan }}>Kontakt</div>
+        <h2 className="text-3xl font-bold text-center text-slate-900 mb-3 fd">
+          Kostenlose Beratung anfragen
+        </h2>
+        <p className="text-center text-slate-500 mb-10">
+          Erzählen Sie uns von Ihrem Unternehmen — wir zeigen Ihnen, wie Buchhaltung-KI Ihre Prozesse vereinfacht.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Firmenname *</label>
+              <input
+                type="text" required
+                value={formData.firmenName}
+                onChange={e => setFormData(f => ({ ...f, firmenName: e.target.value }))}
+                className={inputCls}
+                style={{ '--tw-ring-color': C.cyan } as React.CSSProperties}
+                placeholder="Muster GmbH"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">E-Mail *</label>
+              <input
+                type="email" required
+                value={formData.email}
+                onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
+                className={inputCls}
+                placeholder="info@firma.de"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Ansprechpartner</label>
+              <input
+                type="text"
+                value={formData.ansprechpartner}
+                onChange={e => setFormData(f => ({ ...f, ansprechpartner: e.target.value }))}
+                className={inputCls}
+                placeholder="Max Mustermann"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Telefon</label>
+              <input
+                type="tel"
+                value={formData.telefon}
+                onChange={e => setFormData(f => ({ ...f, telefon: e.target.value }))}
+                className={inputCls}
+                placeholder="+49 123 456789"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Land</label>
+              <select
+                value={formData.land}
+                onChange={e => setFormData(f => ({ ...f, land: e.target.value as 'DE' | 'AT' | 'CH' }))}
+                className={inputCls}
+              >
+                <option value="DE">Deutschland</option>
+                <option value="AT">Österreich</option>
+                <option value="CH">Schweiz</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Interessiert an</label>
+              <select
+                value={formData.interessiertAnPlan}
+                onChange={e => setFormData(f => ({ ...f, interessiertAnPlan: e.target.value as '' | 'starter' | 'business' | 'individuell' }))}
+                className={inputCls}
+              >
+                <option value="">— Bitte wählen —</option>
+                <option value="starter">Starter (299 €/Monat)</option>
+                <option value="business">Business (499 €/Monat)</option>
+                <option value="individuell">Individuell</option>
+              </select>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={createLeadMutation.isPending}
+            className="bp w-full py-4 text-white font-semibold rounded-xl shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50"
+          >
+            {createLeadMutation.isPending ? 'Wird gesendet...' : 'Unverbindlich anfragen'}
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
@@ -720,6 +868,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ─── Lead-Formular / Kontakt ─── */}
+      <LeadFormSection />
 
       {/* ─── Footer ─── */}
       <footer className="border-t border-slate-200 bg-slate-900 text-slate-400">

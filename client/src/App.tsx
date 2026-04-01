@@ -54,6 +54,7 @@ import DropboxEinstellungen from "./pages/DropboxEinstellungen";
 import UStVoranmeldung from "./pages/UStVoranmeldung";
 import DatevExport from "./pages/DatevExport";
 import Onboarding from "./pages/Onboarding";
+import AdminCRM from "./pages/AdminCRM";
 
 // Router-Konfiguration
 function Router() {
@@ -80,6 +81,12 @@ function Router() {
       <Route path={"/admin"}>
         <AdminRoute>
           <AdminBoard />
+        </AdminRoute>
+      </Route>
+
+      <Route path={"/admin/crm"}>
+        <AdminRoute>
+          <AdminCRM />
         </AdminRoute>
       </Route>
 
