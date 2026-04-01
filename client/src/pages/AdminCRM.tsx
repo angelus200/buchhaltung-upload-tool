@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import AppHeader from "@/components/AppHeader";
 import { toast } from "sonner";
 import {
   Table,
@@ -261,14 +262,9 @@ export default function AdminCRM() {
   const leads = (leadsData ?? []) as Lead[];
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">CRM — Lead-Verwaltung</h1>
-          <p className="text-slate-500 mt-1">Alle Anfragen von der Landing Page und anderen Quellen</p>
-        </div>
+    <div className="min-h-screen bg-background">
+      <AppHeader title="CRM — Lead-Verwaltung" subtitle="Alle Anfragen von der Landing Page und anderen Quellen" />
+      <div className="container py-8">
 
         {/* Stats-Kacheln */}
         {stats && (
