@@ -554,6 +554,12 @@ export default function AppHeader({ title, subtitle }: AppHeaderProps) {
                         Admin-Panel
                       </DropdownMenuItem>
                     </Link>
+                    <Link href="/admin/crm">
+                      <DropdownMenuItem className="cursor-pointer">
+                        <Users className="w-4 h-4 mr-2" />
+                        CRM — Leads
+                      </DropdownMenuItem>
+                    </Link>
                   </>
                 )}
 

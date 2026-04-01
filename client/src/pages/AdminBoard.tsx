@@ -398,6 +398,15 @@ export default function AdminBoard() {
       <AppHeader title="Admin Board" subtitle="Benutzer & Berechtigungen verwalten" />
 
       <main className="container py-8">
+        {/* CRM-Shortcut */}
+        <div className="mb-6">
+          <Link href="/admin/crm">
+            <Button variant="outline" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              CRM — Leads
+            </Button>
+          </Link>
+        </div>
         {!selectedUnternehmen || unternehmenListe.length === 0 ? (
           <Card className="p-12 text-center bg-slate-800 border-slate-700">
             <Building2 className="w-12 h-12 mx-auto text-slate-500 mb-4" />
